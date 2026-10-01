@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analyst Adventure</title>
+  <meta name="description" content="Juego 2D para aprender planillas de cálculo: de pasante a analista de datos senior.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Título -->
+    <section id="screen-title" class="screen">
+      <div class="title-bg" aria-hidden="true"></div>
+      <div class="title-card">
+        <div class="logo">
+          <span class="logo-cell">=</span>
+          <h1>ANALYST<br>ADVENTURE</h1>
+        </div>
+        <p class="tagline">De pasante a Senior, una celda a la vez.</p>
+        <form id="new-game" class="new-game" autocomplete="off">
+          <label for="player-name">¿Cómo te llamás?</label>
+          <div class="row">
+            <input id="player-name" maxlength="24" placeholder="Tu nombre">
+            <button class="btn btn-primary" type="submit">Nueva partida</button>
+          </div>
+        </form>
+        <button id="btn-continue" class="btn btn-wide" hidden></button>
+        <button id="btn-reset" class="btn btn-link" hidden>Borrar partida guardada</button>
+        <p class="title-foot">Etapa 1 · Fórmulas, funciones, SI, limpieza de datos y CONTAR.SI</p>
+      </div>
+    </section>
+
+    <!-- Oficina -->
+    <section id="screen-office" class="screen">
+      <canvas id="office-canvas"></canvas>
+      <div class="hud hud-left" id="hud-player"></div>
+      <div class="hud hud-right">
+        <span class="chip" id="hud-missions"></span>
+        <button class="btn btn-sm" id="hud-career">📈 Carrera</button>
+        <button class="btn btn-sm" id="hud-manual">📖 Manual</button>
+        <button class="btn btn-sm" id="hud-menu">☰</button>
+      </div>
+      <div class="hud hud-bottom">
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · o hacé clic sobre las cosas
+      </div>
+      <div id="dialog" class="dialog hidden"></div>
+    </section>
+
+    <!-- Computadora: bandeja de entrada -->
+    <section id="screen-computer" class="screen"></section>
+
+    <!-- Planilla de la misión -->
+    <section id="screen-mission" class="screen"></section>
+
+    <div id="modal" class="modal hidden"></div>
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <!-- Motor -->
+  <script src="js/engine/formula.js"></script>
+  <script src="js/engine/sheet.js"></script>
+  <!-- Interfaz -->
+  <script src="js/ui/grid.js"></script>
+  <script src="js/ui/common.js"></script>
+  <!-- Juego -->
+  <script src="js/game/state.js"></script>
+  <script src="js/game/validators.js"></script>
+  <script src="js/game/missions/registry.js"></script>
+  <script src="js/game/missions/stage1.js"></script>
+  <script src="js/game/sprites.js"></script>
+  <script src="js/game/dialog.js"></script>
+  <script src="js/game/office.js"></script>
+  <script src="js/game/story.js"></script>
+  <script src="js/game/screens.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "analyst-adventure",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Juego 2D para aprender planillas de cálculo: de pasante a analista de datos senior.",
+  "scripts": {
+    "test": "node tests/engine.test.js && node tests/missions.test.js",
+    "start": "npx serve ."
+  }
+}
