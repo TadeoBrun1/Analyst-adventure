@@ -42,6 +42,11 @@
         reset.hidden = false;
         cont.innerHTML = `Continuar como <b>${esc(AA.State.data.name)}</b> <span>· ${esc(AA.State.rank().name)}</span>`;
       }
+      const quit = document.getElementById('btn-quit');
+      if (window.AADesktop) {
+        quit.hidden = false;
+        quit.addEventListener('click', () => window.AADesktop.quit());
+      }
       cont.addEventListener('click', () => {
         if (AA.State.load()) this.enterOffice();
       });
@@ -93,13 +98,20 @@
       document.getElementById('hud-career').addEventListener('click', () => AA.Screens.openCareer());
       document.getElementById('hud-manual').addEventListener('click', () => AA.Screens.openManual());
       document.getElementById('hud-menu').addEventListener('click', () => {
+        const desk = window.AADesktop;
+        const buttons = [{ label: 'Volver al título', action: () => location.reload() }];
+        if (desk) {
+          buttons.push({ label: 'Pantalla completa (F11)', action: () => desk.toggleFullscreen() });
+          buttons.push({ label: 'Salir del juego', action: () => desk.quit() });
+        }
+        buttons.push({ label: 'Seguir jugando', primary: true });
         AA.UI.modal({
           title: 'Menú',
-          html: '<p>Tu progreso se guarda automáticamente en este navegador.</p>',
-          buttons: [
-            { label: 'Volver al título', action: () => location.reload() },
-            { label: 'Seguir jugando', primary: true },
-          ],
+          html: desk
+            ? '<p>Tu progreso se guarda automáticamente.</p><p class="muted"><kbd>F11</kbd> o <kbd>Alt</kbd>+<kbd>Enter</kbd>: pantalla completa.</p>'
+            : '<p>Tu progreso se guarda automáticamente en este navegador.</p>',
+          wide: !!desk,
+          buttons,
         });
       });
     },

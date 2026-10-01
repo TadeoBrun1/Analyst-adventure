@@ -35,6 +35,38 @@
     Auditoría: '#e5484d',
   };
 
+  // Dónde se guarda la partida: en un archivo si corre como ejecutable (Electron),
+  // o en localStorage si corre en un navegador.
+  const Storage = {
+    desktop: () => typeof window !== 'undefined' && window.AADesktop,
+    read() {
+      try {
+        const d = this.desktop();
+        return d ? d.loadSave() : localStorage.getItem(SAVE_KEY);
+      } catch (e) {
+        return null;
+      }
+    },
+    write(text) {
+      try {
+        const d = this.desktop();
+        if (d) d.writeSave(text);
+        else localStorage.setItem(SAVE_KEY, text);
+      } catch (e) {
+        /* sin almacenamiento: la partida vive solo en esta sesión */
+      }
+    },
+    remove() {
+      try {
+        const d = this.desktop();
+        if (d) d.deleteSave();
+        else localStorage.removeItem(SAVE_KEY);
+      } catch (e) {
+        /* nada que borrar */
+      }
+    },
+  };
+
   function freshSave(name) {
     return {
       version: 1,
@@ -55,22 +87,18 @@
     data: null,
 
     hasSave() {
-      try {
-        return !!localStorage.getItem(SAVE_KEY);
-      } catch (e) {
-        return false;
-      }
+      return !!Storage.read();
     },
     load() {
       try {
-        const raw = localStorage.getItem(SAVE_KEY);
+        const raw = Storage.read();
         if (raw) {
           this.data = Object.assign(freshSave(), JSON.parse(raw));
           this.data.flags = Object.assign({ intro: false, rankSeen: 0 }, this.data.flags);
           return true;
         }
       } catch (e) {
-        /* guardado corrupto o almacenamiento bloqueado */
+        /* guardado corrupto */
       }
       return false;
     },
@@ -79,18 +107,10 @@
       this.save();
     },
     save() {
-      try {
-        localStorage.setItem(SAVE_KEY, JSON.stringify(this.data));
-      } catch (e) {
-        /* sin almacenamiento: la partida vive solo en esta pestaña */
-      }
+      Storage.write(JSON.stringify(this.data));
     },
     reset() {
-      try {
-        localStorage.removeItem(SAVE_KEY);
-      } catch (e) {
-        /* nada que borrar */
-      }
+      Storage.remove();
       this.data = null;
     },
 

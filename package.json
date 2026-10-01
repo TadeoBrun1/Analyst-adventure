@@ -1,10 +1,92 @@
 {
   "name": "analyst-adventure",
+  "productName": "Analyst Adventure",
   "version": "0.1.0",
   "private": true,
   "description": "Juego 2D para aprender planillas de cálculo: de pasante a analista de datos senior.",
+  "author": "TadeoBrun1",
+  "main": "electron/main.js",
   "scripts": {
     "test": "node tests/engine.test.js && node tests/missions.test.js",
-    "start": "npx serve ."
+    "start": "electron .",
+    "web": "npx serve .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "io.github.tadeobrun1.analystadventure",
+    "productName": "Analyst Adventure",
+    "copyright": "Copyright © 2026 TadeoBrun1",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "css/**",
+      "js/**",
+      "assets/**",
+      "electron/**",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "AnalystAdventure-${version}-win-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "AnalystAdventure-${version}-portable.exe"
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "category": "Game",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "AnalystAdventure-${version}-linux-${arch}.${ext}"
+    },
+    "mac": {
+      "icon": "assets/icon.png",
+      "category": "public.app-category.educational-games",
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "artifactName": "AnalystAdventure-${version}-mac.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
   }
 }
