@@ -13,8 +13,14 @@ require('../js/i18n/i18n.js');
 require('../js/game/validators.js');
 require('../js/game/state.js');
 require('../js/charts/chart-model.js');
+require('../js/tools/pivot.js');
+require('../js/tools/sql.js');
+require('../js/tools/dashboard.js');
+require('../js/tools/report.js');
+require('../js/game/workspace.js');
 require('../js/game/content/lib.js');
-for (const m of ['mod1', 'mod2', 'mod3', 'mod4', 'mod5', 'mod6']) require(`../js/game/content/${m}.js`);
+const MODS = require('fs').readdirSync(require('path').join(__dirname, '../js/game/content')).filter((f) => /^mod\d+\.js$/.test(f)).sort((a, b) => parseInt(a.slice(3)) - parseInt(b.slice(3)));
+for (const f of MODS) require(`../js/game/content/${f}`);
 require('../js/game/content/curriculum.js');
 
 const AA = globalThis.AA;
@@ -27,74 +33,57 @@ const fail = (msg) => {
   if (failed <= 40) console.error('✗ ' + msg);
 };
 
-function solutionWrites(sol) {
-  const out = [];
-  for (const [col, r1, r2, f] of sol.fill || []) {
-    for (let r = r1; r <= r2; r++) out.push([col + r, F.shiftFormula(f, 0, r - r1)]);
-  }
-  for (const [row, c1, c2, f] of sol.fillRight || []) {
-    const a = F.colToIndex(c1);
-    const b = F.colToIndex(c2);
-    for (let c = a; c <= b; c++) out.push([F.indexToCol(c) + row, F.shiftFormula(f, c - a, 0)]);
-  }
-  for (const [c1, c2, r1, r2, f] of sol.fillBlock || []) {
-    const a = F.colToIndex(c1);
-    const b = F.colToIndex(c2);
-    for (let c = a; c <= b; c++) for (let r = r1; r <= r2; r++) out.push([F.indexToCol(c) + r, F.shiftFormula(f, c - a, r - r1)]);
-  }
-  for (const [ref, f] of Object.entries(sol.cells || {})) out.push([ref, f]);
-  return out;
-}
+const W = AA.Workspace;
 
-// Misiones de gráfico: se validan sobre la especificación del gráfico, no sobre la hoja.
-function checkChartMission(m, label) {
-  const table = m.chart.table;
-  const empty = { spec: AA.Chart.emptySpec(), table };
-  m.objectives.forEach((o, i) => {
-    const res = o.answer ? o.answer('respuesta-incorrecta-xyz') : o.check(empty);
-    if (res === true) fail(`${label} #${i + 1} se cumple sin hacer nada`);
-    else passed++;
-  });
-  const Q = { spec: m.solution.chart, table };
-  if (!AA.Chart.resolve(Q.spec, table).ok) fail(`${label}: la solución no se puede dibujar`);
-  m.objectives.forEach((o, i) => {
-    const res = o.answer ? o.answer((m.solution.answers || {})[i]) : o.check(Q);
-    if (res === true) passed++;
-    else fail(`${label} #${i + 1}: la solución no lo cumple → ${JSON.stringify(res)}`);
-  });
-}
-
+// Resuelve la misión dos veces: sin hacer nada (no se tiene que cumplir ningún objetivo) y con la
+// solución de referencia (se tienen que cumplir todos).
 function checkMission(m, label) {
-  if (m.chart) return checkChartMission(m, label);
-  const sh = AA.Content.buildSheet(m.sheet);
-  const locked = (m.sheet.locked || []).map(F.parseRange);
-  // Hoja vacía: nada cumplido.
-  const S0 = V.query(sh);
-  m.objectives.forEach((o, i) => {
-    const res = o.answer ? o.answer('respuesta-incorrecta-xyz') : o.check(S0);
-    if (res === true) fail(`${label} #${i + 1} se cumple sin hacer nada`);
-    else passed++;
-  });
-  // Solución de referencia.
-  for (const [ref, f] of solutionWrites(m.solution)) {
-    const p = F.parseRef(ref);
-    if (!sh.inBounds(p.col, p.row)) {
-      fail(`${label}: la solución escribe fuera de la hoja (${ref})`);
-      continue;
-    }
-    if (locked.some((k) => p.col >= k.c1 && p.col <= k.c2 && p.row >= k.r1 && p.row <= k.r2)) fail(`${label}: la solución escribe en una celda bloqueada (${ref})`);
-    sh.setInput(p.col, p.row, f, true);
-  }
-  const S = V.query(sh);
+  const defs = W.sheetDefs(m);
+  // 1) Estado vacío.
+  const S0 = W.state(m, W.buildBook(m), W.emptyParts(m));
   m.objectives.forEach((o, i) => {
     let res;
-    if (o.answer) {
-      const a = (m.solution.answers || {})[i];
+    if (o.choices) {
+      res = false;
+      if (!(o.correct >= 0 && o.correct < o.choices.length)) fail(`${label} #${i + 1}: la opción correcta no existe`);
+    } else res = o.answer ? o.answer('respuesta-incorrecta-xyz') : o.check(S0);
+    if (res === true) fail(`${label} #${i + 1} se cumple sin hacer nada`);
+    else passed++;
+  });
+  // 2) La solución solo escribe en celdas permitidas.
+  const sol = m.solution || {};
+  for (const [name, ref] of W.solutionWrites(sol)) {
+    const d = name ? defs.find((x) => x.name === name) : defs[0];
+    if (!d) {
+      fail(`${label}: la solución escribe en una hoja que no existe (${name})`);
+      continue;
+    }
+    const p = F.parseRef(ref);
+    if (!p || p.col >= d.def.cols || p.row >= d.def.rows) fail(`${label}: la solución escribe fuera de la hoja (${ref})`);
+    const locked = (d.def.locked || []).map(F.parseRange);
+    if (locked.some((k) => p.col >= k.c1 && p.col <= k.c2 && p.row >= k.r1 && p.row <= k.r2)) fail(`${label}: la solución escribe en una celda bloqueada (${ref})`);
+  }
+  if (m.chart && sol.chart && !AA.Chart.resolve(sol.chart, m.chart.table).ok) fail(`${label}: la solución no se puede dibujar`);
+  if (m.sql) {
+    for (const q of sol.sql || []) {
+      try {
+        AA.SQL.execute(q, m.sql.tables);
+      } catch (e) {
+        fail(`${label}: la consulta de la solución falla → ${q} → ${e.message}`);
+      }
+    }
+  }
+  // 3) Con la solución, todo cumplido.
+  const { S } = W.solve(m);
+  m.objectives.forEach((o, i) => {
+    let res;
+    if (o.answer || o.choices) {
+      const a = (sol.answers || {})[i];
       if (a === undefined) {
         fail(`${label} #${i + 1}: falta la respuesta en la solución`);
         return;
       }
-      res = o.answer(a);
+      res = o.choices ? a === o.correct : o.answer(a);
     } else res = o.check(S);
     if (res === true) passed++;
     else fail(`${label} #${i + 1}: la solución no lo cumple → ${JSON.stringify(res)}`);

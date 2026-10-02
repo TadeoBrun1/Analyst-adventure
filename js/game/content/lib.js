@@ -119,6 +119,14 @@
   function register(id, fn) {
     templates[id] = fn;
   }
+  // Niveles definidos junto con sus plantillas (Nivel 7 en adelante): { id, title, xp, tier,
+  // skills: { id: { title, say, tip, fns?, code? } }, templates, seeds, intro }.
+  const modules = [];
+  function module(def) {
+    modules.push(def);
+  }
+  // Tabla { headers, rows } a partir de objetos.
+  const table = (headers, rows, extra) => Object.assign({ headers, rows }, extra || {});
 
   // Ejecuta una plantilla en un idioma dado y completa los datos comunes.
   function build(templateId, opts) {
@@ -148,8 +156,10 @@
   // Hoja inicial de una misión (datos originales + celdas fijas).
   function buildSheet(def) {
     const sh = new AA.Sheet(def.cols, def.rows);
-    const at = F.parseRef(def.data.at);
-    def.data.rows.forEach((row, i) => row.forEach((v, j) => sh.setValue(at.col + j, at.row + i, v, true)));
+    for (const block of [].concat(def.data || [], def.blocks || [])) {
+      const at = F.parseRef(block.at);
+      block.rows.forEach((row, i) => row.forEach((v, j) => sh.setValue(at.col + j, at.row + i, v, true)));
+    }
     for (const [ref, v] of Object.entries(def.cells || {})) {
       const p = F.parseRef(ref);
       sh.setValue(p.col, p.row, v, true);
@@ -170,6 +180,9 @@
     L2,
     register,
     templates,
+    module,
+    modules,
+    table,
     build,
     buildSheet,
     DATA: { FIRST, LAST, PRODUCTS, CONCEPTS, REGIONS, CITIES, CARRIERS, MONTHS, CATEGORIES, AREAS },

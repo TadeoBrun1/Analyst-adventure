@@ -55,241 +55,15 @@
     return `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`;
   }
 
-  class ChartBuilder {
-    constructor(root, table, spec, opts) {
-      this.root = root;
+  // Dibujo de gráficos en SVG (lo usan el editor, los dashboards y las tablas dinámicas).
+  // El color sigue a la entidad: el índice sale de TODOS los valores de la tabla completa,
+  // así un filtro no repinta las categorías que quedan.
+  class ChartRenderer {
+    constructor(table) {
       this.table = table;
-      this.spec = Object.assign(Ch.emptySpec(), spec || {});
-      this.opts = opts || {};
       this.fields = Ch.fields(table);
-      // El color sigue a la entidad: el índice sale de TODOS los valores, no de los filtrados.
       this.colorIndex = {};
-      this.build();
-      this.render();
-      this.ro = new ResizeObserver(() => this.draw());
-      this.ro.observe(this.canvas);
-    }
-
-    build() {
-      const dims = this.fields.filter((f) => f.role === 'dimension');
-      const meas = this.fields.filter((f) => f.role === 'measure');
-      const pill = (f) =>
-        `<button class="cb-pill ${f.role}" draggable="true" data-field="${esc(f.name)}" title="${T('Arrastrá a un estante o hacé clic', 'Drag to a shelf or click')}">${f.role === 'dimension' ? (f.time ? '📅' : 'Abc') : '#'} ${esc(Ch.fieldLabel(f.name))}</button>`;
-      const shelf = (key, label, hint) => `
-        <div class="cb-shelf" data-shelf="${key}">
-          <span class="cb-shelf-label">${label}</span>
-          <div class="cb-drop" data-drop="${key}" data-hint="${hint}"><span class="cb-drop-hint">${hint}</span></div>
-        </div>`;
-      const markBtn = (m) => `<button class="cb-mark" data-mark="${m}"><span class="cb-mark-ico">${{ auto: '✦', bar: '▮▮', line: '⟋', pie: '◔', scatter: '⁘' }[m]}</span>${AA.L(Ch.MARKS[m])}</button>`;
-      this.root.innerHTML = `
-        <div class="cb">
-          <aside class="cb-fields">
-            <h4>${T('Dimensiones', 'Dimensions')}</h4>
-            <div class="cb-list">${dims.map(pill).join('')}</div>
-            <h4>${T('Medidas', 'Measures')}</h4>
-            <div class="cb-list">${meas.map(pill).join('')}</div>
-            <p class="cb-help">${T('Las <b>dimensiones</b> son categorías (agrupan). Las <b>medidas</b> son números (se suman, promedian…). Arrastralas a los estantes.', '<b>Dimensions</b> are categories (they group). <b>Measures</b> are numbers (summed, averaged…). Drag them onto the shelves.')}</p>
-          </aside>
-          <section class="cb-main">
-            <div class="cb-shelves">
-              ${shelf('columns', T('Columnas', 'Columns'), T('eje horizontal', 'horizontal axis'))}
-              ${shelf('rows', T('Filas', 'Rows'), T('eje vertical', 'vertical axis'))}
-              <button class="cb-swap" title="${T('Intercambiar filas y columnas', 'Swap rows and columns')}">⇅</button>
-              ${shelf('color', T('Color', 'Color'), T('una dimensión (opcional)', 'a dimension (optional)'))}
-              ${shelf('filter', T('Filtros', 'Filters'), T('una dimensión (opcional)', 'a dimension (optional)'))}
-            </div>
-            <div class="cb-filter-values"></div>
-            <div class="cb-toolbar">
-              <span class="cb-tool-label">${T('Mostrarme', 'Show Me')}</span>
-              <div class="cb-marks">${['auto', 'bar', 'line', 'pie', 'scatter'].map(markBtn).join('')}</div>
-              <label class="cb-opt">${T('Ordenar', 'Sort')}
-                <select data-opt="sort">
-                  <option value="none">${T('Orden original', 'Original order')}</option>
-                  <option value="desc">${T('Mayor a menor', 'Largest first')}</option>
-                  <option value="asc">${T('Menor a mayor', 'Smallest first')}</option>
-                </select>
-              </label>
-              <label class="cb-opt"><input type="checkbox" data-opt="labels"> ${T('Etiquetas', 'Labels')}</label>
-              <button class="cb-clear" title="${T('Empezar de nuevo', 'Start over')}">⟲</button>
-            </div>
-            <input class="cb-title" maxlength="90" placeholder="${T('Título: contá la conclusión (ej: "El Sur lidera las ventas")', 'Title: state the conclusion (e.g. "The South leads sales")')}">
-            <div class="cb-canvas"></div>
-          </section>
-        </div>
-        <div class="cb-menu hidden"></div>`;
-      this.canvas = this.root.querySelector('.cb-canvas');
-      this.menu = this.root.querySelector('.cb-menu');
-      this.titleInput = this.root.querySelector('.cb-title');
-      this.bind();
-    }
-
-    bind() {
-      const r = this.root;
-      r.querySelectorAll('.cb-fields .cb-pill').forEach((p) => {
-        p.addEventListener('dragstart', (e) => {
-          e.dataTransfer.setData('text/plain', p.dataset.field);
-          e.dataTransfer.effectAllowed = 'copy';
-        });
-        p.addEventListener('click', (e) => this.openMenu(p.dataset.field, e.currentTarget));
-      });
-      r.querySelectorAll('[data-drop]').forEach((zone) => {
-        zone.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          zone.classList.add('over');
-        });
-        zone.addEventListener('dragleave', () => zone.classList.remove('over'));
-        zone.addEventListener('drop', (e) => {
-          e.preventDefault();
-          zone.classList.remove('over');
-          const name = e.dataTransfer.getData('text/plain');
-          if (name) this.assign(zone.dataset.drop, name);
-        });
-      });
-      r.querySelector('.cb-swap').addEventListener('click', () => {
-        [this.spec.columns, this.spec.rows] = [this.spec.rows, this.spec.columns];
-        this.changed();
-      });
-      r.querySelector('.cb-clear').addEventListener('click', () => {
-        const title = this.spec.title;
-        this.spec = Object.assign(Ch.emptySpec(), { title });
-        this.changed();
-      });
-      r.querySelectorAll('[data-mark]').forEach((b) =>
-        b.addEventListener('click', () => {
-          if (b.disabled) return;
-          this.spec.mark = b.dataset.mark;
-          this.changed();
-        })
-      );
-      r.querySelector('[data-opt="sort"]').addEventListener('change', (e) => {
-        this.spec.sort = e.target.value;
-        this.changed();
-      });
-      r.querySelector('[data-opt="labels"]').addEventListener('change', (e) => {
-        this.spec.labels = e.target.checked;
-        this.changed();
-      });
-      this.titleInput.addEventListener('input', () => {
-        this.spec.title = this.titleInput.value;
-        this.changed(true);
-      });
-      document.addEventListener('mousedown', (e) => {
-        if (!this.menu.contains(e.target) && !e.target.closest('.cb-fields .cb-pill')) this.menu.classList.add('hidden');
-      });
-    }
-
-    // Menú al hacer clic en un campo: a qué estante mandarlo.
-    openMenu(name, anchor) {
-      const f = this.fields.find((x) => x.name === name);
-      const opts = [['columns', T('Columnas', 'Columns')], ['rows', T('Filas', 'Rows')]];
-      if (f.role === 'dimension') opts.push(['color', T('Color', 'Color')], ['filter', T('Filtros', 'Filters')]);
-      this.menu.innerHTML = `<div class="cb-menu-title">${esc(Ch.fieldLabel(name))} →</div>` + opts.map(([k, l]) => `<button data-to="${k}">${l}</button>`).join('');
-      const box = anchor.getBoundingClientRect();
-      const host = this.root.getBoundingClientRect();
-      this.menu.style.left = box.right - host.left + 6 + 'px';
-      this.menu.style.top = box.top - host.top + 'px';
-      this.menu.classList.remove('hidden');
-      this.menu.querySelectorAll('[data-to]').forEach((b) =>
-        b.addEventListener('click', () => {
-          this.menu.classList.add('hidden');
-          this.assign(b.dataset.to, name);
-        })
-      );
-    }
-
-    assign(shelf, name) {
-      const f = this.fields.find((x) => x.name === name);
-      if (!f) return;
-      if ((shelf === 'color' || shelf === 'filter') && f.role !== 'dimension') {
-        if (this.opts.onToast) this.opts.onToast(T('Color y Filtros aceptan dimensiones (categorías), no medidas.', 'Color and Filters take dimensions (categories), not measures.'));
-        AA.Audio.play('error');
-        return;
-      }
-      if (shelf === 'columns' || shelf === 'rows') this.spec[shelf] = f.role === 'measure' ? { field: name, agg: f.count ? 'COUNT' : 'SUM' } : { field: name };
-      else if (shelf === 'color') this.spec.color = name;
-      else if (shelf === 'filter') {
-        const values = [...new Set(this.table.rows.map((row) => String(row[f.index])))];
-        this.spec.filter = { field: name, values };
-      }
-      AA.Audio.play('select');
-      this.changed();
-    }
-
-    changed(onlyTitle) {
-      if (!onlyTitle) this.render();
-      else this.draw();
-      if (this.opts.onChange) this.opts.onChange(this.spec);
-    }
-
-    // --- Estantes, filtros y botones
-    render() {
-      const s = this.spec;
-      const shelfPill = (key) => {
-        const it = key === 'color' ? (s.color ? { field: s.color } : null) : key === 'filter' ? (s.filter ? { field: s.filter.field } : null) : s[key];
-        const zone = this.root.querySelector(`[data-drop="${key}"]`);
-        if (!it) {
-          zone.classList.remove('filled');
-          zone.innerHTML = `<span class="cb-drop-hint">${zone.dataset.hint}</span>`;
-          return;
-        }
-        const f = this.fields.find((x) => x.name === it.field);
-        zone.classList.add('filled');
-        const agg =
-          f.role === 'measure' && !f.count
-            ? `<select class="cb-agg" data-agg="${key}">${Object.keys(Ch.AGGS)
-                .filter((a) => a !== 'COUNT')
-                .map((a) => `<option value="${a}" ${it.agg === a ? 'selected' : ''}>${AA.L(Ch.AGGS[a])}</option>`)
-                .join('')}</select>`
-            : '';
-        zone.innerHTML = `<span class="cb-pill on ${f.role}">${agg}${esc(Ch.fieldLabel(f.name))}<button class="cb-x" data-remove="${key}" title="${T('Quitar', 'Remove')}">×</button></span>`;
-      };
-      ['columns', 'rows', 'color', 'filter'].forEach(shelfPill);
-      this.root.querySelectorAll('[data-remove]').forEach((b) =>
-        b.addEventListener('click', () => {
-          const k = b.dataset.remove;
-          if (k === 'color') s.color = null;
-          else if (k === 'filter') s.filter = null;
-          else s[k] = null;
-          this.changed();
-        })
-      );
-      this.root.querySelectorAll('[data-agg]').forEach((sel) =>
-        sel.addEventListener('change', () => {
-          s[sel.dataset.agg].agg = sel.value;
-          this.changed();
-        })
-      );
-      // Valores del filtro.
-      const fv = this.root.querySelector('.cb-filter-values');
-      if (s.filter) {
-        const f = this.fields.find((x) => x.name === s.filter.field);
-        const all = [...new Set(this.table.rows.map((row) => String(row[f.index])))];
-        fv.innerHTML = `<span>${T('Mostrar', 'Show')} <b>${esc(f.name)}</b>:</span>` + all.map((v) => `<label><input type="checkbox" value="${esc(v)}" ${s.filter.values.includes(v) ? 'checked' : ''}> ${esc(v)}</label>`).join('');
-        fv.querySelectorAll('input').forEach((cb) =>
-          cb.addEventListener('change', () => {
-            s.filter.values = [...fv.querySelectorAll('input:checked')].map((x) => x.value);
-            this.changed();
-          })
-        );
-        fv.classList.remove('hidden');
-      } else {
-        fv.innerHTML = '';
-        fv.classList.add('hidden');
-      }
-      // Mostrarme: recomendado / posible / no aplica.
-      const rec = Ch.recommend(s, this.table);
-      this.root.querySelectorAll('[data-mark]').forEach((b) => {
-        const m = b.dataset.mark;
-        const st = m === 'auto' ? 'ok' : rec[m];
-        b.classList.toggle('on', s.mark === m);
-        b.classList.toggle('best', st === 'best');
-        b.disabled = st === 'no' && s.mark !== m;
-        b.title = st === 'best' ? T('Recomendado para estos campos', 'Recommended for these fields') : st === 'no' ? T('No aplica a estos campos', "Doesn't fit these fields") : '';
-      });
-      this.root.querySelector('[data-opt="sort"]').value = s.sort;
-      this.root.querySelector('[data-opt="labels"]').checked = !!s.labels;
-      if (this.titleInput.value !== s.title) this.titleInput.value = s.title;
-      this.draw();
+      this.spec = Ch.emptySpec();
     }
 
     colorFor(key, field) {
@@ -303,19 +77,22 @@
     }
 
     // --- Dibujo
-    draw() {
-      const c = this.canvas;
-      const res = Ch.resolve(this.spec, this.table);
+    // Dibuja `spec` dentro del contenedor c. opts.table: datos ya filtrados (por ej. el filtro
+    // global de un dashboard); opts.noTitle: el título lo muestra quien contiene el gráfico.
+    draw(c, spec, opts) {
+      opts = opts || {};
+      this.spec = spec;
+      const res = Ch.resolve(spec, opts.table || this.table);
       c.innerHTML = '';
       if (res.empty || !res.ok) {
-        c.innerHTML = `<div class="cb-empty">${res.empty ? T('Arrastrá una <b>dimensión</b> y una <b>medida</b> a Columnas y Filas para empezar.', 'Drag a <b>dimension</b> and a <b>measure</b> onto Columns and Rows to start.') : '⚠️ ' + esc(res.error)}</div>`;
+        c.innerHTML = `<div class="cb-empty">${res.empty ? opts.emptyText || T('Arrastrá una <b>dimensión</b> y una <b>medida</b> a Columnas y Filas para empezar.', 'Drag a <b>dimension</b> and a <b>measure</b> onto Columns and Rows to start.') : '⚠️ ' + esc(res.error)}</div>`;
         return;
       }
       const W = Math.max(320, c.clientWidth);
       const H = Math.max(240, c.clientHeight);
       const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, class: 'cb-svg', role: 'img' });
       c.appendChild(svg);
-      const title = this.spec.title.trim();
+      const title = opts.noTitle ? '' : String(spec.title || '').trim();
       let top = 14;
       if (title) {
         const t = el('text', { x: 16, y: 26, fill: INK, 'font-size': 16, 'font-weight': 700 }, svg);
@@ -520,10 +297,257 @@
       this.axisTitle(svg, res.y, box.x + 14, oy + ph / 2, true);
     }
 
+  }
+
+  class ChartBuilder {
+    constructor(root, table, spec, opts) {
+      this.root = root;
+      this.table = table;
+      this.spec = Object.assign(Ch.emptySpec(), spec || {});
+      this.opts = opts || {};
+      this.fields = Ch.fields(table);
+      this.renderer = new ChartRenderer(table);
+      this.build();
+      this.render();
+      this.ro = new ResizeObserver(() => this.draw());
+      this.ro.observe(this.canvas);
+    }
+
+    build() {
+      const dims = this.fields.filter((f) => f.role === 'dimension');
+      const meas = this.fields.filter((f) => f.role === 'measure');
+      const pill = (f) =>
+        `<button class="cb-pill ${f.role}" draggable="true" data-field="${esc(f.name)}" title="${T('Arrastrá a un estante o hacé clic', 'Drag to a shelf or click')}">${f.role === 'dimension' ? (f.time ? '📅' : 'Abc') : '#'} ${esc(Ch.fieldLabel(f.name))}</button>`;
+      const shelf = (key, label, hint) => `
+        <div class="cb-shelf" data-shelf="${key}">
+          <span class="cb-shelf-label">${label}</span>
+          <div class="cb-drop" data-drop="${key}" data-hint="${hint}"><span class="cb-drop-hint">${hint}</span></div>
+        </div>`;
+      const markBtn = (m) => `<button class="cb-mark" data-mark="${m}"><span class="cb-mark-ico">${{ auto: '✦', bar: '▮▮', line: '⟋', pie: '◔', scatter: '⁘' }[m]}</span>${AA.L(Ch.MARKS[m])}</button>`;
+      this.root.innerHTML = `
+        <div class="cb">
+          <aside class="cb-fields">
+            <h4>${T('Dimensiones', 'Dimensions')}</h4>
+            <div class="cb-list">${dims.map(pill).join('')}</div>
+            <h4>${T('Medidas', 'Measures')}</h4>
+            <div class="cb-list">${meas.map(pill).join('')}</div>
+            <p class="cb-help">${T('Las <b>dimensiones</b> son categorías (agrupan). Las <b>medidas</b> son números (se suman, promedian…). Arrastralas a los estantes.', '<b>Dimensions</b> are categories (they group). <b>Measures</b> are numbers (summed, averaged…). Drag them onto the shelves.')}</p>
+          </aside>
+          <section class="cb-main">
+            <div class="cb-shelves">
+              ${shelf('columns', T('Columnas', 'Columns'), T('eje horizontal', 'horizontal axis'))}
+              ${shelf('rows', T('Filas', 'Rows'), T('eje vertical', 'vertical axis'))}
+              <button class="cb-swap" title="${T('Intercambiar filas y columnas', 'Swap rows and columns')}">⇅</button>
+              ${shelf('color', T('Color', 'Color'), T('una dimensión (opcional)', 'a dimension (optional)'))}
+              ${shelf('filter', T('Filtros', 'Filters'), T('una dimensión (opcional)', 'a dimension (optional)'))}
+            </div>
+            <div class="cb-filter-values"></div>
+            <div class="cb-toolbar">
+              <span class="cb-tool-label">${T('Mostrarme', 'Show Me')}</span>
+              <div class="cb-marks">${['auto', 'bar', 'line', 'pie', 'scatter'].map(markBtn).join('')}</div>
+              <label class="cb-opt">${T('Ordenar', 'Sort')}
+                <select data-opt="sort">
+                  <option value="none">${T('Orden original', 'Original order')}</option>
+                  <option value="desc">${T('Mayor a menor', 'Largest first')}</option>
+                  <option value="asc">${T('Menor a mayor', 'Smallest first')}</option>
+                </select>
+              </label>
+              <label class="cb-opt"><input type="checkbox" data-opt="labels"> ${T('Etiquetas', 'Labels')}</label>
+              <button class="cb-clear" title="${T('Empezar de nuevo', 'Start over')}">⟲</button>
+            </div>
+            <input class="cb-title" maxlength="90" placeholder="${T('Título: contá la conclusión (ej: "El Sur lidera las ventas")', 'Title: state the conclusion (e.g. "The South leads sales")')}">
+            <div class="cb-canvas"></div>
+          </section>
+        </div>
+        <div class="cb-menu hidden"></div>`;
+      this.canvas = this.root.querySelector('.cb-canvas');
+      this.menu = this.root.querySelector('.cb-menu');
+      this.titleInput = this.root.querySelector('.cb-title');
+      this.bind();
+    }
+
+    bind() {
+      const r = this.root;
+      r.querySelectorAll('.cb-fields .cb-pill').forEach((p) => {
+        p.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', p.dataset.field);
+          e.dataTransfer.effectAllowed = 'copy';
+        });
+        p.addEventListener('click', (e) => this.openMenu(p.dataset.field, e.currentTarget));
+      });
+      r.querySelectorAll('[data-drop]').forEach((zone) => {
+        zone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          zone.classList.add('over');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          zone.classList.remove('over');
+          const name = e.dataTransfer.getData('text/plain');
+          if (name) this.assign(zone.dataset.drop, name);
+        });
+      });
+      r.querySelector('.cb-swap').addEventListener('click', () => {
+        [this.spec.columns, this.spec.rows] = [this.spec.rows, this.spec.columns];
+        this.changed();
+      });
+      r.querySelector('.cb-clear').addEventListener('click', () => {
+        const title = this.spec.title;
+        this.spec = Object.assign(Ch.emptySpec(), { title });
+        this.changed();
+      });
+      r.querySelectorAll('[data-mark]').forEach((b) =>
+        b.addEventListener('click', () => {
+          if (b.disabled) return;
+          this.spec.mark = b.dataset.mark;
+          this.changed();
+        })
+      );
+      r.querySelector('[data-opt="sort"]').addEventListener('change', (e) => {
+        this.spec.sort = e.target.value;
+        this.changed();
+      });
+      r.querySelector('[data-opt="labels"]').addEventListener('change', (e) => {
+        this.spec.labels = e.target.checked;
+        this.changed();
+      });
+      this.titleInput.addEventListener('input', () => {
+        this.spec.title = this.titleInput.value;
+        this.changed(true);
+      });
+      this.onDocDown = (e) => {
+        if (!this.menu.contains(e.target) && !e.target.closest('.cb-fields .cb-pill')) this.menu.classList.add('hidden');
+      };
+      document.addEventListener('mousedown', this.onDocDown);
+    }
+
+    // Menú al hacer clic en un campo: a qué estante mandarlo.
+    openMenu(name, anchor) {
+      const f = this.fields.find((x) => x.name === name);
+      const opts = [['columns', T('Columnas', 'Columns')], ['rows', T('Filas', 'Rows')]];
+      if (f.role === 'dimension') opts.push(['color', T('Color', 'Color')], ['filter', T('Filtros', 'Filters')]);
+      this.menu.innerHTML = `<div class="cb-menu-title">${esc(Ch.fieldLabel(name))} →</div>` + opts.map(([k, l]) => `<button data-to="${k}">${l}</button>`).join('');
+      const box = anchor.getBoundingClientRect();
+      const host = this.root.getBoundingClientRect();
+      this.menu.style.left = box.right - host.left + 6 + 'px';
+      this.menu.style.top = box.top - host.top + 'px';
+      this.menu.classList.remove('hidden');
+      this.menu.querySelectorAll('[data-to]').forEach((b) =>
+        b.addEventListener('click', () => {
+          this.menu.classList.add('hidden');
+          this.assign(b.dataset.to, name);
+        })
+      );
+    }
+
+    assign(shelf, name) {
+      const f = this.fields.find((x) => x.name === name);
+      if (!f) return;
+      if ((shelf === 'color' || shelf === 'filter') && f.role !== 'dimension') {
+        if (this.opts.onToast) this.opts.onToast(T('Color y Filtros aceptan dimensiones (categorías), no medidas.', 'Color and Filters take dimensions (categories), not measures.'));
+        AA.Audio.play('error');
+        return;
+      }
+      if (shelf === 'columns' || shelf === 'rows') this.spec[shelf] = f.role === 'measure' ? { field: name, agg: f.count ? 'COUNT' : 'SUM' } : { field: name };
+      else if (shelf === 'color') this.spec.color = name;
+      else if (shelf === 'filter') {
+        const values = [...new Set(this.table.rows.map((row) => String(row[f.index])))];
+        this.spec.filter = { field: name, values };
+      }
+      AA.Audio.play('select');
+      this.changed();
+    }
+
+    changed(onlyTitle) {
+      if (!onlyTitle) this.render();
+      else this.draw();
+      if (this.opts.onChange) this.opts.onChange(this.spec);
+    }
+
+    // --- Estantes, filtros y botones
+    render() {
+      const s = this.spec;
+      const shelfPill = (key) => {
+        const it = key === 'color' ? (s.color ? { field: s.color } : null) : key === 'filter' ? (s.filter ? { field: s.filter.field } : null) : s[key];
+        const zone = this.root.querySelector(`[data-drop="${key}"]`);
+        if (!it) {
+          zone.classList.remove('filled');
+          zone.innerHTML = `<span class="cb-drop-hint">${zone.dataset.hint}</span>`;
+          return;
+        }
+        const f = this.fields.find((x) => x.name === it.field);
+        zone.classList.add('filled');
+        const agg =
+          f.role === 'measure' && !f.count
+            ? `<select class="cb-agg" data-agg="${key}">${Object.keys(Ch.AGGS)
+                .filter((a) => a !== 'COUNT')
+                .map((a) => `<option value="${a}" ${it.agg === a ? 'selected' : ''}>${AA.L(Ch.AGGS[a])}</option>`)
+                .join('')}</select>`
+            : '';
+        zone.innerHTML = `<span class="cb-pill on ${f.role}">${agg}${esc(Ch.fieldLabel(f.name))}<button class="cb-x" data-remove="${key}" title="${T('Quitar', 'Remove')}">×</button></span>`;
+      };
+      ['columns', 'rows', 'color', 'filter'].forEach(shelfPill);
+      this.root.querySelectorAll('[data-remove]').forEach((b) =>
+        b.addEventListener('click', () => {
+          const k = b.dataset.remove;
+          if (k === 'color') s.color = null;
+          else if (k === 'filter') s.filter = null;
+          else s[k] = null;
+          this.changed();
+        })
+      );
+      this.root.querySelectorAll('[data-agg]').forEach((sel) =>
+        sel.addEventListener('change', () => {
+          s[sel.dataset.agg].agg = sel.value;
+          this.changed();
+        })
+      );
+      // Valores del filtro.
+      const fv = this.root.querySelector('.cb-filter-values');
+      if (s.filter) {
+        const f = this.fields.find((x) => x.name === s.filter.field);
+        const all = [...new Set(this.table.rows.map((row) => String(row[f.index])))];
+        fv.innerHTML = `<span>${T('Mostrar', 'Show')} <b>${esc(f.name)}</b>:</span>` + all.map((v) => `<label><input type="checkbox" value="${esc(v)}" ${s.filter.values.includes(v) ? 'checked' : ''}> ${esc(v)}</label>`).join('');
+        fv.querySelectorAll('input').forEach((cb) =>
+          cb.addEventListener('change', () => {
+            s.filter.values = [...fv.querySelectorAll('input:checked')].map((x) => x.value);
+            this.changed();
+          })
+        );
+        fv.classList.remove('hidden');
+      } else {
+        fv.innerHTML = '';
+        fv.classList.add('hidden');
+      }
+      // Mostrarme: recomendado / posible / no aplica.
+      const rec = Ch.recommend(s, this.table);
+      this.root.querySelectorAll('[data-mark]').forEach((b) => {
+        const m = b.dataset.mark;
+        const st = m === 'auto' ? 'ok' : rec[m];
+        b.classList.toggle('on', s.mark === m);
+        b.classList.toggle('best', st === 'best');
+        b.disabled = st === 'no' && s.mark !== m;
+        b.title = st === 'best' ? T('Recomendado para estos campos', 'Recommended for these fields') : st === 'no' ? T('No aplica a estos campos', "Doesn't fit these fields") : '';
+      });
+      this.root.querySelector('[data-opt="sort"]').value = s.sort;
+      this.root.querySelector('[data-opt="labels"]').checked = !!s.labels;
+      if (this.titleInput.value !== s.title) this.titleInput.value = s.title;
+      this.draw();
+    }
+
+    draw() {
+      this.renderer.draw(this.canvas, this.spec);
+    }
+
     destroy() {
       if (this.ro) this.ro.disconnect();
+      document.removeEventListener('mousedown', this.onDocDown);
     }
   }
 
   AA.ChartBuilder = ChartBuilder;
+  AA.ChartRenderer = ChartRenderer;
+  AA.ChartFmt = fmt;
+  AA.CHART_PALETTE = PALETTE;
 })();

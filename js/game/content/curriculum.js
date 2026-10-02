@@ -353,6 +353,15 @@
       },
     },
   ];
+  // Niveles 7 en adelante: cada archivo modN.js registra su nivel (con lección y habilidades).
+  (AA.Content.modules || [])
+    .slice()
+    .sort((a, b) => parseInt(a.id.slice(3), 10) - parseInt(b.id.slice(3), 10))
+    .forEach((m) => {
+      for (const [k, sk] of Object.entries(m.skillDefs || {})) SKILLS[k] = sk;
+      MODULES.push(m);
+    });
+
   // Qué hace cada rango en la vida real (ver docs/CARRERA.md para las fuentes).
   const CAREER = [
     {

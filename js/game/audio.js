@@ -179,6 +179,20 @@
           this.seq([60, 64, 67, 72, 76, 79, 84, 88, 91, 96], 0.055, { type: 'square', vol: 0.06 });
           this.seq([48, null, null, 55, null, null, 60, null, null, 72], 0.055, { type: 'triangle', vol: 0.12 });
           break;
+        case 'fanfare': {
+          // Fiesta: fanfarria de trompetas chiptune + redoblante + "pops" de confeti.
+          const t0 = this.ctx.currentTime;
+          const lead = [[67, 0, 0.12], [67, 0.13, 0.12], [67, 0.26, 0.12], [72, 0.4, 0.5], [76, 0.95, 0.14], [74, 1.1, 0.14], [76, 1.25, 0.14], [79, 1.4, 0.75]];
+          lead.forEach(([n, at, d]) => {
+            this.tone({ freq: midi(n), dur: d + 0.06, when: t0 + at, type: 'square', vol: 0.075 });
+            this.tone({ freq: midi(n + 12), dur: d, when: t0 + at, type: 'triangle', vol: 0.035 });
+          });
+          [[48, 0], [55, 0.4], [52, 0.95], [55, 1.4], [60, 1.4]].forEach(([n, at]) => this.tone({ freq: midi(n), dur: 0.45, when: t0 + at, type: 'triangle', vol: 0.14 }));
+          for (let i = 0; i < 6; i++) this.noise({ dur: 0.06, vol: 0.05, freq: 2500, filter: 'bandpass', when: t0 + 0.27 + i * 0.022 });
+          [0.4, 0.95, 1.4].forEach((at) => this.noise({ dur: 0.18, vol: 0.07, freq: 5000, when: t0 + at }));
+          for (let i = 0; i < 10; i++) this.tone({ freq: 1400 + Math.random() * 1800, slide: 600, dur: 0.05, when: t0 + 1.5 + i * 0.07 + Math.random() * 0.03, type: 'square', vol: 0.025 });
+          break;
+        }
         default:
           break;
       }

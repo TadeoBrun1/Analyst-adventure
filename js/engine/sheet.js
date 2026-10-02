@@ -33,11 +33,23 @@
       this.asts = new Map();
       this.computing = new Set();
       this.listeners = [];
+      this.book = null; // libro al que pertenece (para referencias a otras hojas)
+      this.name = '';
       this.ctx = {
         getCell: (c, r) => this.getValue(c, r),
         getRange: (c1, r1, c2, r2) => this.getRange(c1, r1, c2, r2),
         maxRow: () => this.rows - 1,
+        sheetCtx: (name) => {
+          const other = this.book ? this.book.get(name) : null;
+          return other ? other.ctx : null;
+        },
       };
+    }
+
+    // Un cambio en esta hoja puede cambiar fórmulas de otras hojas del libro.
+    invalidate() {
+      if (this.book) this.book.invalidate();
+      else this.cache.clear();
     }
 
     key(c, r) {
@@ -54,7 +66,7 @@
       const k = this.key(c, r);
       if (cell) this.cells.set(k, cell);
       else this.cells.delete(k);
-      this.cache.clear();
+      this.invalidate();
       if (!silent) this.emit([{ c, r }]);
     }
     // Valor literal (para cargar datasets sin interpretar el texto).
@@ -63,7 +75,7 @@
       const k = this.key(c, r);
       if (value === null || value === undefined || value === '') this.cells.delete(k);
       else this.cells.set(k, { v: value });
-      this.cache.clear();
+      this.invalidate();
       if (!silent) this.emit([{ c, r }]);
     }
     batch(changes) {
@@ -170,7 +182,7 @@
     load(list) {
       this.cells.clear();
       for (const [c, r, input] of list) this.setInput(c, r, input, true);
-      this.cache.clear();
+      this.invalidate();
       this.emit([]);
     }
 
@@ -183,6 +195,35 @@
     }
   }
 
+  // Libro con varias hojas con nombre. Las fórmulas pueden leer otras hojas: =BUSCARV(A2; Productos!A:C; 3; FALSO)
+  class Workbook {
+    constructor() {
+      this.sheets = [];
+    }
+    add(name, sheet) {
+      sheet.book = this;
+      sheet.name = name;
+      this.sheets.push(sheet);
+      this.invalidate();
+      return sheet;
+    }
+    get(name) {
+      const n = F.normName(String(name).trim());
+      return this.sheets.find((s) => F.normName(s.name) === n) || null;
+    }
+    names() {
+      return this.sheets.map((s) => s.name);
+    }
+    invalidate() {
+      for (const s of this.sheets) s.cache.clear();
+    }
+    // Avisa a las vistas de todas las hojas (después de editar una, otras pueden cambiar).
+    emitAll() {
+      for (const s of this.sheets) s.emit([]);
+    }
+  }
+
   AA.Sheet = Sheet;
+  AA.Workbook = Workbook;
   AA.parseCellInput = parseInput;
 })();

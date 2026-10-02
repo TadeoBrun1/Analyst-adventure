@@ -244,7 +244,8 @@
   };
 
   // -------------------------------------------------------------------------
-  // Planilla de la misión
+  // Pantalla de misión: planillas (una o varias hojas) y herramientas
+  // (tabla dinámica, gráfico, dashboard, SQL, informe).
   // -------------------------------------------------------------------------
   function rectsOf(list) {
     return (list || []).map((r) => F.parseRange(r)).filter(Boolean);
@@ -252,31 +253,22 @@
   function inRects(rects, c, r) {
     return rects.some((k) => c >= k.c1 && c <= k.c2 && r >= k.r1 && r <= k.r2);
   }
-
-  // Hoja de solo lectura con los datos de una misión de gráfico.
-  function chartDataSheet(table) {
-    const cols = table.headers.length;
-    const last = table.rows.length + 1;
-    const lastCol = F.indexToCol(cols - 1);
-    return {
-      cols: Math.max(cols, 6),
-      rows: last + 3,
-      colWidths: table.headers.map((h, i) => (typeof table.rows[0][i] === 'number' ? 110 : 150)),
-      data: { at: 'A1', rows: [table.headers, ...table.rows] },
-      locked: [`A1:${F.indexToCol(Math.max(cols, 6) - 1)}${last + 3}`],
-      header: [`A1:${lastCol}1`],
-    };
-  }
+  const W = () => AA.Workspace;
 
   const MissionScreen = {
     mission: null,
-    sheet: null,
-    view: null,
-    base: null,
+    book: null,
+    views: {},
+    grids: [],
+    base: [],
     answers: {},
     hints: [],
     status: [],
+    parts: null,
+    sqlRuns: [],
     saveTimer: null,
+    activeView: null,
+    activeSheet: 0,
 
     open(id) {
       const st = AA.State;
@@ -285,33 +277,48 @@
       const mission = getMission(id, lang);
       this.mission = mission;
       this.lang = lang;
-      const def = mission.sheet || chartDataSheet(mission.chart.table);
-      this.sheet = AA.Content.buildSheet(def);
-      this.base = new Map(this.sheet.serialize().map(([c, r, i]) => [c + ',' + r, i]));
+      this.defs = W().sheetDefs(mission);
+      this.book = W().buildBook(mission);
+      this.base = this.book.sheets.map((sh) => new Map(sh.serialize().map(([c, r, i]) => [c + ',' + r, i])));
       this.answers = {};
       this.hints = [];
+      this.parts = W().emptyParts(mission);
+      this.sqlText = mission.sql ? mission.sql.starter || '' : '';
       if (prog) {
-        for (const [c, r, input] of prog.cells || []) this.sheet.setInput(c, r, input, true);
+        const restore = (i, list) => {
+          const sh = this.book.sheets[i];
+          if (sh) for (const [c, r, input] of list || []) sh.setInput(c, r, input, true);
+        };
+        restore(0, prog.cells);
+        for (const [i, list] of Object.entries(prog.sheetCells || {})) restore(+i, list);
         this.answers = Object.assign({}, prog.answers);
         this.hints = (prog.hints || []).slice();
+        if (prog.chart && mission.chart) this.parts.chart = Object.assign(AA.Chart.emptySpec(), prog.chart);
+        if (prog.pivot && mission.pivot) this.parts.pivot = Object.assign(AA.Pivot.emptySpec(), prog.pivot);
+        if (prog.dash && mission.dashboard) this.parts.dash = prog.dash;
+        if (prog.sql) this.parts.sql = prog.sql.slice();
+        if (prog.sqlText !== undefined) this.sqlText = prog.sqlText;
+        if (prog.report) this.parts.report = Object.assign({}, prog.report);
+        if (prog.flags) this.parts.flags = prog.flags.slice();
       }
-
-      const locked = rectsOf(def.locked);
-      const header = rectsOf(def.header);
-      const labels = rectsOf(def.labels);
-      const targets = rectsOf(def.targets);
-      const spaces = rectsOf(def.showSpaces);
-      const formats = def.formats || {};
+      this.sqlRuns = W().runSql(mission, this.parts.sql);
+      this.status = [];
+      this.grids = [];
+      this.views = {};
+      this.tabs = W().views(mission);
 
       const root = document.getElementById('screen-mission');
+      this.root = root;
       const ch = st.CHARACTERS[mission.from];
       const mod = Cu().moduleById(mission.module);
+      const icon = mission.sql ? 'SQL' : mission.dashboard ? 'BI' : mission.report && !mission.sheets && !mission.sheet ? 'PPT' : 'XLS';
+      const sheetTabs = this.defs.length > 1 || !this.defs.every((d) => d.def.readonly);
       root.innerHTML = `
         <header class="ms-top">
           <button class="btn btn-ghost" data-act="office">← ${T('Oficina', 'Office')}</button>
           <button class="btn btn-ghost" data-act="inbox">📨 ${T('Bandeja', 'Inbox')}</button>
           <div class="ms-title">
-            <span class="file-icon sm">XLS</span>
+            <span class="file-icon sm">${icon}</span>
             <div><b>${esc(mission.file)}</b><span class="muted">${T('Nivel', 'Level')} ${levelNum(mod)} · ${esc(mission.subject)} · ${esc(AA.L(ch.name))}</span></div>
           </div>
           <div class="spacer"></div>
@@ -331,21 +338,29 @@
               <ul>${mission.tips.map((t) => `<li>${t}</li>`).join('')}</ul>
             </section>
           </aside>
-          ${
-            mission.chart
-              ? `<main class="ms-sheet ms-chart">
-                   <div class="ms-viewtabs">
-                     <button class="on" data-view="chart">📊 ${T('Gráfico', 'Chart')}</button>
-                     <button data-view="data">📋 ${T('Datos', 'Data')} <span class="muted">(${mission.chart.table.rows.length} ${T('filas', 'rows')})</span></button>
-                   </div>
-                   <div class="chart-host" data-el="chart"></div>
-                   <div class="ss-host hidden" data-el="grid"></div>
-                 </main>`
-              : `<main class="ms-sheet">
-                   <div class="ss-host" data-el="grid"></div>
-                   <div class="ms-tabs"><span class="tab active">${T('Hoja1', 'Sheet1')}</span><span class="muted">${T('Las celdas grises son datos originales (bloqueados) · las amarillas son las que tenés que completar', 'Gray cells are original data (locked) · yellow cells are the ones you must fill in')}</span></div>
-                 </main>`
-          }
+          <main class="ms-sheet ms-multi">
+            ${this.tabs.length > 1 ? `<div class="ms-viewtabs">${this.tabs.map((v) => `<button data-view="${v.id}">${v.label}</button>`).join('')}</div>` : ''}
+            ${this.tabs
+              .filter((v) => v.id !== 'sheets')
+              .map((v) => `<div class="ms-view ${v.id === 'chart' ? 'chart-host' : ''}" data-pane="${v.id}"></div>`)
+              .join('')}
+            ${
+              this.defs.length
+                ? `<div class="ms-view ms-sheets" data-pane="sheets">
+                     ${this.defs.map((d, i) => `<div class="ss-host" data-sheet="${i}"></div>`).join('')}
+                     <div class="ms-tabs">
+                       ${sheetTabs ? this.defs.map((d, i) => `<button class="tab" data-sheettab="${i}">${esc(d.name)}</button>`).join('') : ''}
+                       ${mission.review ? `<button class="btn btn-sm flag-btn" data-act="flag">🚩 ${T('Marcar / desmarcar error', 'Flag / unflag error')}</button><span class="muted" data-el="flags"></span>` : ''}
+                       <span class="muted ms-legend">${
+                         this.defs.every((d) => d.def.readonly)
+                           ? T('Datos de solo lectura', 'Read-only data')
+                           : T('Gris: datos originales (bloqueados) · amarillo: lo que tenés que completar', 'Gray: original data (locked) · yellow: what you must fill in')
+                       }</span>
+                     </div>
+                   </div>`
+                : ''
+            }
+          </main>
         </div>`;
 
       this.objList = root.querySelector('[data-el="objectives"]');
@@ -357,10 +372,135 @@
       root.querySelector('[data-act="email"]').addEventListener('click', () => this.showEmail());
       root.querySelector('[data-act="hint"]').addEventListener('click', () => this.useHint());
       this.submitBtn.addEventListener('click', () => this.submit());
+      root.querySelectorAll('[data-view]').forEach((b) =>
+        b.addEventListener('click', () => {
+          AA.Audio.play('move');
+          this.showView(b.dataset.view);
+        })
+      );
+      root.querySelectorAll('[data-sheettab]').forEach((b) =>
+        b.addEventListener('click', () => {
+          AA.Audio.play('move');
+          this.showSheet(+b.dataset.sheettab);
+        })
+      );
+      const flagBtn = root.querySelector('[data-act="flag"]');
+      if (flagBtn) flagBtn.addEventListener('click', () => this.toggleFlag());
 
-      this.view = new AA.SpreadsheetView(root.querySelector('[data-el="grid"]'), this.sheet, {
-        colWidths: def.colWidths,
-        startCell: def.start,
+      this.openTools(root, mission);
+      const startView = (prog && prog.view && this.tabs.some((v) => v.id === prog.view) && prog.view) || (this.tabs[0] && this.tabs[0].id);
+      if (this.defs.length) this.showSheet(0, true);
+      this.showView(startView, true);
+      this.evaluate(true);
+      if (!prog && !st.isCompleted(id) && id === 'mod1-1') setTimeout(() => this.showTutorial(), 250);
+    },
+
+    // --- Herramientas
+    openTools(root, m) {
+      const onToast = (msg) => AA.UI.toast(msg, 'warn');
+      const changed = () => {
+        this.evaluate();
+        this.scheduleSave();
+      };
+      const pane = (id) => root.querySelector(`[data-pane="${id}"]`);
+      if (m.chart) {
+        this.views.chart = new AA.ChartBuilder(pane('chart'), m.chart.table, this.parts.chart, {
+          onChange: (spec) => {
+            this.parts.chart = spec;
+            changed();
+          },
+          onToast,
+        });
+      }
+      if (m.pivot) {
+        this.views.pivot = new AA.PivotBuilder(pane('pivot'), m.pivot.table, this.parts.pivot, {
+          money: m.pivot.money,
+          onChange: (spec) => {
+            this.parts.pivot = spec;
+            changed();
+          },
+          onToast,
+        });
+      }
+      if (m.dashboard) {
+        this.views.dashboard = new AA.DashboardBuilder(pane('dashboard'), m.dashboard.table, this.parts.dash, {
+          money: m.dashboard.money,
+          initial: m.dashboard.initial,
+          onChange: (spec) => {
+            this.parts.dash = spec;
+            changed();
+          },
+          onToast,
+        });
+      }
+      if (m.sql) {
+        const last = this.parts.sql[this.parts.sql.length - 1];
+        this.views.sql = new AA.SqlConsole(pane('sql'), m.sql.tables, {
+          initial: this.sqlText,
+          history: this.parts.sql,
+          lastQuery: last,
+          onChange: (text) => {
+            this.sqlText = text;
+            this.scheduleSave();
+          },
+          onRun: (q, res) => {
+            // Se guardan las consultas que funcionaron (sin repetir, las últimas 40).
+            if (res) {
+              this.parts.sql = this.parts.sql.filter((x) => x !== q).concat([q]).slice(-40);
+              this.sqlRuns = this.sqlRuns.filter((r) => r.q !== q).concat([{ q, res }]).slice(-40);
+            }
+            changed();
+          },
+        });
+      }
+      if (m.report) {
+        this.views.report = new AA.ReportBuilder(pane('report'), m.report, this.parts.report, {
+          onChange: (choices) => {
+            this.parts.report = choices;
+            changed();
+          },
+        });
+      }
+    },
+
+    showView(id, initial) {
+      if (!id) return;
+      this.activeView = id;
+      this.root.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === id));
+      this.root.querySelectorAll('[data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== id));
+      const v = this.views[id];
+      if (id === 'sheets') this.showSheet(this.activeSheet, initial);
+      else if (id === 'chart' && v) v.draw();
+      else if (id === 'dashboard' && v) v.drawCharts();
+      else if (id === 'report' && v) v.build();
+      else if (id === 'sql' && v) setTimeout(() => v.focus(), 30);
+      if (!initial) this.scheduleSave();
+    },
+
+    // Hoja visible (las grillas se crean al mostrarlas por primera vez).
+    showSheet(i, initial) {
+      this.activeSheet = i;
+      this.root.querySelectorAll('[data-sheettab]').forEach((b) => b.classList.toggle('active', +b.dataset.sheettab === i));
+      this.root.querySelectorAll('[data-sheet]').forEach((h) => h.classList.toggle('hidden', +h.dataset.sheet !== i));
+      if (!this.grids[i]) this.grids[i] = this.makeGrid(i);
+      else this.grids[i].refresh();
+      if (this.activeView === 'sheets' || initial) setTimeout(() => this.focusActive(), 50);
+    },
+
+    makeGrid(i) {
+      const d = this.defs[i].def;
+      const sheet = this.book.sheets[i];
+      const locked = rectsOf(d.locked);
+      const header = rectsOf(d.header);
+      const labels = rectsOf(d.labels);
+      const targets = rectsOf(d.targets);
+      const spaces = rectsOf(d.showSpaces);
+      const formats = d.formats || {};
+      const reviewSheet = this.mission.review && i === 0;
+      return new AA.SpreadsheetView(this.root.querySelector(`[data-sheet="${i}"]`), sheet, {
+        colWidths: d.colWidths,
+        startCell: d.start,
+        sheetNames: () => this.book.names().filter((n) => n !== sheet.name),
         locked: (c, r) => inRects(locked, c, r),
         format: (c, r) => {
           const ref = F.makeRef(c, r);
@@ -372,8 +512,9 @@
           const cls = [];
           if (inRects(header, c, r)) cls.push('hdr');
           if (inRects(labels, c, r)) cls.push('label');
-          if (inRects(targets, c, r) && this.sheet.isEmpty(c, r)) cls.push('target');
+          if (inRects(targets, c, r) && sheet.isEmpty(c, r)) cls.push('target');
           if (inRects(spaces, c, r)) cls.push('spaces');
+          if (reviewSheet && this.parts.flags.includes(F.makeRef(c, r))) cls.push('flagged');
           return cls.join(' ');
         },
         displayHtml: spaces.length
@@ -382,75 +523,81 @@
         onLocked: () => {
           AA.Audio.play('error');
           AA.UI.toast(
-            mission.chart
-              ? T('📋 Estos son los datos del gráfico: se consultan, no se editan.', '📋 This is the chart data: you can read it, not edit it.')
-              : T('🔒 Esa celda tiene <b>datos originales</b>. No se tocan: trabajá en las columnas a completar.', '🔒 That cell holds <b>original data</b>. Don\'t touch it: work in the columns you need to fill in.'),
+            d.readonly
+              ? T('📋 Estos son los datos: se consultan, no se editan.', '📋 This is the data: you can read it, not edit it.')
+              : T('🔒 Esa celda tiene <b>datos originales</b>. No se tocan: trabajá en las celdas a completar.', "🔒 That cell holds <b>original data</b>. Don't touch it: work in the cells you need to fill in."),
             'warn'
           );
         },
         onToast: (msg) => AA.UI.toast(msg, 'info'),
         onEdit: () => {
           AA.Audio.play('type');
+          // Otras hojas pueden depender de esta: se redibujan las que ya existen.
+          this.grids.forEach((g, k) => g && k !== i && g.refresh());
           this.evaluate();
           this.scheduleSave();
         },
       });
-
-      if (mission.chart) this.openChart(root, mission, prog);
-      this.evaluate(true);
-      if (!mission.chart) setTimeout(() => this.view.focusGrid(), 50);
-      if (!prog && !st.isCompleted(id) && id === 'mod1-1') setTimeout(() => this.showTutorial(), 250);
     },
 
-    // Editor de gráficos + pestaña de datos.
-    openChart(root, mission, prog) {
-      this.chartSpec = Object.assign(AA.Chart.emptySpec(), (prog && prog.chart) || {});
-      this.builder = new AA.ChartBuilder(root.querySelector('[data-el="chart"]'), mission.chart.table, this.chartSpec, {
-        onChange: (spec) => {
-          this.chartSpec = spec;
-          this.evaluate();
-          this.scheduleSave();
-        },
-        onToast: (msg) => AA.UI.toast(msg, 'warn'),
-      });
-      root.querySelectorAll('[data-view]').forEach((b) =>
-        b.addEventListener('click', () => {
-          AA.Audio.play('move');
-          root.querySelectorAll('[data-view]').forEach((x) => x.classList.toggle('on', x === b));
-          const data = b.dataset.view === 'data';
-          root.querySelector('[data-el="chart"]').classList.toggle('hidden', data);
-          root.querySelector('[data-el="grid"]').classList.toggle('hidden', !data);
-          if (data) this.view.renderSelection();
-          else this.builder.draw();
-        })
-      );
+    focusActive() {
+      if (!this.mission) return;
+      if (this.activeView === 'sheets' && this.grids[this.activeSheet]) this.grids[this.activeSheet].focusGrid();
+      else if (this.activeView === 'sql' && this.views.sql) this.views.sql.focus();
+    },
+
+    // Revisión: marcar la celda activa como error (o desmarcarla).
+    toggleFlag() {
+      if (this.activeSheet !== 0 || !this.grids[0]) {
+        AA.UI.toast(T('Las marcas van en la primera hoja (la que estás revisando).', 'Flags go on the first sheet (the one you are reviewing).'), 'warn');
+        return;
+      }
+      const g = this.grids[0];
+      const ref = F.makeRef(g.sel.ac, g.sel.ar);
+      const k = this.parts.flags.indexOf(ref);
+      if (k >= 0) this.parts.flags.splice(k, 1);
+      else this.parts.flags.push(ref);
+      AA.Audio.play(k >= 0 ? 'back' : 'select');
+      g.refresh();
+      this.evaluate();
+      this.scheduleSave();
+      g.focusGrid();
     },
 
     leave(then) {
       this.saveNow();
-      if (this.builder) this.builder.destroy();
-      this.builder = null;
+      Object.values(this.views).forEach((v) => v && v.destroy && v.destroy());
+      this.views = {};
       this.mission = null;
       then();
     },
 
     // --- Objetivos
     evaluate(initial) {
-      const S = this.mission.chart ? { spec: this.chartSpec, table: this.mission.chart.table } : AA.V.query(this.sheet);
-      const prev = this.status;
+      const m = this.mission;
       const prevLang = AA.lang;
       AA.setLang(this.lang);
-      this.status = this.mission.objectives.map((o, i) => {
-        if (o.answer) {
-          const a = this.answers[i];
-          return a && a.ok ? true : a && a.value ? 'wrong' : false;
+      const S = W().state(m, this.book, this.parts, this.sqlRuns);
+      const prev = this.status;
+      let seqPending = false;
+      this.status = m.objectives.map((o) => {
+        if (o.answer || o.choices) {
+          const a = this.answers[m.objectives.indexOf(o)];
+          return a && a.ok ? true : a && a.value !== undefined && a.value !== '' ? 'wrong' : false;
         }
+        let res;
         try {
-          return o.check(S);
+          res = o.check(S);
         } catch (e) {
           console.error(e);
-          return false;
+          res = false;
         }
+        // En SQL, solo el primer objetivo pendiente muestra la nota de la última consulta.
+        if (o.check.sequential && res !== true) {
+          if (seqPending && typeof res === 'string') res = false;
+          seqPending = true;
+        }
+        return res;
       });
       AA.setLang(prevLang);
       if (!initial) {
@@ -463,6 +610,8 @@
         });
         if (newlyDone) AA.Audio.play('success');
       }
+      const fl = this.root.querySelector('[data-el="flags"]');
+      if (fl) fl.textContent = this.parts.flags.length ? T(`${this.parts.flags.length} marcada(s): ${this.parts.flags.join(', ')}`, `${this.parts.flags.length} flagged: ${this.parts.flags.join(', ')}`) : '';
       this.renderObjectives();
     },
 
@@ -476,9 +625,14 @@
           const ok = s === true;
           const note = typeof s === 'string' && s !== 'wrong' ? `<div class="obj-note">${esc(s)}</div>` : '';
           const hint = this.hints.includes(i) ? `<div class="obj-hint">💡 ${esc(o.hint)}</div>` : '';
+          const a = this.answers[i] || {};
           let answer = '';
-          if (o.answer) {
-            const a = this.answers[i] || {};
+          if (o.choices) {
+            const why = s === 'wrong' && o.why && o.why[a.value] ? o.why[a.value] : T('No es la mejor opción. Pensalo de nuevo con los datos.', 'Not the best option. Think it over with the data.');
+            answer = ok
+              ? `<div class="obj-answer done">✔ ${o.choices[a.value]}</div>`
+              : `<div class="obj-choices" data-choice="${i}">${o.choices.map((c, k) => `<button class="obj-choice ${a.value === k ? 'picked' : ''}" data-k="${k}">${c}</button>`).join('')}</div>${s === 'wrong' ? `<div class="obj-note">${why}</div>` : ''}`;
+          } else if (o.answer) {
             answer = ok
               ? `<div class="obj-answer done">${T('Tu respuesta', 'Your answer')}: <b>${esc(a.value)}</b></div>`
               : `<form class="obj-answer" data-answer="${i}">
@@ -490,10 +644,12 @@
         })
         .join('');
       this.objList.querySelectorAll('form[data-answer]').forEach((form) => {
+        const input = form.querySelector('input');
+        input.addEventListener('keydown', (e) => e.stopPropagation());
         form.addEventListener('submit', (e) => {
           e.preventDefault();
           const i = +form.dataset.answer;
-          const value = form.querySelector('input').value.trim();
+          const value = input.value.trim();
           if (!value) return;
           const ok = !!this.mission.objectives[i].answer(value);
           this.answers[i] = { value, ok };
@@ -504,6 +660,19 @@
           this.evaluate();
           this.scheduleSave();
         });
+      });
+      this.objList.querySelectorAll('[data-choice]').forEach((box) => {
+        box.querySelectorAll('[data-k]').forEach((b) =>
+          b.addEventListener('click', () => {
+            const i = +box.dataset.choice;
+            const k = +b.dataset.k;
+            const ok = k === this.mission.objectives[i].correct;
+            this.answers[i] = { value: k, ok };
+            if (!ok) AA.Audio.play('error');
+            this.evaluate();
+            this.scheduleSave();
+          })
+        );
       });
       const all = this.status.every((s) => s === true);
       this.submitBtn.disabled = !all;
@@ -521,7 +690,7 @@
       AA.UI.modal({
         title: T('💡 ¿Pedir una pista?', '💡 Ask for a hint?'),
         html: `<p>${T(`Leo te puede dar una pista para el objetivo <b>${i + 1}</b>.`, `Leo can give you a hint for objective <b>${i + 1}</b>.`)}</p>
-               <p class="muted">${free ? T('Esta tarea ya está completada: las pistas son gratis.', 'This task is already completed: hints are free.') : T('Cada pista reduce un 15% la XP de esta tarea (mínimo 40%).', 'Each hint reduces this task\'s XP by 15% (minimum 40%).')}</p>`,
+               <p class="muted">${free ? T('Esta tarea ya está completada: las pistas son gratis.', 'This task is already completed: hints are free.') : T('Cada pista reduce un 15% la XP de esta tarea (mínimo 40%).', "Each hint reduces this task's XP by 15% (minimum 40%).")}</p>`,
         buttons: [
           { label: T('Mejor sigo intentando', "I'll keep trying") },
           {
@@ -534,7 +703,7 @@
             },
           },
         ],
-        onClose: () => this.view.focusGrid(),
+        onClose: () => this.focusActive(),
       });
     },
 
@@ -545,8 +714,8 @@
         title: esc(m.subject),
         html: `<div class="mail-sender"><div class="avatar" style="--c:${ch.shirt}">${esc(AA.L(ch.name)[0])}</div><div><b>${esc(AA.L(ch.name))}</b> · ${esc(AA.L(ch.role))}</div></div>
                <div class="mail-body">${AA.fillName(m.email)}</div>`,
-        buttons: [{ label: T('Volver a la planilla', 'Back to the spreadsheet'), primary: true }],
-        onClose: () => this.view.focusGrid(),
+        buttons: [{ label: T('Volver al trabajo', 'Back to work'), primary: true }],
+        onClose: () => this.focusActive(),
       });
     },
 
@@ -564,8 +733,56 @@
             <div>${T('<b>6. Objetivos:</b> se tildan solos a la izquierda. Las preguntas ❓ se responden escribiendo.', '<b>6. Objectives:</b> they tick themselves on the left. Questions ❓ are answered by typing.')}</div>
           </div>`,
         buttons: [{ label: T('¡Entendido!', 'Got it!'), primary: true }],
-        onClose: () => this.view.focusGrid(),
+        onClose: () => this.focusActive(),
       });
+    },
+
+    // Solo para pruebas automáticas: aplica la solución de referencia a través de las vistas.
+    debugSolve() {
+      const m = this.mission;
+      const sol = m.solution || {};
+      const groups = new Map();
+      for (const [name, ref, f] of W().solutionWrites(sol)) {
+        const i = name ? this.defs.findIndex((d) => d.name === name) : 0;
+        const p = F.parseRef(ref);
+        if (!groups.has(i)) groups.set(i, []);
+        groups.get(i).push({ c: p.col, r: p.row, input: f });
+      }
+      for (const [i, changes] of groups) {
+        if (!this.grids[i]) this.grids[i] = this.makeGrid(i);
+        this.grids[i].applyChanges(changes);
+      }
+      const clone = (x) => JSON.parse(JSON.stringify(x));
+      const v = this.views;
+      if (sol.chart && v.chart) {
+        v.chart.spec = Object.assign(AA.Chart.emptySpec(), clone(sol.chart));
+        v.chart.changed();
+      }
+      if (sol.pivot && v.pivot) {
+        v.pivot.spec = Object.assign(AA.Pivot.emptySpec(), clone(sol.pivot));
+        v.pivot.changed();
+      }
+      if (sol.dashboard && v.dashboard) {
+        v.dashboard.spec = clone(sol.dashboard);
+        v.dashboard.changed();
+      }
+      if (sol.report && v.report) {
+        v.report.choices = clone(sol.report);
+        v.report.build();
+        v.report.opts.onChange(v.report.choices);
+      }
+      if (sol.sql && v.sql) {
+        for (const q of sol.sql) {
+          v.sql.setText(q);
+          v.sql.run(q);
+        }
+      }
+      if (sol.flags) {
+        this.parts.flags = sol.flags.slice();
+        if (this.grids[0]) this.grids[0].refresh();
+      }
+      this.evaluate();
+      return sol.answers || {};
     },
 
     // --- Guardado del progreso (solo las celdas que cambiaron respecto de los datos originales)
@@ -577,11 +794,35 @@
       clearTimeout(this.saveTimer);
       if (!this.mission) return;
       const st = AA.State;
-      const diff = [];
-      const current = new Map(this.sheet.serialize().map(([c, r, i]) => [c + ',' + r, i]));
-      for (const [k, input] of current) if (this.base.get(k) !== input) diff.push([...k.split(',').map(Number), input]);
-      for (const k of this.base.keys()) if (!current.has(k)) diff.push([...k.split(',').map(Number), '']);
-      st.data.progress[this.mission.id] = { cells: diff, answers: this.answers, hints: this.hints, lang: this.lang, chart: this.mission.chart ? this.chartSpec : undefined };
+      const m = this.mission;
+      const diffOf = (i) => {
+        const base = this.base[i];
+        const diff = [];
+        const current = new Map(this.book.sheets[i].serialize().map(([c, r, inp]) => [c + ',' + r, inp]));
+        for (const [k, input] of current) if (base.get(k) !== input) diff.push([...k.split(',').map(Number), input]);
+        for (const k of base.keys()) if (!current.has(k)) diff.push([...k.split(',').map(Number), '']);
+        return diff;
+      };
+      const sheetCells = {};
+      for (let i = 1; i < this.book.sheets.length; i++) {
+        const d = diffOf(i);
+        if (d.length) sheetCells[i] = d;
+      }
+      st.data.progress[m.id] = {
+        cells: this.book.sheets.length ? diffOf(0) : [],
+        sheetCells,
+        answers: this.answers,
+        hints: this.hints,
+        lang: this.lang,
+        view: this.activeView,
+        chart: m.chart ? this.parts.chart : undefined,
+        pivot: m.pivot ? this.parts.pivot : undefined,
+        dash: m.dashboard ? this.parts.dash : undefined,
+        sql: m.sql ? this.parts.sql : undefined,
+        sqlText: m.sql ? this.sqlText : undefined,
+        report: m.report ? this.parts.report : undefined,
+        flags: m.review ? this.parts.flags : undefined,
+      };
       st.save();
     },
 
@@ -591,12 +832,15 @@
       const st = AA.State;
       const free = m.kind === 'story' && st.isCompleted(m.id);
       const res = st.completeMission(m, free ? 0 : this.hints.length);
+      Object.values(this.views).forEach((v) => v && v.destroy && v.destroy());
+      this.views = {};
       this.mission = null;
       const ch = st.CHARACTERS[m.from];
       const prog = st.rankProgress();
       const mod = Cu().moduleById(m.module);
       const nextMod = Cu().MODULES[Cu().MODULES.indexOf(mod) + 1];
-      AA.Audio.play(res.promoted ? 'levelup' : 'complete');
+      const party = res.moduleCompleted || res.promoted;
+      AA.Audio.play(party ? 'fanfare' : 'complete');
       const penalty = res.gained && this.hints.length ? ` <span class="muted">(${this.hints.length} ${T(this.hints.length > 1 ? 'pistas' : 'pista', this.hints.length > 1 ? 'hints' : 'hint')})</span>` : '';
       let extra = '';
       if (res.moduleCompleted) {
@@ -623,9 +867,9 @@
       }
       buttons.push({ label: T('Volver a la oficina', 'Back to the office'), primary: true, action: () => AA.Game.enterOffice() });
       AA.UI.modal({
-        title: T('📤 ¡Informe entregado!', '📤 Report submitted!'),
+        title: party ? T('🎉 ¡Nivel completado!', '🎉 Level complete!') : T('📤 ¡Informe entregado!', '📤 Report submitted!'),
         closable: false,
-        className: 'complete',
+        className: 'complete' + (party ? ' party' : ''),
         html: `
           <div class="complete-row">
             <div data-el="portrait"></div>
@@ -638,6 +882,7 @@
         buttons,
         onOpen: (card) => card.querySelector('[data-el="portrait"]').appendChild(AA.UI.portraitCanvas(m.from, 72)),
       });
+      if (party) AA.UI.confetti(res.promoted ? 260 : 170);
     },
   };
 
@@ -670,7 +915,8 @@
                   return `<div class="nb-fn"><code>${esc(d.sig)}</code><span>${esc(d.ex)}</span></div>`;
                 })
                 .join('');
-              return `<section class="nb-skill"><h3>${esc(AA.L(sk.title))}</h3><p class="nb-say">${AA.L(sk.say)}</p>${fns}<p class="nb-tip">✏️ ${AA.L(sk.tip)}</p></section>`;
+              const code = sk.code ? `<pre class="nb-code">${esc(AA.L(sk.code))}</pre>` : '';
+              return `<section class="nb-skill"><h3>${esc(AA.L(sk.title))}</h3><p class="nb-say">${AA.L(sk.say)}</p>${fns}${code}<p class="nb-tip">✏️ ${AA.L(sk.tip)}</p></section>`;
             })
             .join('');
       }
@@ -693,7 +939,7 @@
       html: '<div class="nb"></div>',
       buttons: [{ label: T('Cerrar', 'Close'), primary: true }],
       onOpen: (card) => render(card),
-      onClose: () => MissionScreen.mission && AA.Game.screen === 'mission' && MissionScreen.view.focusGrid(),
+      onClose: () => MissionScreen.mission && AA.Game.screen === 'mission' && MissionScreen.focusActive(),
     });
   }
 

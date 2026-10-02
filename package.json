@@ -7,7 +7,7 @@
   "author": "TadeoBrun1",
   "main": "electron/main.js",
   "scripts": {
-    "test": "node tests/engine.test.js && node tests/missions.test.js && node tests/chart.test.js && node tests/progression.test.js",
+    "test": "node tests/engine.test.js && node tests/missions.test.js && node tests/chart.test.js && node tests/tools.test.js && node tests/progression.test.js",
     "start": "electron .",
     "web": "npx serve .",
     "dist": "electron-builder",

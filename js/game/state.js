@@ -10,14 +10,14 @@
   // Rangos. Para ascender hacen falta DOS cosas: la XP del rango y haber completado los niveles
   // de la etapa actual (ver curriculum.js, campo `tier`). Así no se puede llegar a Senior
   // repitiendo casos de Pasante. Cada umbral ≈ XP de las tareas obligatorias de la etapa
-  // + unos 4 casos de práctica. Los de Semi-Senior en adelante son provisorios hasta que
-  // existan esas etapas (ver docs/CARRERA.md).
+  // + unos 3 casos de práctica (ver docs/CARRERA.md). El de Lead es provisorio hasta que
+  // exista esa etapa.
   const RANKS = [
     { name: { es: 'Pasante de Datos', en: 'Data Intern' }, xp: 0 },
     { name: { es: 'Analista Junior', en: 'Junior Analyst' }, xp: 2200 },
-    { name: { es: 'Analista Semi-Senior', en: 'Mid-level Analyst' }, xp: 5000 },
-    { name: { es: 'Analista Senior', en: 'Senior Analyst' }, xp: 9500 },
-    { name: { es: 'Lead de Datos', en: 'Data Lead' }, xp: 16000 },
+    { name: { es: 'Analista Semi-Senior', en: 'Mid-level Analyst' }, xp: 5550 },
+    { name: { es: 'Analista Senior', en: 'Senior Analyst' }, xp: 9300 },
+    { name: { es: 'Lead de Datos', en: 'Data Lead' }, xp: 14000 },
   ];
 
   // voice: tono del "bip" de cada personaje al hablar.
@@ -30,6 +30,8 @@
     paula: { name: 'Paula Herrera', role: { es: 'Recursos Humanos', en: 'Human Resources' }, skin: '#e0ac69', hair: '#2e1a12', shirt: '#9b59b6', pants: '#2c3e50', longHair: true, voice: 400 },
     ramiro: { name: 'Ramiro Ortiz', role: { es: 'Logística', en: 'Logistics' }, skin: '#c68642', hair: '#555555', shirt: '#e67e22', pants: '#2c3e50', voice: 240 },
     bruno: { name: 'Bruno Salas', role: { es: 'Ventas', en: 'Sales' }, skin: '#f1c27d', hair: '#6b4423', shirt: '#2e86de', pants: '#2c3e50', voice: 270 },
+    nico: { name: 'Nico Ferreyra', role: { es: 'Analista Junior', en: 'Junior Analyst' }, skin: '#f1c27d', hair: '#8a4b20', shirt: '#0ea5b7', pants: '#2c3e50', glasses: true, voice: 350 },
+    graciela: { name: 'Graciela Campos', role: { es: 'Gerente General', en: 'General Manager' }, skin: '#e0ac69', hair: '#9e9e9e', shirt: '#34495e', pants: '#1f2a36', longHair: true, voice: 300 },
     julia: { name: 'Julia Paz', role: { es: 'Finanzas', en: 'Finance' }, skin: '#ffdbac', hair: '#222222', shirt: '#2fbf71', pants: '#2c3e50', longHair: true, voice: 420 },
     narrator: { name: '', role: '', voice: 0 },
   };
@@ -42,6 +44,7 @@
     finanzas: { name: { es: 'Finanzas', en: 'Finance' }, color: '#2fbf71' },
     data: { name: { es: 'Datos', en: 'Data' }, color: '#0ea5b7' },
     analytics: { name: { es: 'Analytics', en: 'Analytics' }, color: '#e5484d' },
+    gerencia: { name: { es: 'Gerencia', en: 'Management' }, color: '#8b95a7' },
   };
 
   function freshSave(name) {

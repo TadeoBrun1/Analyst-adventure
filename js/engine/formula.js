@@ -185,6 +185,13 @@
   const COLRANGE_RE = /^(\$?)([A-Za-z]{1,3})\s*:\s*(\$?)([A-Za-z]{1,3})(?![A-Za-z0-9_.(À-ſ])/;
   const IDENT_RE = /^[A-Za-z_À-ſ][A-Za-z0-9_.À-ſ]*/;
   const NUMBER_RE = /^(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/;
+  // Prefijo de hoja: Productos!A1 o 'Lista de precios'!A:C
+  const SHEET_RE = /^(?:'((?:[^']|'')+)'|([A-Za-z_À-ſ][A-Za-z0-9_.À-ſ]*))!/;
+
+  // Cómo se escribe el nombre de una hoja dentro de una fórmula.
+  function sheetPrefix(name) {
+    return /^[A-Za-z_À-ſ][A-Za-z0-9_.À-ſ]*$/.test(name) && !REF_RE.test(name) ? name + '!' : "'" + String(name).replace(/'/g, "''") + "'!";
+  }
 
   function tokenize(src) {
     const toks = [];
@@ -227,31 +234,51 @@
         i += 5;
         continue;
       }
-      if (ch === '$' || ID_START.test(ch)) {
-        if ((m = REF_RE.exec(rest))) {
+      if (ch === "'" || ch === '$' || ID_START.test(ch)) {
+        // Referencia a otra hoja: el prefijo queda dentro del token.
+        let sheet = null;
+        let pre = '';
+        const sm = SHEET_RE.exec(rest);
+        if (sm) {
+          const after = rest.slice(sm[0].length);
+          if (REF_RE.test(after) || COLRANGE_RE.test(after)) {
+            sheet = sm[1] !== undefined ? sm[1].replace(/''/g, "'") : sm[2];
+            pre = sm[0];
+          } else {
+            throw err.ref(M(`Después de "${sm[0]}" tiene que ir una celda o un rango (ej: ${sm[0]}A1:C20).`, `"${sm[0]}" must be followed by a cell or range (e.g. ${sm[0]}A1:C20).`));
+          }
+        } else if (ch === "'") {
+          throw err.parse(M('Los nombres de hoja entre comillas simples terminan con !, como \'Mi hoja\'!A1.', "Quoted sheet names end with !, like 'My sheet'!A1."));
+        }
+        const body = rest.slice(pre.length);
+        if ((m = REF_RE.exec(body))) {
           toks.push({
             t: 'ref',
             absC: !!m[1],
             col: colToIndex(m[2]),
             absR: !!m[3],
             row: parseInt(m[4], 10) - 1,
+            sheet,
+            pre,
             s: i,
-            e: i + m[0].length,
+            e: i + pre.length + m[0].length,
           });
-          i += m[0].length;
+          i += pre.length + m[0].length;
           continue;
         }
-        if ((m = COLRANGE_RE.exec(rest))) {
+        if ((m = COLRANGE_RE.exec(body))) {
           toks.push({
             t: 'colrange',
             absC1: !!m[1],
             c1: colToIndex(m[2]),
             absC2: !!m[3],
             c2: colToIndex(m[4]),
+            sheet,
+            pre,
             s: i,
-            e: i + m[0].length,
+            e: i + pre.length + m[0].length,
           });
-          i += m[0].length;
+          i += pre.length + m[0].length;
           continue;
         }
         if ((m = IDENT_RE.exec(rest))) {
@@ -367,21 +394,24 @@
             c2: Math.max(tok.c1, tok.c2),
             r1: 0,
             r2: null,
+            sheet: tok.sheet,
           };
         case 'ref': {
           if (isOp(peek(), ':')) {
             next();
             const t2 = next();
             if (!t2 || t2.t !== 'ref') throw err.parse(M('Rango incompleto: después de ":" tiene que ir otra celda (ej: A1:A10).', 'Incomplete range: another cell must follow ":" (e.g. A1:A10).'));
+            if (t2.sheet && normName(t2.sheet) !== normName(tok.sheet || '')) throw err.parse(M('Un rango no puede abarcar dos hojas. El nombre de la hoja va una sola vez, al principio: Hoja!A1:B5.', 'A range cannot span two sheets. The sheet name goes once, at the start: Sheet!A1:B5.'));
             return {
               type: 'range',
               c1: Math.min(tok.col, t2.col),
               c2: Math.max(tok.col, t2.col),
               r1: Math.min(tok.row, t2.row),
               r2: Math.max(tok.row, t2.row),
+              sheet: tok.sheet,
             };
           }
-          return { type: 'ref', col: tok.col, row: tok.row };
+          return { type: 'ref', col: tok.col, row: tok.row, sheet: tok.sheet };
         }
         case 'func': {
           const open = next();
@@ -430,10 +460,14 @@
         return err.ref(M('La referencia quedó fuera de la hoja.', 'The reference is outside the sheet.'));
       case 'name':
         return err.name(M(`"${node.name}" no es una función ni una celda válida. ¿Te faltaron comillas para un texto?`, `"${node.name}" is not a function or a valid cell. Did you forget quotes around a text?`));
-      case 'ref':
-        return ctx.getCell(node.col, node.row);
-      case 'range':
-        return ctx.getRange(node.c1, node.r1, node.c2, node.r2 === null ? ctx.maxRow() : node.r2);
+      case 'ref': {
+        const c = ctxFor(ctx, node.sheet);
+        return isErr(c) ? c : c.getCell(node.col, node.row);
+      }
+      case 'range': {
+        const c = ctxFor(ctx, node.sheet);
+        return isErr(c) ? c : c.getRange(node.c1, node.r1, node.c2, node.r2 === null ? c.maxRow() : node.r2);
+      }
       case 'unary': {
         const v = toNum(scalar(evaluate(node.arg, ctx)));
         if (isErr(v)) return v;
@@ -451,6 +485,13 @@
       default:
         return err.value();
     }
+  }
+
+  // Contexto de otra hoja del libro (o error si no existe).
+  function ctxFor(ctx, sheet) {
+    if (!sheet) return ctx;
+    const other = ctx.sheetCtx ? ctx.sheetCtx(sheet) : null;
+    return other || err.ref(M(`No existe una hoja llamada "${sheet}". Revisá el nombre en las pestañas de abajo.`, `There is no sheet called "${sheet}". Check the name on the tabs below.`));
   }
 
   function evalBinary(node, ctx) {
@@ -616,6 +657,114 @@
       const avg = n.reduce((s, x) => s + x, 0) / n.length;
       return Math.sqrt(n.reduce((s, x) => s + (x - avg) * (x - avg), 0) / (n.length - 1));
     }),
+  });
+  def(['VAR', 'VAR.S'], {
+    min: 1, cat: 'Estadística', sig: 'VAR(valor1; [valor2]; ...)',
+    desc: 'Varianza de una muestra (el desvío estándar al cuadrado).', ex: '=VAR(B2:B50)',
+    fn: withNums((n) => {
+      if (n.length < 2) return err.div0();
+      const avg = n.reduce((s, x) => s + x, 0) / n.length;
+      return n.reduce((s, x) => s + (x - avg) * (x - avg), 0) / (n.length - 1);
+    }),
+  });
+  // Percentil con interpolación lineal (como PERCENTIL.INC de Excel).
+  function percentileOf(nums, k) {
+    const s = [...nums].sort((a, b) => a - b);
+    const pos = (s.length - 1) * k;
+    const lo = Math.floor(pos);
+    const hi = Math.ceil(pos);
+    return s[lo] + (s[hi] - s[lo]) * (pos - lo);
+  }
+  def(['PERCENTIL', 'PERCENTIL.INC', 'PERCENTILE', 'PERCENTILE.INC'], {
+    min: 2, max: 2, cat: 'Estadística', sig: 'PERCENTIL(rango; k)',
+    desc: 'Valor por debajo del cual queda la proporción k de los datos (k entre 0 y 1). PERCENTIL(rango; 0,9) = el 90% queda por debajo.', ex: '=PERCENTIL(B2:B50; 0.9)',
+    fn: (args) => {
+      const n = numbersFrom([args[0]]);
+      if (isErr(n)) return n;
+      const k = toNum(scalar(args[1]));
+      if (isErr(k)) return k;
+      if (!n.length || k < 0 || k > 1) return err.num(M('k tiene que estar entre 0 y 1 (por ejemplo 0.9 para el percentil 90).', 'k must be between 0 and 1 (e.g. 0.9 for the 90th percentile).'));
+      return percentileOf(n, k);
+    },
+  });
+  def(['CUARTIL', 'CUARTIL.INC', 'QUARTILE', 'QUARTILE.INC'], {
+    min: 2, max: 2, cat: 'Estadística', sig: 'CUARTIL(rango; cuartil)',
+    desc: 'Cuartil de los datos: 1 = el 25% queda por debajo, 2 = mediana, 3 = el 75% queda por debajo.', ex: '=CUARTIL(B2:B50; 3)',
+    fn: (args) => {
+      const n = numbersFrom([args[0]]);
+      if (isErr(n)) return n;
+      const q = toNum(scalar(args[1]));
+      if (isErr(q)) return q;
+      const k = Math.trunc(q);
+      if (!n.length || k < 0 || k > 4) return err.num(M('El cuartil va de 0 a 4.', 'The quartile goes from 0 to 4.'));
+      return percentileOf(n, k / 4);
+    },
+  });
+  // Pares numéricos alineados de dos rangos (se ignoran filas con vacíos o textos).
+  function pairedNumbers(a, b) {
+    const x = asRange(a).flat();
+    const y = asRange(b).flat();
+    if (x.length !== y.length) return err.na(M('Los dos rangos tienen que tener la misma cantidad de celdas.', 'Both ranges must have the same number of cells.'));
+    const out = [];
+    for (let i = 0; i < x.length; i++) {
+      if (isErr(x[i])) return x[i];
+      if (isErr(y[i])) return y[i];
+      if (typeof x[i] === 'number' && typeof y[i] === 'number') out.push([x[i], y[i]]);
+    }
+    return out;
+  }
+  def(['COEF.DE.CORREL', 'CORREL'], {
+    min: 2, max: 2, cat: 'Estadística', sig: 'COEF.DE.CORREL(rango1; rango2)',
+    desc: 'Correlación entre dos columnas, de -1 a 1. Cerca de 1: suben juntas; cerca de -1: una sube y la otra baja; cerca de 0: no hay relación lineal.', ex: '=COEF.DE.CORREL(B2:B30; C2:C30)',
+    fn: (args) => {
+      const p = pairedNumbers(args[0], args[1]);
+      if (isErr(p)) return p;
+      if (p.length < 2) return err.div0();
+      const mx = p.reduce((s, q) => s + q[0], 0) / p.length;
+      const my = p.reduce((s, q) => s + q[1], 0) / p.length;
+      let sxy = 0;
+      let sxx = 0;
+      let syy = 0;
+      for (const [x, y] of p) {
+        sxy += (x - mx) * (y - my);
+        sxx += (x - mx) * (x - mx);
+        syy += (y - my) * (y - my);
+      }
+      return sxx && syy ? sxy / Math.sqrt(sxx * syy) : err.div0();
+    },
+  });
+  def(['PENDIENTE', 'SLOPE'], {
+    min: 2, max: 2, cat: 'Estadística', sig: 'PENDIENTE(rango_y; rango_x)',
+    desc: 'Cuánto cambia Y, en promedio, por cada unidad que aumenta X (recta de tendencia).', ex: '=PENDIENTE(C2:C30; B2:B30)',
+    fn: (args) => {
+      const p = pairedNumbers(args[1], args[0]);
+      if (isErr(p)) return p;
+      if (p.length < 2) return err.div0();
+      const mx = p.reduce((s, q) => s + q[0], 0) / p.length;
+      const my = p.reduce((s, q) => s + q[1], 0) / p.length;
+      let sxy = 0;
+      let sxx = 0;
+      for (const [x, y] of p) {
+        sxy += (x - mx) * (y - my);
+        sxx += (x - mx) * (x - mx);
+      }
+      return sxx ? sxy / sxx : err.div0();
+    },
+  });
+  // Distribución normal estándar (aproximación de Abramowitz-Stegun, error < 1e-7).
+  function normCdf(z) {
+    const t = 1 / (1 + 0.2316419 * Math.abs(z));
+    const d = 0.3989422804014327 * Math.exp((-z * z) / 2);
+    const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    return z >= 0 ? 1 - p : p;
+  }
+  sdef(['DISTR.NORM.ESTAND.N', 'NORM.S.DIST'], {
+    min: 1, max: 2, cat: 'Estadística', sig: 'DISTR.NORM.ESTAND.N(z; [acumulado])',
+    desc: 'Probabilidad de la distribución normal estándar hasta z. Sirve para pasar de un puntaje z a un valor p.', ex: '=2*(1-DISTR.NORM.ESTAND.N(ABS(E5); VERDADERO))',
+  }, (z, cum) => {
+    const x = toNum(z); if (isErr(x)) return x;
+    const c = cum === undefined ? true : toBool(cum); if (isErr(c)) return c;
+    return c ? normCdf(x) : 0.3989422804014327 * Math.exp((-x * x) / 2);
   });
   def(['CONTAR', 'COUNT'], {
     min: 1, cat: 'Estadística', sig: 'CONTAR(valor1; [valor2]; ...)',
@@ -1245,11 +1394,11 @@
       if (t.t === 'ref') {
         const c = t.absC ? t.col : t.col + dc;
         const r = t.absR ? t.row : t.row + dr;
-        rep = c < 0 || r < 0 ? '#REF!' : makeRef(c, r, t.absC, t.absR);
+        rep = c < 0 || r < 0 ? '#REF!' : t.pre + makeRef(c, r, t.absC, t.absR);
       } else if (t.t === 'colrange') {
         const c1 = t.absC1 ? t.c1 : t.c1 + dc;
         const c2 = t.absC2 ? t.c2 : t.c2 + dc;
-        rep = c1 < 0 || c2 < 0 ? '#REF!' : (t.absC1 ? '$' : '') + indexToCol(c1) + ':' + (t.absC2 ? '$' : '') + indexToCol(c2);
+        rep = c1 < 0 || c2 < 0 ? '#REF!' : t.pre + (t.absC1 ? '$' : '') + indexToCol(c1) + ':' + (t.absC2 ? '$' : '') + indexToCol(c2);
       }
       if (rep !== null) out = out.slice(0, t.s) + rep + out.slice(t.e);
     }
@@ -1281,7 +1430,7 @@
     let end = 0;
     for (let g = group.length - 1; g >= 0; g--) {
       const k = group[g];
-      const rep = makeRef(k.col, k.row, ac, ar);
+      const rep = (k.pre || '') + makeRef(k.col, k.row, ac, ar);
       body = body.slice(0, k.s) + rep + body.slice(k.e);
       if (g === group.length - 1) end = k.s + rep.length;
     }
@@ -1303,6 +1452,11 @@
     const out = [];
     for (let i = 0; i < toks.length; i++) {
       const t = toks[i];
+      if ((t.t === 'ref' || t.t === 'colrange') && t.sheet) {
+        // Las referencias a otras hojas no se resaltan en esta.
+        if (t.t === 'ref' && toks[i + 1] && toks[i + 1].t === 'op' && toks[i + 1].v === ':') i += 2;
+        continue;
+      }
       if (t.t === 'ref') {
         const n1 = toks[i + 1];
         const n2 = toks[i + 2];
@@ -1319,7 +1473,7 @@
 
   // Analiza una fórmula: funciones usadas, celdas referenciadas, números literales.
   function analyze(input) {
-    const res = { formula: false, error: null, funcs: new Set(), refs: new Set(), ranges: [], numbers: [] };
+    const res = { formula: false, error: null, funcs: new Set(), refs: new Set(), ranges: [], numbers: [], sheets: new Set(), extRefs: new Set(), extRanges: [] };
     if (typeof input !== 'string' || input[0] !== '=') return res;
     res.formula = true;
     let ast;
@@ -1338,10 +1492,16 @@
           break;
         }
         case 'ref':
-          res.refs.add(makeRef(nd.col, nd.row));
+          if (nd.sheet) {
+            res.sheets.add(normName(nd.sheet));
+            res.extRefs.add(normName(nd.sheet) + '!' + makeRef(nd.col, nd.row));
+          } else res.refs.add(makeRef(nd.col, nd.row));
           break;
         case 'range':
-          res.ranges.push(nd);
+          if (nd.sheet) {
+            res.sheets.add(normName(nd.sheet));
+            res.extRanges.push(nd);
+          } else res.ranges.push(nd);
           break;
         case 'bin':
           walk(nd.left);
@@ -1382,6 +1542,7 @@
     parseRef,
     parseRange,
     makeRef,
+    sheetPrefix,
     normName,
     parseNumberStrict,
     fmtNumber,
