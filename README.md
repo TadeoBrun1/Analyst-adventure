@@ -2,7 +2,7 @@
 
 Juego 2D para aprender a usar planillas de cálculo (Excel / Google Sheets) haciendo el trabajo de un
 **analista de datos**: empezás como pasante en *Grupo Cóndor* y, resolviendo pedidos reales de distintas
-áreas (Ventas, RR.HH., Marketing, Logística…), vas subiendo hasta Senior.
+áreas (Ventas, RR.HH., Marketing, Logística…), vas subiendo de Pasante a Lead.
 
 Inspirado en *Database Detective: Minor Crimes Division*, pero con planillas en lugar de SQL.
 
@@ -41,9 +41,16 @@ se guarda en el navegador (`localStorage`).
   - **Leo** (junto al café) explica cada nivel antes de empezarlo; lo que enseña queda en tu **📒 libreta**.
   - Tu **computadora** → bandeja de entrada con las tareas de cada nivel y la **práctica libre**.
   - **Marta** (jefa) → historia y ascensos. **Pizarra** → plan de carrera.
-- **Progresión**: 5 niveles por etapa. Cada nivel tiene 5 tareas obligatorias; al terminarlas se abre la
-  práctica libre (casos generados al azar con tablas medianas o grandes) para sumar experiencia. Algunos
-  niveles piden un rango mínimo, así que la práctica es parte del camino.
+- **Progresión**: los niveles se agrupan en **etapas**, una por rango (Pasante → Junior → Semi-Senior →
+  Senior → Lead). Cada nivel tiene 5 tareas obligatorias; al terminarlas se abre la práctica libre (casos
+  generados al azar con tablas medianas o grandes).
+  - Para ascender hacen falta **las dos cosas**: completar todos los niveles de la etapa y llegar a la XP del rango.
+  - Solo los **primeros 4 casos de práctica de cada nivel** suman XP (alcanzan para el ascenso con 3 o 4);
+    después se puede seguir practicando sin límite, pero sin XP. Los niveles de una etapa ya superada no dan XP.
+  - El **📈 plan de carrera** muestra qué hace cada rango en la vida real, qué te falta para ascender y la hoja de ruta.
+- **Gráficos (Nivel 6)**: constructor estilo Tableau / Power BI. Arrastrás *dimensiones* y *medidas* a
+  **Columnas**, **Filas**, **Color** y **Filtros**, elegís el tipo con **Mostrarme** (barras, líneas, torta,
+  dispersión), la agregación (Suma, Promedio, Recuento, Mín, Máx), el orden y un título que cuente la conclusión.
 - **Planilla**: funciona como Excel/Sheets.
   - Fórmulas con `=`, funciones en **español o inglés** (`SUMA`/`SUM`), argumentos separados con `;` o `,`.
   - Clic en celdas mientras escribís una fórmula para insertar referencias; `F4` agrega `$`.
@@ -53,12 +60,17 @@ se guarda en el navegador (`localStorage`).
 
 ## Etapas de desarrollo
 
-| Etapa | Contenido | Estado |
+El contenido de cada rango se basa en un análisis de ofertas laborales y escaleras de carrera reales:
+ver [`docs/CARRERA.md`](docs/CARRERA.md).
+
+| Versión | Contenido | Estado |
 |------|-----------|--------|
-| **1** | Motor de planilla, oficina 2D, menú con 3 ranuras, opciones (sonido, pantalla, idioma), audio, libreta. 5 niveles: fórmulas básicas · funciones de resumen · SI/Y/O · limpieza de texto · CONTAR.SI/SUMAR.SI y `$`. 25 tareas + práctica aleatoria infinita. | ✅ |
-| **2** | Limpieza avanzada: números guardados como texto, duplicados, ordenar y filtrar, buscar y reemplazar. Cruce de tablas con `BUSCARV` / `BUSCARX` / `INDICE`+`COINCIDIR`. Varias hojas por libro. | ⏳ |
-| **3** | Tablas dinámicas y **constructor de dashboards** (gráficos de barras/líneas/torta, KPIs). | ⏳ |
-| **4** | Casos Senior estilo detective (fraude en viáticos, anomalías), evaluación de dashboards, final de carrera. | ⏳ |
+| **0.1–0.2** | Motor de planilla, oficina 2D, menú con 3 ranuras, opciones (sonido, pantalla, idioma), audio, libreta. Niveles 1–5: fórmulas básicas · funciones de resumen · SI/Y/O · limpieza de texto · CONTAR.SI/SUMAR.SI y `$`. | ✅ |
+| **0.3** | Etapa **Pasante** completa: Nivel 6 de **gráficos** (constructor estilo Tableau). Ascensos por etapa + XP, límite de XP en prácticas, plan de carrera con lo que hace cada rango en la vida real. | ✅ |
+| **Junior** | `BUSCARV` / `BUSCARX` / `INDICE`+`COINCIDIR`, varias hojas, **tablas dinámicas**, calidad de datos (duplicados, números como texto), SQL básico, mini-reportes con 1–2 gráficos. | ⏳ |
+| **Semi-Senior** | **Dashboards** desde cero (varios gráficos, filtros, KPIs), análisis de punta a punta, estadística descriptiva, storytelling con datos, revisar el trabajo de un junior. | ⏳ |
+| **Senior** | Definir KPIs, pruebas A/B, casos detective (fraude, anomalías), **presentación ejecutiva** (qué pasó, por qué, qué hacer). | ⏳ |
+| **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, revisar y mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
 
@@ -69,6 +81,7 @@ assets/               ícono y fuentes incluidas (licencia OFL)
 electron/main.js      proceso principal de escritorio: ventana, guardado en archivo, pantalla completa
 electron/preload.js   puente seguro entre el juego y el sistema
 docs/STEAM.md         guía para publicar en Steam
+docs/CARRERA.md       análisis: qué hace cada rango en la vida real vs. los niveles del juego
 .github/workflows/    compilación automática de ejecutables (Windows, Linux, macOS)
 js/
   engine/formula.js       tokenizer, parser, evaluador y ~60 funciones (ES/EN)
@@ -83,8 +96,10 @@ js/
   game/state.js           carrera, XP, personajes y partida
   game/validators.js      validadores de objetivos (celdas, columnas, $, respuestas)
   game/content/lib.js     generador aleatorio con semilla, datos bilingües, armado de misiones
-  game/content/mod1-5.js  plantillas de misión de cada nivel (25 en total)
-  game/content/curriculum.js  niveles, lecciones de Leo y páginas de la libreta
+  charts/chart-model.js   modelo de gráficos: campos, agregaciones, "Mostrarme" y validación
+  charts/chart-builder.js constructor visual estilo Tableau (estantes, arrastrar y soltar, SVG)
+  game/content/mod1-6.js  plantillas de misión de cada nivel (30 en total)
+  game/content/curriculum.js  niveles, etapas, reglas de XP, lecciones de Leo y páginas de la libreta
   game/office.js          oficina 2D en canvas (mapa, colisiones, interacción)
   game/sprites.js         personajes pixel-art dibujados por código
   game/dialog.js          diálogos palabra por palabra con sonido y opciones
@@ -93,7 +108,9 @@ js/
   main.js                 arranque y navegación entre pantallas
 tests/
   engine.test.js        tests del motor de fórmulas
-  missions.test.js      resuelve las 25 plantillas (tamaños, semillas, idiomas) y prueba errores típicos
+  missions.test.js      resuelve las 30 plantillas (tamaños, semillas, idiomas) y prueba errores típicos
+  chart.test.js         modelo de gráficos (agregaciones, color, filtros, Mostrarme)
+  progression.test.js   economía de XP: repetir prácticas no permite saltear rangos
 ```
 
 ## Tests

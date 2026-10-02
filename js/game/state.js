@@ -7,14 +7,17 @@
 
   const VERSION = 2;
 
-  // Rangos: la experiencia de las 5 tareas de cada nivel no alcanza sola para subir;
-  // la práctica libre es la que te termina de llevar al siguiente.
+  // Rangos. Para ascender hacen falta DOS cosas: la XP del rango y haber completado los niveles
+  // de la etapa actual (ver curriculum.js, campo `tier`). Así no se puede llegar a Senior
+  // repitiendo casos de Pasante. Cada umbral ≈ XP de las tareas obligatorias de la etapa
+  // + unos 4 casos de práctica. Los de Semi-Senior en adelante son provisorios hasta que
+  // existan esas etapas (ver docs/CARRERA.md).
   const RANKS = [
     { name: { es: 'Pasante de Datos', en: 'Data Intern' }, xp: 0 },
-    { name: { es: 'Analista Junior', en: 'Junior Analyst' }, xp: 800 },
-    { name: { es: 'Analista Semi-Senior', en: 'Mid-level Analyst' }, xp: 2500 },
-    { name: { es: 'Analista Senior', en: 'Senior Analyst' }, xp: 6000 },
-    { name: { es: 'Lead de Datos', en: 'Data Lead' }, xp: 12000 },
+    { name: { es: 'Analista Junior', en: 'Junior Analyst' }, xp: 2200 },
+    { name: { es: 'Analista Semi-Senior', en: 'Mid-level Analyst' }, xp: 5000 },
+    { name: { es: 'Analista Senior', en: 'Senior Analyst' }, xp: 9500 },
+    { name: { es: 'Lead de Datos', en: 'Data Lead' }, xp: 16000 },
   ];
 
   // voice: tono del "bip" de cada personaje al hablar.
@@ -52,6 +55,7 @@
       activePractice: {}, // mod -> id de la práctica en curso
       progress: {}, // id -> { cells, answers, hints, lang }
       flags: { intro: false, rankSeen: 0, metLeo: false },
+      rankReached: 0,
       createdAt: Date.now(),
       lastPlayed: Date.now(),
     };
@@ -89,7 +93,7 @@
     slotSummary(i) {
       const d = this.readSlot(i);
       if (!d) return null;
-      const rank = RANKS[this.rankIndex(d.xp)];
+      const rank = RANKS[this.rankIndex(d)];
       const mods = AA.Curriculum.MODULES;
       const done = Object.keys(d.completed).filter((id) => /^mod\d+-\d+$/.test(id)).length;
       return {
@@ -129,13 +133,17 @@
     },
 
     // --- Carrera
-    rankIndex(xp) {
-      const x = xp === undefined ? this.data.xp : xp;
-      let idx = 0;
+    // Rango de una partida: el mayor que alcanza su XP sin saltear etapas incompletas.
+    // Nunca baja (rankReached guarda el máximo alcanzado).
+    rankIndex(data) {
+      const d = data || this.data;
+      let byXp = 0;
       RANKS.forEach((r, i) => {
-        if (x >= r.xp) idx = i;
+        if (d.xp >= r.xp) byXp = i;
       });
-      return idx;
+      let idx = 0;
+      while (idx < byXp && AA.Curriculum.tierComplete(idx, d)) idx++;
+      return Math.max(idx, d.rankReached || 0);
     },
     rank() {
       return RANKS[this.rankIndex()];
@@ -160,31 +168,40 @@
       this.save();
     },
 
-    // Registra una misión entregada. Las prácticas suman XP cada vez.
+    // Registra una misión entregada. Las prácticas suman XP solo en los primeros casos de cada
+    // nivel y solo mientras ese nivel corresponda a tu rango.
     completeMission(mission, hintsUsed) {
       const before = this.rankIndex();
       const mod = AA.Curriculum.moduleById(mission.module);
       const wasComplete = mod ? AA.Curriculum.isModuleComplete(mod) : false;
       const factor = Math.max(0.4, 1 - 0.15 * hintsUsed);
-      const gained = Math.round(mission.xp * factor);
+      let gained = 0;
       let firstTime = true;
+      let noXpReason = null;
       if (mission.kind === 'practice') {
+        const p = AA.Curriculum.parseId(mission.id);
+        const reward = AA.Curriculum.practiceReward(mod, p.size);
+        noXpReason = reward.reason;
+        gained = Math.round(reward.xp * factor);
         this.data.xp += gained;
         this.data.practice[mission.module] = (this.data.practice[mission.module] || 0) + 1;
         if (this.data.activePractice[mission.module] === mission.id) delete this.data.activePractice[mission.module];
       } else {
         firstTime = !this.data.completed[mission.id];
         if (firstTime) {
+          gained = Math.round(mission.xp * factor);
           this.data.xp += gained;
           this.data.completed[mission.id] = { xp: gained, hints: hintsUsed, at: Date.now() };
         }
       }
       delete this.data.progress[mission.id];
-      this.save();
       const after = this.rankIndex();
+      this.data.rankReached = after;
+      this.save();
       return {
-        gained: firstTime ? gained : 0,
+        gained,
         firstTime,
+        noXpReason,
         promoted: after > before,
         rank: RANKS[after],
         moduleCompleted: !!mod && !wasComplete && AA.Curriculum.isModuleComplete(mod),

@@ -12,8 +12,9 @@ require('../js/engine/sheet.js');
 require('../js/i18n/i18n.js');
 require('../js/game/validators.js');
 require('../js/game/state.js');
+require('../js/charts/chart-model.js');
 require('../js/game/content/lib.js');
-for (const m of ['mod1', 'mod2', 'mod3', 'mod4', 'mod5']) require(`../js/game/content/${m}.js`);
+for (const m of ['mod1', 'mod2', 'mod3', 'mod4', 'mod5', 'mod6']) require(`../js/game/content/${m}.js`);
 require('../js/game/content/curriculum.js');
 
 const AA = globalThis.AA;
@@ -45,7 +46,26 @@ function solutionWrites(sol) {
   return out;
 }
 
+// Misiones de gráfico: se validan sobre la especificación del gráfico, no sobre la hoja.
+function checkChartMission(m, label) {
+  const table = m.chart.table;
+  const empty = { spec: AA.Chart.emptySpec(), table };
+  m.objectives.forEach((o, i) => {
+    const res = o.answer ? o.answer('respuesta-incorrecta-xyz') : o.check(empty);
+    if (res === true) fail(`${label} #${i + 1} se cumple sin hacer nada`);
+    else passed++;
+  });
+  const Q = { spec: m.solution.chart, table };
+  if (!AA.Chart.resolve(Q.spec, table).ok) fail(`${label}: la solución no se puede dibujar`);
+  m.objectives.forEach((o, i) => {
+    const res = o.answer ? o.answer((m.solution.answers || {})[i]) : o.check(Q);
+    if (res === true) passed++;
+    else fail(`${label} #${i + 1}: la solución no lo cumple → ${JSON.stringify(res)}`);
+  });
+}
+
 function checkMission(m, label) {
+  if (m.chart) return checkChartMission(m, label);
   const sh = AA.Content.buildSheet(m.sheet);
   const locked = (m.sheet.locked || []).map(F.parseRange);
   // Hoja vacía: nada cumplido.
@@ -174,6 +194,36 @@ attempt('m5_shipments', () => fillCol('I', 2, 5, `=CONTAR.SI(B2:B24;H2)`), 0, '$
 attempt('m5_tickets', () => fillCol('G', 2, 4, '=F2/F5').concat([['F2', '=CONTAR.SI($C$2:$C$40;E2)'], ['F5', '=SUMA(F2:F4)']]), 2, null);
 attempt('m5_commission', (m) => fillCol('C', 2, lastRow(m), '=B2*5%'), 0, null);
 attempt('m5_commission', (m) => fillCol('C', 2, lastRow(m), '=B2*F2'), 0, null);
+
+// 6) Errores típicos de visualización que NO tienen que aceptarse.
+function chartAttempt(id, mutate, objIndex, label) {
+  AA.setLang('es');
+  const m = AA.Content.build(id, { seed: 9, size: 'small', lang: 'es' });
+  const spec = JSON.parse(JSON.stringify(m.solution.chart));
+  mutate(spec, m);
+  const res = m.objectives[objIndex].check({ spec, table: m.chart.table });
+  if (res !== true) passed++;
+  else fail(`error de gráfico aceptado (${label}) en ${id} #${objIndex + 1}`);
+}
+chartAttempt('m6_bar', (s) => (s.mark = 'pie'), 0, 'torta en vez de barras');
+chartAttempt('m6_bar', (s) => (s.rows.agg = 'AVG'), 0, 'promedio en vez de suma');
+chartAttempt('m6_bar', (s) => (s.sort = 'none'), 1, 'sin ordenar');
+chartAttempt('m6_bar', (s) => (s.title = 'Ventas por región'), 2, 'título que no cuenta la conclusión');
+chartAttempt('m6_line', (s) => (s.sort = 'desc'), 1, 'meses ordenados por valor');
+chartAttempt('m6_line', (s) => (s.mark = 'bar'), 0, 'barras para una evolución');
+chartAttempt('m6_scatter', (s) => ([s.columns, s.rows] = [s.rows, s.columns]), 0, 'ejes invertidos');
+chartAttempt('m6_color', (s) => (s.filter = null), 2, 'sin filtro');
+chartAttempt('m6_color', (s) => (s.color = null), 1, 'sin color');
+// Variante válida: barras horizontales (dimensión en Filas) también cumplen.
+{
+  AA.setLang('es');
+  const m = AA.Content.build('m6_bar', { seed: 9, size: 'small', lang: 'es' });
+  const spec = JSON.parse(JSON.stringify(m.solution.chart));
+  [spec.columns, spec.rows] = [spec.rows, spec.columns];
+  const res = m.objectives[0].check({ spec, table: m.chart.table });
+  if (res === true) passed++;
+  else fail('barras horizontales rechazadas: ' + JSON.stringify(res));
+}
 
 console.log(`\n${ids.length} plantillas · ${passed} OK, ${failed} fallidos`);
 process.exit(failed ? 1 : 0);

@@ -1,13 +1,13 @@
 {
   "name": "analyst-adventure",
   "productName": "Analyst Adventure",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Juego 2D para aprender planillas de cálculo: de pasante a analista de datos senior.",
   "author": "TadeoBrun1",
   "main": "electron/main.js",
   "scripts": {
-    "test": "node tests/engine.test.js && node tests/missions.test.js",
+    "test": "node tests/engine.test.js && node tests/missions.test.js && node tests/chart.test.js && node tests/progression.test.js",
     "start": "electron .",
     "web": "npx serve .",
     "dist": "electron-builder",

@@ -82,13 +82,18 @@
         lines.push({ who: 'marta', text: pick([T('Buen trabajo hasta ahora. Seguí así.', 'Good work so far. Keep it up.'), T('Me llegan buenos comentarios de las otras áreas. 👌', "I'm hearing good things from the other teams. 👌"), T('Recordá: un dato sin contexto es solo un número.', 'Remember: data without context is just a number.')]) });
         lines.push({ who: 'marta', text: T('Tenés tareas nuevas en tu computadora.', 'You have new tasks on your computer.') });
       } else {
-        const blocked = Cu().MODULES.find((m) => !Cu().isUnlocked(m) && Cu().isModuleComplete(Cu().MODULES[Cu().MODULES.indexOf(m) - 1] || m));
-        if (blocked && st.rankIndex() < blocked.minRank) {
-          const need = st.RANKS[blocked.minRank];
-          lines.push({ who: 'marta', text: T(`El Nivel ${levelNum(blocked)} es trabajo de <b>${need.name.es}</b>. Te faltan ${need.xp - st.data.xp} XP: hacé casos de <b>práctica</b> en tu computadora y volvé a hablar conmigo.`, `Level ${levelNum(blocked)} is work for a <b>${need.name.en}</b>. You need ${need.xp - st.data.xp} more XP: do some <b>practice</b> cases on your computer and come back.`) });
+        const ps = Cu().promotionStatus();
+        if (ps && ps.contentReady && !ps.modulesMissing.length && ps.xpMissing > 0) {
+          lines.push({
+            who: 'marta',
+            text: T(
+              `Terminaste todos los niveles de tu etapa. Para ascender a <b>${ps.next.name.es}</b> te faltan <b>${ps.xpMissing} XP</b>: hacé casos de <b>práctica libre</b> en tu computadora (los primeros ${Cu().PRACTICE_XP_LIMIT} de cada nivel suman experiencia).`,
+              `You finished every level of your stage. To be promoted to <b>${ps.next.name.en}</b> you need <b>${ps.xpMissing} more XP</b>: do some <b>free practice</b> cases on your computer (the first ${Cu().PRACTICE_XP_LIMIT} of each level earn experience).`
+            ),
+          });
         } else if (!cur) {
-          lines.push({ who: 'marta', text: T('Terminaste todos los niveles de esta etapa. Impresionante.', 'You finished every level of this stage. Impressive.') });
-          lines.push({ who: 'marta', text: T('Podés seguir practicando para sumar experiencia. Lo que viene (BUSCARV, tablas dinámicas, dashboards) llega en la <b>Etapa 2</b>.', 'You can keep practicing to earn experience. What comes next (VLOOKUP, pivot tables, dashboards) arrives in <b>Stage 2</b>.') });
+          lines.push({ who: 'marta', text: T('Ya dominás todo lo que tenemos para tu rango por ahora. Impresionante.', 'You have mastered everything we have for your rank for now. Impressive.') });
+          lines.push({ who: 'marta', text: T('Lo que viene para un Junior (BUSCARV, tablas dinámicas, calidad de datos, SQL básico) llega en la próxima actualización.', 'What comes next for a Junior (VLOOKUP, pivot tables, data quality, basic SQL) arrives in the next update.') });
         } else {
           lines.push({ who: 'marta', text: T('Seguí así. Si te sobra tiempo, la práctica libre te ayuda a afianzar lo aprendido.', 'Keep it up. If you have spare time, free practice helps you lock in what you learned.') });
         }

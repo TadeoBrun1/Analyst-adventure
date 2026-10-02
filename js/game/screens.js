@@ -39,7 +39,7 @@
       const root = document.getElementById('screen-computer');
       if (!this.selected || !this.isSelectable(this.selected)) this.selected = this.defaultSelection();
       const groups = Cu()
-        .MODULES.map((mod) => this.renderGroup(mod))
+        .MODULES.map((mod, i) => (i === 0 || Cu().MODULES[i - 1].tier !== mod.tier ? this.renderStageHead(mod.tier) : '') + this.renderGroup(mod))
         .join('');
       root.innerHTML = `
         <div class="monitor">
@@ -49,8 +49,10 @@
           </div>
           <div class="mail">
             <aside class="mail-list">${groups}
-              <div class="mail-group future"><div class="mail-group-head">🔒 ${T('Etapa 2 · Próximamente', 'Stage 2 · Coming soon')}</div>
-              <div class="mail-item locked"><div class="mail-subject">${T('BUSCARV, tablas dinámicas y dashboards', 'VLOOKUP, pivot tables and dashboards')}</div></div></div>
+              <div class="stage-head">🔒 ${T('Etapa Junior · próximamente', 'Junior stage · coming soon')}</div>
+              <div class="mail-group future">
+                <div class="mail-item locked"><div class="mail-subject">${T('BUSCARV / BUSCARX, tablas dinámicas, calidad de datos y SQL básico', 'VLOOKUP / XLOOKUP, pivot tables, data quality and basic SQL')}</div></div>
+              </div>
             </aside>
             <article class="mail-view">${this.renderView()}</article>
           </div>
@@ -99,6 +101,11 @@
       return Cu().missionAvailable(sel);
     },
 
+    renderStageHead(tier) {
+      const rank = AA.State.RANKS[tier];
+      return `<div class="stage-head">🎓 ${T('Etapa', 'Stage')} ${esc(AA.L(rank.name))}</div>`;
+    },
+
     renderGroup(mod) {
       const st = AA.State;
       const n = levelNum(mod);
@@ -128,8 +135,15 @@
           return item(id, `<div class="mail-from">${esc(AA.L(ch.name))} ${AA.UI.deptBadge(m.dept)}</div><div class="mail-subject">${esc(m.subject)}</div><div class="mail-meta">${status}<span class="xp">+${m.xp} XP</span></div>`, st.isCompleted(id) ? 'read' : '');
         })
         .join('');
+      const reward = Cu().practiceReward(mod, 'medium');
       const practice = Cu().isModuleComplete(mod)
-        ? item('practice:' + mod.id, `<div class="mail-subject">🎲 ${T('Práctica libre', 'Free practice')}</div><div class="mail-meta"><span class="chip">${T('Casos aleatorios', 'Random cases')}</span><span class="xp">+${mod.xp}–${Cu().practiceXp(mod, 'large')} XP</span></div>`, 'practice')
+        ? item(
+            'practice:' + mod.id,
+            `<div class="mail-subject">🎲 ${T('Práctica libre', 'Free practice')}</div><div class="mail-meta"><span class="chip">${T('Casos aleatorios', 'Random cases')}</span><span class="xp">${
+              reward.xp ? `+${mod.xp}–${Cu().practiceXp(mod, 'large')} XP · ${reward.left}/${Cu().PRACTICE_XP_LIMIT}` : T('sin XP', 'no XP')
+            }</span></div>`,
+            'practice'
+          )
         : '';
       return `<div class="mail-group">${head}${items}${practice}</div>`;
     },
@@ -160,11 +174,17 @@
       const st = AA.State;
       const active = st.data.activePractice[mod.id];
       const count = st.data.practice[mod.id] || 0;
+      const reward = Cu().practiceReward(mod, 'medium');
+      const rewardNote = reward.reason === 'rank'
+        ? T(`Ya sos <b>${esc(AA.L(st.rank().name))}</b>: estos casos te sirven para repasar, pero ya no suman XP (son de una etapa anterior).`, `You are already a <b>${esc(AA.L(st.rank().name))}</b>: these cases are good for review, but no longer earn XP (they belong to an earlier stage).`)
+        : reward.reason === 'limit'
+          ? T(`Ya hiciste los ${Cu().PRACTICE_XP_LIMIT} casos con XP de este nivel. Podés seguir practicando todo lo que quieras, sin XP.`, `You already did the ${Cu().PRACTICE_XP_LIMIT} XP-earning cases of this level. You can keep practicing as much as you like, without XP.`)
+          : T(`Te quedan <b>${reward.left} de ${Cu().PRACTICE_XP_LIMIT}</b> casos que suman XP en este nivel. Después podés seguir practicando sin XP.`, `You have <b>${reward.left} of ${Cu().PRACTICE_XP_LIMIT}</b> XP-earning cases left in this level. After that you can keep practicing without XP.`);
       const sizeCard = (size, title, desc) => `
         <div class="practice-card">
           <h3>${title}</h3>
           <p class="muted">${desc}</p>
-          <div class="xp">+${Cu().practiceXp(mod, size)} XP</div>
+          <div class="xp">${reward.xp ? `+${Cu().practiceXp(mod, size)} XP` : T('Sin XP', 'No XP')}</div>
           <button class="btn btn-primary" data-practice="${mod.id}:${size}">${T('Generar caso', 'Generate case')}</button>
         </div>`;
       return `
@@ -173,8 +193,9 @@
           <p class="muted">${esc(AA.L(mod.title))}</p>
         </header>
         <div class="mail-body">
-          <p>${T('Casos generados al azar con las herramientas de este nivel, en tablas más grandes. Cada caso es distinto y suma experiencia: ideal para afianzar lo aprendido y llegar al próximo rango.', 'Randomly generated cases using this level\'s tools, with bigger tables. Every case is different and earns experience: ideal to lock in what you learned and reach the next rank.')}</p>
+          <p>${T('Casos generados al azar con las herramientas de este nivel, en tablas más grandes. Cada caso es distinto: ideal para afianzar lo aprendido. Los primeros ${AA.Curriculum.PRACTICE_XP_LIMIT} suman XP para llegar al próximo rango; después podés seguir practicando todo lo que quieras.', 'Randomly generated cases using this level\'s tools, with bigger tables. Every case is different: ideal to lock in what you learned. The first ${AA.Curriculum.PRACTICE_XP_LIMIT} earn XP towards the next rank; after that you can keep practicing as much as you like.')}</p>
           <p class="muted">${T('Casos completados en este nivel', 'Cases completed in this level')}: <b>${count}</b></p>
+          <p class="practice-note">${rewardNote}</p>
         </div>
         ${
           active
@@ -188,7 +209,7 @@
         }
         <div class="practice-grid">
           ${sizeCard('medium', T('Tabla mediana', 'Medium table'), T('20 a 40 filas aprox.', 'About 20 to 40 rows.'))}
-          ${sizeCard('large', T('Tabla grande', 'Large table'), T('35 a 65 filas aprox. ¡Más XP!', 'About 35 to 65 rows. More XP!'))}
+          ${sizeCard('large', T('Tabla grande', 'Large table'), T('35 a 65 filas aprox. Más desafío.', 'About 35 to 65 rows. More challenging.'))}
         </div>`;
     },
 
@@ -232,6 +253,21 @@
     return rects.some((k) => c >= k.c1 && c <= k.c2 && r >= k.r1 && r <= k.r2);
   }
 
+  // Hoja de solo lectura con los datos de una misión de gráfico.
+  function chartDataSheet(table) {
+    const cols = table.headers.length;
+    const last = table.rows.length + 1;
+    const lastCol = F.indexToCol(cols - 1);
+    return {
+      cols: Math.max(cols, 6),
+      rows: last + 3,
+      colWidths: table.headers.map((h, i) => (typeof table.rows[0][i] === 'number' ? 110 : 150)),
+      data: { at: 'A1', rows: [table.headers, ...table.rows] },
+      locked: [`A1:${F.indexToCol(Math.max(cols, 6) - 1)}${last + 3}`],
+      header: [`A1:${lastCol}1`],
+    };
+  }
+
   const MissionScreen = {
     mission: null,
     sheet: null,
@@ -249,7 +285,7 @@
       const mission = getMission(id, lang);
       this.mission = mission;
       this.lang = lang;
-      const def = mission.sheet;
+      const def = mission.sheet || chartDataSheet(mission.chart.table);
       this.sheet = AA.Content.buildSheet(def);
       this.base = new Map(this.sheet.serialize().map(([c, r, i]) => [c + ',' + r, i]));
       this.answers = {};
@@ -295,10 +331,21 @@
               <ul>${mission.tips.map((t) => `<li>${t}</li>`).join('')}</ul>
             </section>
           </aside>
-          <main class="ms-sheet">
-            <div class="ss-host" data-el="grid"></div>
-            <div class="ms-tabs"><span class="tab active">${T('Hoja1', 'Sheet1')}</span><span class="muted">${T('Las celdas grises son datos originales (bloqueados) · las amarillas son las que tenés que completar', 'Gray cells are original data (locked) · yellow cells are the ones you must fill in')}</span></div>
-          </main>
+          ${
+            mission.chart
+              ? `<main class="ms-sheet ms-chart">
+                   <div class="ms-viewtabs">
+                     <button class="on" data-view="chart">📊 ${T('Gráfico', 'Chart')}</button>
+                     <button data-view="data">📋 ${T('Datos', 'Data')} <span class="muted">(${mission.chart.table.rows.length} ${T('filas', 'rows')})</span></button>
+                   </div>
+                   <div class="chart-host" data-el="chart"></div>
+                   <div class="ss-host hidden" data-el="grid"></div>
+                 </main>`
+              : `<main class="ms-sheet">
+                   <div class="ss-host" data-el="grid"></div>
+                   <div class="ms-tabs"><span class="tab active">${T('Hoja1', 'Sheet1')}</span><span class="muted">${T('Las celdas grises son datos originales (bloqueados) · las amarillas son las que tenés que completar', 'Gray cells are original data (locked) · yellow cells are the ones you must fill in')}</span></div>
+                 </main>`
+          }
         </div>`;
 
       this.objList = root.querySelector('[data-el="objectives"]');
@@ -334,7 +381,12 @@
           : null,
         onLocked: () => {
           AA.Audio.play('error');
-          AA.UI.toast(T('🔒 Esa celda tiene <b>datos originales</b>. No se tocan: trabajá en las columnas a completar.', '🔒 That cell holds <b>original data</b>. Don\'t touch it: work in the columns you need to fill in.'), 'warn');
+          AA.UI.toast(
+            mission.chart
+              ? T('📋 Estos son los datos del gráfico: se consultan, no se editan.', '📋 This is the chart data: you can read it, not edit it.')
+              : T('🔒 Esa celda tiene <b>datos originales</b>. No se tocan: trabajá en las columnas a completar.', '🔒 That cell holds <b>original data</b>. Don\'t touch it: work in the columns you need to fill in.'),
+            'warn'
+          );
         },
         onToast: (msg) => AA.UI.toast(msg, 'info'),
         onEdit: () => {
@@ -344,20 +396,47 @@
         },
       });
 
+      if (mission.chart) this.openChart(root, mission, prog);
       this.evaluate(true);
-      setTimeout(() => this.view.focusGrid(), 50);
+      if (!mission.chart) setTimeout(() => this.view.focusGrid(), 50);
       if (!prog && !st.isCompleted(id) && id === 'mod1-1') setTimeout(() => this.showTutorial(), 250);
+    },
+
+    // Editor de gráficos + pestaña de datos.
+    openChart(root, mission, prog) {
+      this.chartSpec = Object.assign(AA.Chart.emptySpec(), (prog && prog.chart) || {});
+      this.builder = new AA.ChartBuilder(root.querySelector('[data-el="chart"]'), mission.chart.table, this.chartSpec, {
+        onChange: (spec) => {
+          this.chartSpec = spec;
+          this.evaluate();
+          this.scheduleSave();
+        },
+        onToast: (msg) => AA.UI.toast(msg, 'warn'),
+      });
+      root.querySelectorAll('[data-view]').forEach((b) =>
+        b.addEventListener('click', () => {
+          AA.Audio.play('move');
+          root.querySelectorAll('[data-view]').forEach((x) => x.classList.toggle('on', x === b));
+          const data = b.dataset.view === 'data';
+          root.querySelector('[data-el="chart"]').classList.toggle('hidden', data);
+          root.querySelector('[data-el="grid"]').classList.toggle('hidden', !data);
+          if (data) this.view.renderSelection();
+          else this.builder.draw();
+        })
+      );
     },
 
     leave(then) {
       this.saveNow();
+      if (this.builder) this.builder.destroy();
+      this.builder = null;
       this.mission = null;
       then();
     },
 
     // --- Objetivos
     evaluate(initial) {
-      const S = AA.V.query(this.sheet);
+      const S = this.mission.chart ? { spec: this.chartSpec, table: this.mission.chart.table } : AA.V.query(this.sheet);
       const prev = this.status;
       const prevLang = AA.lang;
       AA.setLang(this.lang);
@@ -502,7 +581,7 @@
       const current = new Map(this.sheet.serialize().map(([c, r, i]) => [c + ',' + r, i]));
       for (const [k, input] of current) if (this.base.get(k) !== input) diff.push([...k.split(',').map(Number), input]);
       for (const k of this.base.keys()) if (!current.has(k)) diff.push([...k.split(',').map(Number), '']);
-      st.data.progress[this.mission.id] = { cells: diff, answers: this.answers, hints: this.hints, lang: this.lang };
+      st.data.progress[this.mission.id] = { cells: diff, answers: this.answers, hints: this.hints, lang: this.lang, chart: this.mission.chart ? this.chartSpec : undefined };
       st.save();
     },
 
@@ -529,6 +608,12 @@
             : `<br>${T(`Leo tiene algo nuevo para enseñarte: <b>${esc(AA.L(nextMod.title))}</b>.`, `Leo has something new to teach you: <b>${esc(AA.L(nextMod.title))}</b>.`)}`;
         }
         extra += '</div>';
+      }
+      if (res.noXpReason === 'limit') extra += `<div class="promo muted-promo">ℹ️ ${T(`Este caso no sumó XP: ya hiciste los ${Cu().PRACTICE_XP_LIMIT} casos con experiencia de este nivel. La práctica igual te sirve.`, `This case earned no XP: you already did the ${Cu().PRACTICE_XP_LIMIT} XP cases of this level. Practice still helps.`)}</div>`;
+      if (res.noXpReason === 'rank') extra += `<div class="promo muted-promo">ℹ️ ${T('Este caso no sumó XP: es de una etapa que ya superaste.', 'This case earned no XP: it belongs to a stage you have already passed.')}</div>`;
+      const ps = Cu().promotionStatus();
+      if (!res.promoted && ps && ps.contentReady && !ps.modulesMissing.length && ps.xpMissing > 0) {
+        extra += `<div class="promo">🎯 ${T(`Para ascender a <b>${esc(AA.L(ps.next.name))}</b> te faltan <b>${ps.xpMissing} XP</b>.`, `You need <b>${ps.xpMissing} more XP</b> to be promoted to <b>${esc(AA.L(ps.next.name))}</b>.`)}</div>`;
       }
       if (res.promoted) extra += `<div class="promo">🏅 ${T(`¡Llegaste a <b>${esc(AA.L(res.rank.name))}</b>! Marta quiere hablar con vos.`, `You reached <b>${esc(AA.L(res.rank.name))}</b>! Marta wants to talk to you.`)}</div>`;
       const buttons = [{ label: T('Ir a la bandeja', 'Go to inbox'), action: () => AA.Game.openComputer() }];
@@ -619,9 +704,28 @@
     const st = AA.State;
     const idx = st.rankIndex();
     const prog = st.rankProgress();
+    const ps = Cu().promotionStatus();
     const ladder = st.RANKS.map(
-      (r, i) => `<li class="${i < idx ? 'past' : i === idx ? 'current' : ''}"><span>${i < idx ? '✔' : i === idx ? '★' : '○'}</span><b>${esc(AA.L(r.name))}</b><span class="muted">${r.xp} XP</span></li>`
+      (r, i) => `<li class="${i < idx ? 'past' : i === idx ? 'current' : ''}">
+        <div class="ladder-row"><span>${i < idx ? '✔' : i === idx ? '★' : '○'}</span><b>${esc(AA.L(r.name))}</b><span class="muted">${r.xp} XP</span></div>
+        ${i === idx || i === idx + 1 ? `<ul class="real">${AA.L(Cu().CAREER[i]).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      </li>`
     ).join('');
+    let promo = '';
+    if (ps) {
+      const modsOk = ps.contentReady && !ps.modulesMissing.length;
+      promo = `
+        <h3>${T('Para ascender a', 'To be promoted to')} ${esc(AA.L(ps.next.name))}</h3>
+        <ul class="reqs">
+          <li class="${modsOk ? 'ok' : ''}">${modsOk ? '✔' : '○'} ${
+            ps.contentReady
+              ? T(`Completar los niveles de tu etapa${ps.modulesMissing.length ? ` (faltan: ${ps.modulesMissing.map((m) => Cu().MODULES.indexOf(m) + 1).join(', ')})` : ''}`, `Complete your stage's levels${ps.modulesMissing.length ? ` (missing: ${ps.modulesMissing.map((m) => Cu().MODULES.indexOf(m) + 1).join(', ')})` : ''}`)
+              : T('Los niveles de esta etapa llegan en una próxima actualización', "This stage's levels arrive in a future update")
+          }</li>
+          <li class="${ps.xpMissing ? '' : 'ok'}">${ps.xpMissing ? '○' : '✔'} ${T(`Llegar a ${ps.next.xp} XP`, `Reach ${ps.next.xp} XP`)}${ps.xpMissing ? ` (${T('faltan', 'missing')} ${ps.xpMissing})` : ''}</li>
+        </ul>
+        <p class="muted small">${T(`Los primeros ${Cu().PRACTICE_XP_LIMIT} casos de práctica de cada nivel suman XP; los de una etapa que ya superaste, no.`, `The first ${Cu().PRACTICE_XP_LIMIT} practice cases of each level earn XP; those from a stage you already passed don't.`)}</p>`;
+    }
     const levels = Cu()
       .MODULES.map((m, i) => {
         const done = Cu().doneCount(m);
@@ -630,7 +734,7 @@
         return `<li class="${reason ? 'locked' : done >= Cu().REQUIRED ? 'done' : ''}">
           <div><b>${T('Nivel', 'Level')} ${i + 1} · ${esc(AA.L(m.title))}</b>${reason ? `<span class="muted small">🔒 ${esc(reason)}</span>` : ''}</div>
           <div class="lvl-bar"><div style="width:${(done / Cu().REQUIRED) * 100}%"></div></div>
-          <span class="muted small">${done}/${Cu().REQUIRED} ${T('tareas', 'tasks')} · ${prac} ${T('prácticas', 'practices')}</span>
+          <span class="muted small">${done}/${Cu().REQUIRED} ${T('tareas', 'tasks')} · ${prac} ${T('prácticas', 'practices')} (${Math.min(prac, Cu().PRACTICE_XP_LIMIT)}/${Cu().PRACTICE_XP_LIMIT} ${T('con XP', 'with XP')})</span>
         </li>`;
       })
       .join('');
@@ -642,17 +746,20 @@
           <div>
             <div class="rank-line"><b>${esc(AA.L(prog.cur.name))}</b><span class="muted">${st.data.xp} XP${prog.next ? ` / ${prog.next.xp}` : ''}</span></div>
             ${AA.UI.xpBar(prog.pct)}
+            <p class="muted small career-note">${T('Qué hace cada rango en la vida real (según ofertas y escaleras de carrera de la industria):', 'What each rank does in real life (based on industry job posts and career ladders):')}</p>
             <ol class="ladder">${ladder}</ol>
           </div>
           <div>
+            ${promo}
             <h3>${T('Niveles', 'Levels')}</h3>
             <ul class="levels">${levels}</ul>
             <h3>${T('Hoja de ruta', 'Roadmap')}</h3>
             <ul class="roadmap">
-              <li class="now"><b>${T('Etapa 1', 'Stage 1')}</b> · ${T('Fórmulas, funciones, SI, limpieza de texto, CONTAR.SI y $', 'Formulas, functions, IF, text cleaning, COUNTIF and $')}</li>
-              <li><b>${T('Etapa 2', 'Stage 2')}</b> · ${T('Tipos de datos, duplicados, ordenar/filtrar, BUSCARV/BUSCARX', 'Data types, duplicates, sort/filter, VLOOKUP/XLOOKUP')}</li>
-              <li><b>${T('Etapa 3', 'Stage 3')}</b> · ${T('Tablas dinámicas y dashboards con gráficos', 'Pivot tables and dashboards with charts')}</li>
-              <li><b>${T('Etapa 4', 'Stage 4')}</b> · ${T('Casos Senior: investigaciones con datos', 'Senior cases: data investigations')}</li>
+              <li class="now"><b>${T('Pasante', 'Intern')}</b> · ${T('Fórmulas, funciones, SI, limpieza, CONTAR.SI y $, gráficos', 'Formulas, functions, IF, cleaning, COUNTIF and $, charts')}</li>
+              <li><b>Junior</b> · ${T('BUSCARV/BUSCARX, tablas dinámicas, calidad de datos, SQL básico', 'VLOOKUP/XLOOKUP, pivot tables, data quality, basic SQL')}</li>
+              <li><b>Semi-Senior</b> · ${T('Dashboards desde cero, storytelling, estadística', 'Dashboards from scratch, storytelling, statistics')}</li>
+              <li><b>Senior</b> · ${T('KPIs, A/B tests, presentaciones ejecutivas, revisar el trabajo de otros', 'KPIs, A/B tests, executive presentations, reviewing others\' work')}</li>
+              <li><b>Lead</b> · ${T('Priorizar, estrategia, stakeholders, gobierno de datos', 'Prioritization, strategy, stakeholders, data governance')}</li>
             </ul>
           </div>
         </div>`,
