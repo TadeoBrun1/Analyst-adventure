@@ -24,9 +24,9 @@
   const CHARACTERS = {
     player: { name: { es: 'Vos', en: 'You' }, role: '', skin: '#f1c27d', hair: '#3b2a20', shirt: '#4f8cff', pants: '#2b2f45', voice: 300 },
     marta: { name: 'Marta Ríos', role: { es: 'Jefa de Analytics', en: 'Head of Analytics' }, body: 'f', skin: '#e0ac69', hair: '#4a2c1d', hairStyle: 'long', shirt: '#c0392b', top: 'blazer', pants: '#2c3e50', voice: 330 },
-    leo: { name: 'Leonel Bargas', short: 'Leo', role: { es: 'Analista Senior', en: 'Senior Analyst' }, skin: '#c68642', hair: '#1b1b1b', shirt: '#16a085', pants: '#34495e', glasses: true, beard: 'stubble', voice: 200 },
-    camila: { name: 'Camila Navarro', role: { es: 'Data Engineer', en: 'Data Engineer' }, body: 'f', skin: '#f1c27d', hair: '#7b2d5c', hairStyle: 'ponytail', shirt: '#f1c40f', top: 'hoodie', pants: '#2d3436', voice: 460 },
-    tadeo: { name: 'Tadeo Bargas', role: { es: 'Marketing', en: 'Marketing' }, skin: '#c68642', hair: '#1b1b1b', hairStyle: 'spiky', shirt: '#ff7aa2', top: 'shirt', pants: '#3d3d5c', voice: 380 },
+    leo: { name: 'Leonel Bargas', short: 'Leo', role: { es: 'Analista Senior', en: 'Senior Analyst' }, skin: '#ffdbac', hair: '#1b1b1b', shirt: '#16a085', pants: '#34495e', beard: 'stubble', voice: 200 },
+    camila: { name: 'Camila Navarro', role: { es: 'Data Engineer', en: 'Data Engineer' }, body: 'f', skin: '#f1c27d', hair: '#e8cf7a', hairStyle: 'ponytail', shirt: '#f1c40f', top: 'hoodie', pants: '#2d3436', voice: 460 },
+    tadeo: { name: 'Tadeo Bargas', role: { es: 'Marketing', en: 'Marketing' }, skin: '#ffdbac', hair: '#6b4423', hairStyle: 'spiky', shirt: '#ff7aa2', top: 'shirt', pants: '#3d3d5c', voice: 380 },
     jean: { name: 'Jean Joestar', role: { es: 'Arquitecto (viene por el café)', en: 'Architect (here for the coffee)' }, skin: '#7a4a2a', hair: '#141414', hairStyle: 'curly', beard: 'goatee', beardColor: '#141414', shirt: '#2d3436', top: 'blazer', pants: '#1f2129', glasses: true, voice: 230 },
     juanroberto: { name: 'Juan Roberto Tercero De Iscariote', short: 'Juan Roberto', role: { es: 'Poeta de la cafetería', en: 'Coffee-shop poet' }, skin: '#f1c27d', hair: '#bdbdbd', hairStyle: 'bob', beard: 'full', beardColor: '#bdbdbd', shirt: '#7b2d3b', top: 'shirt', pants: '#3b3226', voice: 190 },
     paula: { name: 'Paula Herrera', role: { es: 'Recursos Humanos', en: 'Human Resources' }, body: 'f', skin: '#e0ac69', hair: '#2e1a12', hairStyle: 'long', shirt: '#9b59b6', pants: '#2c3e50', voice: 400 },
@@ -59,7 +59,7 @@
       practice: {}, // mod -> cantidad de prácticas completadas
       activePractice: {}, // mod -> id de la práctica en curso
       progress: {}, // id -> { cells, answers, hints, lang }
-      flags: { intro: false, rankSeen: 0, metLeo: false },
+      flags: { intro: false, rankSeen: 0, metLeo: false, metCamila: false, tipFill: false, tipHeaders: false },
       look: null, // aspecto elegido en el creador de personaje
       rankReached: 0,
       createdAt: Date.now(),

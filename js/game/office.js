@@ -39,7 +39,7 @@
   const NPCS = [
     { id: 'marta', tx: 23, ty: 3, dir: 'down' },
     { id: 'leo', tx: 4, ty: 2, dir: 'down' },
-    { id: 'camila', tx: 16, ty: 4, dir: 'up', sitting: true },
+    { id: 'camila', tx: 15, ty: 4, dir: 'up', sitting: true },
     { id: 'tadeo', tx: 15, ty: 6, dir: 'up', sitting: true },
     // en el comedor, frente a frente en la misma mesa
     { id: 'jean', tx: 2, ty: 9, dir: 'down', sitting: true },
@@ -75,6 +75,12 @@
     { id: 'exit', x: 13, y: 13, w: 2, h: 1, label: { es: 'Salida', en: 'Exit' } },
   ];
   const START = { x: 14 * T + 16, y: 8 * T + 26 };
+  // Sillas de oficina libres: la tuya (frente a tu computadora) y la de Nico, que está de vacaciones.
+  // Las de Camila y Tadeo se dibujan junto con ellos.
+  const CHAIRS = [
+    { tx: 10, ty: 4, mine: true },
+    { tx: 10, ty: 6 },
+  ];
 
   const Office = {
     canvas: null,
@@ -211,7 +217,25 @@
       const ty = Math.floor(py / T);
       if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return true;
       if (!WALKABLE.has(MAP[ty][tx])) return true;
+      if (CHAIRS.some((c) => !c.mine && c.tx === tx && c.ty === ty)) return true;
       return this.npcs.some((n) => n.tx === tx && n.ty === ty);
+    },
+
+    // El jugador se sienta en su silla antes de usar la computadora.
+    sitAtDesk(then) {
+      const c = CHAIRS.find((ch) => ch.mine);
+      const p = this.player;
+      p.x = c.tx * T + 16;
+      p.y = c.ty * T + 20; // pegado al escritorio
+      p.dir = 'up';
+      p.frame = 0;
+      p.sitting = true;
+      this.keys.clear();
+      this.lockUntil = performance.now() + 500;
+      setTimeout(then, 420);
+    },
+    standUp() {
+      this.player.sitting = false;
     },
     blocked(x, y) {
       const hw = 8;
@@ -227,13 +251,14 @@
       const p = this.player;
       let dx = 0;
       let dy = 0;
-      if (!this.paused()) {
+      if (!this.paused() && !(this.lockUntil > performance.now())) {
         if (this.keys.has('arrowleft') || this.keys.has('a')) dx -= 1;
         if (this.keys.has('arrowright') || this.keys.has('d')) dx += 1;
         if (this.keys.has('arrowup') || this.keys.has('w')) dy -= 1;
         if (this.keys.has('arrowdown') || this.keys.has('s')) dy += 1;
       }
       p.moving = dx !== 0 || dy !== 0;
+      if (p.moving && p.sitting) p.sitting = false; // te levantás al caminar
       if (p.moving) {
         const len = Math.hypot(dx, dy);
         const speed = 120 * dt;
@@ -282,7 +307,21 @@
 
       // Personajes ordenados por profundidad.
       const actors = this.npcs.map((n) => ({ y: n.y, draw: () => this.drawNpc(n) }));
-      actors.push({ y: this.player.y, draw: () => AA.Sprites.drawChar(ctx, this.player.x, this.player.y, AA.State.CHARACTERS.player, this.player.dir, this.player.frame) });
+      const p = this.player;
+      for (const c of CHAIRS) {
+        const cx = c.tx * T + 16;
+        const cy = c.ty * T + (c.mine ? 20 : 26);
+        if (c.mine && p.sitting) continue;
+        actors.push({ y: cy - 0.5, draw: () => this.drawChair(cx, cy, null) });
+      }
+      actors.push({
+        y: p.y,
+        draw: () => {
+          const ch = AA.State.CHARACTERS.player;
+          if (p.sitting) this.drawChair(p.x, p.y, () => AA.Sprites.drawChar(ctx, p.x, p.y, ch, 'up', 0, { sitting: true }));
+          else AA.Sprites.drawChar(ctx, p.x, p.y, ch, p.dir, p.frame);
+        },
+      });
       actors.sort((a, b) => a.y - b.y).forEach((a) => a.draw());
 
       // Marcadores "!"
@@ -352,14 +391,17 @@
         const dy = this.player.y - n.y;
         if (Math.hypot(dx, dy) < 70) dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
       }
-      if (n.sitting && MAP[n.ty][n.tx] !== 'h') {
-        // silla de oficina (en el comedor ya hay sillas dibujadas)
-        ctx.fillStyle = '#2f3b55';
-        ctx.fillRect(n.x - 9, n.y - 14, 18, 12);
-        ctx.fillStyle = '#44547a';
-        ctx.fillRect(n.x - 9, n.y - 4, 18, 4);
+      const drawIt = () => AA.Sprites.drawChar(ctx, n.x, n.y, c, dir, 0, { sitting: n.sitting });
+      if (n.sitting && MAP[n.ty][n.tx] !== 'h') this.drawChair(n.x, n.y, drawIt);
+      else {
+        drawIt();
+        if (n.sitting && dir === 'up') {
+          // respaldo de la silla del comedor, delante de quien está sentado de espaldas
+          const col = ['#e07a5f', '#f2cc8f', '#81b29a', '#3d5a80'][(n.tx + n.ty) % 4];
+          ctx.fillStyle = AA.Sprites.shade(col, -35);
+          ctx.fillRect(n.x - 8, n.y - 8, 16, 6);
+        }
       }
-      AA.Sprites.drawChar(ctx, n.x, n.y, c, dir, 0, { sitting: n.sitting });
       if (n.id === 'leo') {
         // Leo siempre tiene un café en la mano.
         const hx = n.x + (dir === 'left' ? -12 : 8);
@@ -373,6 +415,32 @@
           ctx.fillRect(hx + 3, n.y - 19 + ((this.t * 6) % 3), 1, 2);
         }
       }
+    },
+
+    // Silla de oficina vista desde atrás (la persona mira al escritorio). sit: dibuja a quien está sentado.
+    drawChair(x, y, sit) {
+      const ctx = this.ctx;
+      const R = (dx, dy, w, h, col) => {
+        ctx.fillStyle = col;
+        ctx.fillRect(x + dx, y + dy, w, h);
+      };
+      // base con rueditas y asiento
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath();
+      ctx.ellipse(x, y - 1, 10, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      R(-9, -3, 4, 2, '#2b2e3a');
+      R(5, -3, 4, 2, '#2b2e3a');
+      R(-2, -3, 4, 2, '#2b2e3a');
+      R(-1, -7, 2, 5, '#3a3d4a');
+      R(-9, -17, 18, 10, '#55678f');
+      R(-9, -17, 18, 2, '#6a7ca3');
+      if (sit) sit();
+      // respaldo (adelante de la espalda)
+      R(-8, -14, 16, 11, '#3d4c6e');
+      R(-8, -14, 16, 2, '#51628a');
+      R(-10, -12, 2, 6, '#2b2e3a');
+      R(8, -12, 2, 6, '#2b2e3a');
     },
 
     zone(x, y) {

@@ -202,7 +202,10 @@ kbd { display: inline-block; padding: 0 5px; border: 1px solid var(--line); bord
 .ms-title > div { display: flex; flex-direction: column; min-width: 0; }
 .ms-title .muted { color: #aab2c8; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
 .ms-body { flex: 1; display: grid; grid-template-columns: 340px 1fr; min-height: 0; }
-.ms-side { overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; background: #f4f6fb; border-right: 1px solid #d6dae5; }
+.ms-side { overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; background: #d3dcee; border-right: 3px solid #b3bfd9; box-shadow: inset -8px 0 12px -10px rgba(29, 33, 48, 0.35); }
+.ms-side .card { background: #e7edf8; border-color: #bcc7de; box-shadow: 0 1px 0 rgba(29, 33, 48, 0.06); }
+.ms-side .card h3 { color: #2a3a63; }
+.ms-side .obj-answer input { background: #fff; }
 .card { background: #fff; border: 1px solid #dde1ea; border-radius: 10px; padding: 12px 14px; }
 .card h3 { margin: 0 0 8px; font-size: 14px; display: flex; justify-content: space-between; }
 .card .muted { color: #6b7389; }
@@ -221,7 +224,7 @@ kbd { display: inline-block; padding: 0 5px; border: 1px solid var(--line); bord
 .obj-answer .btn { background: #1d2130; color: #fff; border-color: #1d2130; }
 .tips ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; color: #3e4559; }
 .tips li { margin-bottom: 6px; }
-.ms-sheet { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 10px; gap: 6px; }
+.ms-sheet { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 10px; gap: 6px; background: #e9ecf3; }
 .ss-host { flex: 1; min-height: 0; }
 .ms-tabs { display: flex; gap: 12px; align-items: center; font-size: 12px; }
 .ms-tabs .tab { background: #fff; border: 1px solid #d6dae5; border-top: 2px solid #1f8f4e; padding: 3px 12px; border-radius: 0 0 6px 6px; font-weight: 600; }
@@ -663,3 +666,31 @@ canvas.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointe
   .cr-row { grid-template-columns: 1fr; gap: 4px; }
   .cr-canvas { width: 150px; height: 190px; }
 }
+
+/* ---------- Ayudas en la planilla ---------- */
+.ss-coach { position: absolute; z-index: 30; width: 290px; padding: 10px 28px 10px 12px; border-radius: 10px; background: #1d2130; color: #fff; font-size: 12.5px; line-height: 1.5; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3); animation: coachin 0.25s ease-out; white-space: normal; }
+.ss-coach::before { content: ''; position: absolute; top: -6px; left: 18px; border: 6px solid transparent; border-top: none; border-bottom-color: #1d2130; }
+.ss-coach .muted { color: #aab2c8; }
+.ss-coach-x { position: absolute; top: 4px; right: 4px; border: none; background: none; color: #aab2c8; cursor: pointer; font-size: 12px; padding: 4px; }
+.ss-coach-x:hover { color: #fff; }
+@keyframes coachin { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Guía ilustrada ---------- */
+.tut-demos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.tut-demos figure { margin: 0; padding: 12px; border-radius: 10px; background: #e9ecf3; color: #1d2130; display: flex; flex-direction: column; gap: 10px; }
+.tut-demos figcaption { font-size: 13px; line-height: 1.5; }
+.tut-sheet { border-collapse: collapse; background: #fff; font-family: var(--mono); font-size: 12px; align-self: center; }
+.tut-sheet th, .tut-sheet td { border: 1px solid #d6dae5; padding: 4px 10px; min-width: 44px; height: 22px; text-align: left; position: relative; }
+.tut-sheet th { background: #f3f4f8; color: #6b7389; font-weight: 600; min-width: 22px; text-align: center; font-family: var(--sans); }
+.tut-fill td.sel { outline: 2px solid #1a73e8; outline-offset: -2px; }
+.tut-handle { position: absolute; right: -4px; bottom: -4px; width: 8px; height: 8px; background: #1a73e8; border: 1px solid #fff; z-index: 2; animation: tutdrag 2.6s ease-in-out infinite; }
+.tut-fill td.ghost { color: transparent; animation: tutghost 2.6s ease-in-out infinite; }
+.tut-fill tr:nth-child(4) td.ghost { animation-name: tutghost2; }
+@keyframes tutdrag { 0%, 15% { transform: translateY(0); } 55%, 80% { transform: translateY(46px); } 100% { transform: translateY(0); } }
+@keyframes tutghost { 0%, 30% { color: transparent; background: none; } 40%, 85% { color: #1d2130; background: #e8f0fe; } 100% { color: transparent; } }
+@keyframes tutghost2 { 0%, 48% { color: transparent; background: none; } 56%, 85% { color: #1d2130; background: #e8f0fe; } 100% { color: transparent; } }
+.tut-head tr:first-child th:nth-child(3) { animation: tuthead 2.6s ease-in-out infinite; }
+.tut-head td.col { animation: tutcol 2.6s ease-in-out infinite; }
+@keyframes tuthead { 0%, 25% { background: #f3f4f8; color: #6b7389; } 35%, 90% { background: #1a73e8; color: #fff; } 100% { background: #f3f4f8; } }
+@keyframes tutcol { 0%, 25% { background: #fff; } 35%, 90% { background: #d6e4ff; } 100% { background: #fff; } }
+@media (max-width: 720px) { .tut-demos { grid-template-columns: 1fr; } }

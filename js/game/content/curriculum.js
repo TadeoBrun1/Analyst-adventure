@@ -42,10 +42,18 @@
     fill: {
       title: { es: 'Rellenar y copiar fórmulas', en: 'Fill and copy formulas' },
       say: {
-        es: 'No hace falta escribir la misma fórmula 50 veces. Seleccioná la celda y arrastrá el <b>cuadradito azul</b> de la esquina: la planilla ajusta las referencias solas (B2 pasa a B3, B4…). También sirven <b>Ctrl+D</b> y <b>Ctrl+C / Ctrl+V</b>.',
-        en: "You don't need to type the same formula 50 times. Select the cell and drag the <b>little blue square</b> in its corner: the sheet adjusts the references by itself (B2 becomes B3, B4…). <b>Ctrl+D</b> and <b>Ctrl+C / Ctrl+V</b> work too.",
+        es: 'No hace falta escribir la misma fórmula 50 veces. Escribila una vez en la primera fila, seleccioná esa celda y <b>arrastrá hacia abajo el cuadradito azul</b> de su esquina inferior derecha: cada fila recibe la fórmula de arriba y las referencias se ajustan solas (B2 pasa a B3, B4…). También sirven <b>Ctrl+D</b> y <b>Ctrl+C / Ctrl+V</b>.',
+        en: "You don't need to type the same formula 50 times. Type it once in the first row, select that cell and <b>drag the little blue square</b> in its bottom-right corner down: each row gets the formula from above and the references adjust by themselves (B2 becomes B3, B4…). <b>Ctrl+D</b> and <b>Ctrl+C / Ctrl+V</b> work too.",
       },
       tip: { es: 'Seleccioná un rango y apretá Ctrl+D: copia la primera fila en todas.', en: 'Select a range and press Ctrl+D: it copies the first row into all of them.' },
+    },
+    headers: {
+      title: { es: 'Marcar una columna o fila entera', en: 'Select a whole column or row' },
+      say: {
+        es: 'Para ver todos los datos de una columna, hacé clic en su <b>letra</b> (A, B, C…), arriba de todo: se marca la columna entera. Con el <b>número</b> de la izquierda se marca la fila entera. Así seguís fácil los datos de un producto o de un mes sin perderte.',
+        en: 'To see all the data in a column, click its <b>letter</b> (A, B, C…) at the very top: the whole column is selected. Click the <b>number</b> on the left to select the whole row. It makes it easy to follow a product or a month without getting lost.',
+      },
+      tip: { es: 'La letra y el número de la celda en la que estás siempre quedan resaltados.', en: 'The letter and number of the cell you are on are always highlighted.' },
     },
     rawdata: {
       title: { es: 'Regla de oro: no tocar los datos originales', en: "Golden rule: don't touch the original data" },
@@ -279,7 +287,7 @@
       title: { es: 'Fórmulas básicas', en: 'Basic formulas' },
       xp: 40,
       tier: 0,
-      skills: ['formulas', 'refs', 'operators', 'fill', 'rawdata'],
+      skills: ['formulas', 'refs', 'operators', 'fill', 'headers', 'rawdata'],
       templates: ['m1_orders', 'm1_budget', 'm1_stock', 'm1_vat', 'm1_unit'],
       seeds: [101, 102, 103, 104, 105],
       intro: {

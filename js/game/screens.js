@@ -322,6 +322,7 @@
             <div><b>${esc(mission.file)}</b><span class="muted">${T('Nivel', 'Level')} ${levelNum(mod)} · ${esc(mission.subject)} · ${esc(AA.L(ch.name))}</span></div>
           </div>
           <div class="spacer"></div>
+          <button class="btn" data-act="help" title="${T('Cómo usar la planilla', 'How to use the spreadsheet')}">❓ ${T('Ayuda', 'Help')}</button>
           <button class="btn" data-act="notebook">📒 ${T('Libreta', 'Notebook')}</button>
           <button class="btn" data-act="email">📧 ${T('Ver pedido', 'View request')}</button>
           <button class="btn" data-act="hint">💡 ${T('Pista', 'Hint')}</button>
@@ -370,6 +371,7 @@
       root.querySelector('[data-act="inbox"]').addEventListener('click', () => this.leave(() => AA.Game.openComputer()));
       root.querySelector('[data-act="notebook"]').addEventListener('click', () => openNotebook(mission.module));
       root.querySelector('[data-act="email"]').addEventListener('click', () => this.showEmail());
+      root.querySelector('[data-act="help"]').addEventListener('click', () => this.showTutorial());
       root.querySelector('[data-act="hint"]').addEventListener('click', () => this.useHint());
       this.submitBtn.addEventListener('click', () => this.submit());
       root.querySelectorAll('[data-view]').forEach((b) =>
@@ -393,6 +395,7 @@
       this.showView(startView, true);
       this.evaluate(true);
       if (!prog && !st.isCompleted(id) && id === 'mod1-1') setTimeout(() => this.showTutorial(), 250);
+      this.scheduleHeadersTip();
     },
 
     // --- Herramientas
@@ -530,14 +533,61 @@
           );
         },
         onToast: (msg) => AA.UI.toast(msg, 'info'),
-        onEdit: () => {
+        onEdit: (changes) => {
           AA.Audio.play('type');
+          this.maybeFillTip(i, changes);
           // Otras hojas pueden depender de esta: se redibujan las que ya existen.
           this.grids.forEach((g, k) => g && k !== i && g.refresh());
           this.evaluate();
           this.scheduleSave();
         },
       });
+    },
+
+    // --- Ayudas que aparecen una sola vez por partida, en el momento justo.
+    // Después de la primera fórmula: cómo copiarla a las filas de abajo arrastrando.
+    maybeFillTip(i, changes) {
+      const st = AA.State;
+      const g = this.grids[i];
+      if (!g) return;
+      if (changes && changes.length > 1) g.hideCoach(); // ya rellenó: la burbuja cumplió su función
+      if (st.data.flags.tipFill || !changes || changes.length !== 1 || !/^=/.test(String(changes[0].after || ''))) return;
+      const { c, r } = changes[0];
+      st.data.flags.tipFill = true;
+      st.save();
+      setTimeout(
+        () =>
+          g.coach(
+            T(
+              '💡 <b>¿La misma cuenta en las filas de abajo?</b> No la escribas de nuevo: seleccioná esta celda y <b>arrastrá hacia abajo el cuadradito azul</b> de su esquina. La fórmula de arriba se copia en cada fila y las referencias se ajustan solas (B2 → B3 → B4…). <span class="muted">Atajo: seleccioná el rango y apretá Ctrl+D.</span>',
+              '💡 <b>Same calculation in the rows below?</b> Don\'t type it again: select this cell and <b>drag the little blue square</b> in its corner down. The formula above is copied into each row and the references adjust by themselves (B2 → B3 → B4…). <span class="muted">Shortcut: select the range and press Ctrl+D.</span>'
+            ),
+            { c, r, dx: 10 }
+          ),
+        120
+      );
+    },
+    // Al abrir la primera tarea con planilla: marcar una columna o fila entera con su encabezado.
+    scheduleHeadersTip() {
+      const st = AA.State;
+      if (st.data.flags.tipHeaders || !this.defs.length) return;
+      const mission = this.mission;
+      const tryShow = () => {
+        if (this.mission !== mission) return;
+        if (AA.UI.isModalOpen() || AA.Dialog.isOpen() || this.activeView !== 'sheets') return setTimeout(tryShow, 600);
+        const g = this.grids[this.activeSheet];
+        if (!g) return;
+        st.data.flags.tipHeaders = true;
+        st.save();
+        g.coach(
+          T(
+            '💡 <b>Hacé clic en la letra de una columna</b> (A, B, C…) para marcarla entera, o en el <b>número de una fila</b> para marcar toda la fila. Así encontrás fácil los datos de esa columna o fila.',
+            '💡 <b>Click a column letter</b> (A, B, C…) to select the whole column, or a <b>row number</b> to select the whole row. It makes it easy to follow that column\'s or row\'s data.'
+          ),
+          { col: 1, dx: -8, ms: 14000 }
+        );
+      };
+      setTimeout(tryShow, 900);
     },
 
     focusActive() {
@@ -723,17 +773,37 @@
     },
 
     showTutorial() {
+      // Mini planillas ilustradas (animadas con CSS) para lo que más cuesta descubrir solo.
+      const mini = (cells, extra) => `<table class="tut-sheet ${extra || ''}"><tr><th></th><th>A</th><th>B</th><th>C</th></tr>${cells}</table>`;
+      const fillDemo = mini(
+        `<tr><th>1</th><td>${T('Cant.', 'Qty')}</td><td>${T('Precio', 'Price')}</td><td>Total</td></tr>
+         <tr><th>2</th><td>2</td><td>500</td><td class="sel">=A2*B2<i class="tut-handle"></i></td></tr>
+         <tr><th>3</th><td>4</td><td>250</td><td class="ghost">=A3*B3</td></tr>
+         <tr><th>4</th><td>1</td><td>900</td><td class="ghost">=A4*B4</td></tr>`,
+        'tut-fill'
+      );
+      const headDemo = mini(
+        `<tr><th>1</th><td>${T('Mes', 'Month')}</td><td class="col">${T('Ventas', 'Sales')}</td><td>${T('Meta', 'Goal')}</td></tr>
+         <tr><th>2</th><td>${T('Ene', 'Jan')}</td><td class="col">120</td><td>100</td></tr>
+         <tr><th>3</th><td>${T('Feb', 'Feb')}</td><td class="col">95</td><td>100</td></tr>
+         <tr><th>4</th><td>${T('Mar', 'Mar')}</td><td class="col">130</td><td>110</td></tr>`,
+        'tut-head'
+      );
       AA.UI.modal({
         title: T('🧭 Cómo usar la planilla', '🧭 How to use the spreadsheet'),
         wide: true,
         html: `
+          <div class="tut-demos">
+            <figure>${fillDemo}<figcaption>${T('<b>Copiar una fórmula hacia abajo:</b> seleccioná la celda y arrastrá el <b>cuadradito azul</b> de la esquina. Cada fila recibe la fórmula de arriba, ajustada a su fila.', '<b>Copy a formula down:</b> select the cell and drag the <b>little blue square</b> in its corner. Each row gets the formula from above, adjusted to its row.')}</figcaption></figure>
+            <figure>${headDemo}<figcaption>${T('<b>Marcar una columna o fila entera:</b> clic en su <b>letra</b> (arriba) o en su <b>número</b> (a la izquierda). Ideal para seguir los datos de una columna.', '<b>Select a whole column or row:</b> click its <b>letter</b> (top) or its <b>number</b> (left). Great for following a column\'s data.')}</figcaption></figure>
+          </div>
           <div class="tutorial">
             <div>${T('<b>1. Seleccioná</b> una celda con un clic (o con las flechas).', '<b>1. Select</b> a cell with a click (or the arrow keys).')}</div>
             <div>${T('<b>2. Escribí</b> directamente. Si empieza con <code>=</code> es una fórmula: <code>=C2*D2</code>.', '<b>2. Type</b> directly. If it starts with <code>=</code> it is a formula: <code>=C2*D2</code>.')}</div>
             <div>${T('<b>3. Enter</b> confirma. <b>Esc</b> cancela. <b>Doble clic</b> o <b>F2</b> para editar.', '<b>3. Enter</b> confirms. <b>Esc</b> cancels. <b>Double-click</b> or <b>F2</b> to edit.')}</div>
             <div>${T('<b>4. Mientras escribís una fórmula</b>, hacé clic en otra celda para insertar su referencia.', '<b>4. While typing a formula</b>, click another cell to insert its reference.')}</div>
-            <div>${T('<b>5. Rellenar:</b> arrastrá el cuadradito azul de la esquina de la selección para copiar la fórmula.', '<b>5. Fill:</b> drag the little blue square at the corner of the selection to copy the formula.')}</div>
-            <div>${T('<b>6. Objetivos:</b> se tildan solos a la izquierda. Las preguntas ❓ se responden escribiendo.', '<b>6. Objectives:</b> they tick themselves on the left. Questions ❓ are answered by typing.')}</div>
+            <div>${T('<b>5. Objetivos:</b> están en el panel de la izquierda y se tildan solos. Las preguntas ❓ se responden escribiendo.', '<b>5. Objectives:</b> they are in the left panel and tick themselves. Questions ❓ are answered by typing.')}</div>
+            <div>${T('<b>6. ¿Te olvidaste algo?</b> Esta guía está siempre en el botón <b>❓ Ayuda</b>.', '<b>6. Forgot something?</b> This guide is always under the <b>❓ Help</b> button.')}</div>
           </div>`,
         buttons: [{ label: T('¡Entendido!', 'Got it!'), primary: true }],
         onClose: () => this.focusActive(),

@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.5.0';
+  AA.VERSION = '0.5.1';
 
   const Game = {
     screen: 'title',
@@ -55,6 +55,7 @@
       AA.Office.player.x = AA.Office.START.x;
       AA.Office.player.y = AA.Office.START.y;
       AA.Office.player.dir = 'up';
+      AA.Office.standUp();
       this.enterOffice();
     },
 
@@ -201,7 +202,8 @@
             return;
           }
           AA.Audio.play('select');
-          this.openComputer();
+          // Primero te sentás en tu silla; después se abre la computadora.
+          AA.Office.sitAtDesk(() => this.openComputer());
           return;
         case 'whiteboard':
           AA.Screens.openCareer();

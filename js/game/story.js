@@ -185,13 +185,25 @@
     },
 
     camila() {
-      const lines = Cu().lessonDone(Cu().MODULES[3])
-        ? [T('Ahora que sabés limpiar texto, te va a encantar cuando lleguen números guardados como texto. Spoiler: llegan.', "Now that you can clean text, you'll love it when numbers stored as text show up. Spoiler: they will.")]
-        : [
-            T('Yo armo los procesos que traen los datos a la empresa. Si llegan sucios… bueno, no siempre es culpa mía. 😅', "I build the pipelines that bring data into the company. If it arrives dirty… well, it's not always my fault. 😅"),
-            T('Dato de color: el 80% del trabajo de un analista es limpiar datos. El otro 20% es quejarse de limpiar datos.', "Fun fact: 80% of an analyst's job is cleaning data. The other 20% is complaining about cleaning data."),
-            T('Regla de oro: nunca confíes en un dato que no revisaste.', "Golden rule: never trust data you haven't checked."),
-          ];
+      const st = S();
+      const motto = T('¡Trabajando se saca este país adelante! 💪', 'Hard work is what moves this country forward! 💪');
+      if (!st.data.flags.metCamila) {
+        st.data.flags.metCamila = true;
+        st.save();
+        AA.Dialog.open([
+          { who: 'camila', text: T('¡Hola! Soy Camila, Data Engineer. Perdón que no me levanto: estoy con un proceso de carga que no se puede cortar.', "Hi! I'm Camila, Data Engineer. Sorry I don't get up: I'm running a data load I can't stop."), },
+          { who: 'camila', text: motto },
+        ]);
+        return;
+      }
+      const lines = [
+        motto,
+        T('No me distraigas que estoy en racha. ¡Trabajando se saca este país adelante!', "Don't distract me, I'm on a roll. Hard work moves this country forward!"),
+        T('Yo armo los procesos que traen los datos a la empresa. Si llegan sucios… bueno, no siempre es culpa mía. 😅', "I build the pipelines that bring data into the company. If it arrives dirty… well, it's not always my fault. 😅"),
+        T('Dato de color: el 80% del trabajo de un analista es limpiar datos. El otro 20% es quejarse de limpiar datos.', "Fun fact: 80% of an analyst's job is cleaning data. The other 20% is complaining about cleaning data."),
+        T('Regla de oro: nunca confíes en un dato que no revisaste.', "Golden rule: never trust data you haven't checked."),
+      ];
+      if (Cu().lessonDone(Cu().MODULES[3])) lines.push(T('Ahora que sabés limpiar texto, te va a encantar cuando lleguen números guardados como texto. Spoiler: llegan.', "Now that you can clean text, you'll love it when numbers stored as text show up. Spoiler: they will."));
       AA.Dialog.open([{ who: 'camila', text: pick(lines) }]);
     },
 

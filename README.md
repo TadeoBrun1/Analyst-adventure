@@ -98,6 +98,7 @@ ver [`docs/CARRERA.md`](docs/CARRERA.md).
 | **0.4.1** | Oficina rediseñada: más grande y luminosa, con comedor, plantas, sala de reuniones y living. | ✅ |
 | **0.4.2** | Ficha del jugador (rango, XP y nivel) dentro de la libreta; música nueva para la oficina y opción para apagar la música. | ✅ |
 | **0.5** | Creador de personaje, nuevos personajes en el comedor (Jean y Juan Roberto), equipo renombrado, tecla `F` para la libreta, flechas en todos los menús y `Esc` para salir de las tareas. | ✅ |
+| **0.5.1** | Sillas en los escritorios (te sentás antes de usar la computadora), guía ilustrada de la planilla con botón ❓ Ayuda, ayudas en el momento justo (copiar una fórmula arrastrando, marcar filas y columnas) y panel de objetivos con color propio. | ✅ |
 | **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
