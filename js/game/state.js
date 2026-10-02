@@ -59,7 +59,8 @@
       practice: {}, // mod -> cantidad de prácticas completadas
       activePractice: {}, // mod -> id de la práctica en curso
       progress: {}, // id -> { cells, answers, hints, lang }
-      flags: { intro: false, rankSeen: 0, metLeo: false, metCamila: false, tipFill: false, tipHeaders: false },
+      flags: { intro: false, rankSeen: 0, metLeo: false, metCamila: false, metNico: false, tipFill: false, tipHeaders: false, favorsDone: 0, favorAt: 0, lastFavorKind: null, events: 0, eventMiss: 0, tours: {} },
+      favor: null, // pedido de Nico en curso: id de la misión
       look: null, // aspecto elegido en el creador de personaje
       rankReached: 0,
       createdAt: Date.now(),
@@ -179,6 +180,27 @@
       return { pct: (this.data.xp - cur.xp) / (next.xp - cur.xp), next, cur };
     },
 
+    // XP extra (por ejemplo, de una presentación). Devuelve true si te hizo ascender.
+    addXp(n) {
+      const before = this.rankIndex();
+      this.data.xp += Math.max(0, Math.round(n));
+      const after = this.rankIndex();
+      this.data.rankReached = Math.max(this.data.rankReached || 0, after);
+      this.save();
+      return after > before;
+    },
+
+    // --- Favores de Nico: ¿puede pedir uno ahora? (desde Semi-Senior, cada 2 tareas entregadas)
+    favorReady() {
+      if (!this.data || this.rankIndex() < 2 || this.data.favor) return false;
+      const f = this.data.flags;
+      return !f.favorsDone || this.workCount() - (f.favorAt || 0) >= 2;
+    },
+    // Tareas entregadas en total (obligatorias + prácticas).
+    workCount() {
+      return this.completedCount() + Object.values(this.data.practice || {}).reduce((a, n) => a + n, 0);
+    },
+
     // --- Progreso
     isCompleted(id) {
       return !!this.data.completed[id];
@@ -201,7 +223,16 @@
       let gained = 0;
       let firstTime = true;
       let noXpReason = null;
-      if (mission.kind === 'practice') {
+      if (mission.kind === 'favor') {
+        if (this.data.favor === mission.id) {
+          gained = Math.round(mission.xp * factor);
+          this.data.xp += gained;
+          this.data.favor = null;
+          this.data.flags.favorsDone = (this.data.flags.favorsDone || 0) + 1;
+          this.data.flags.favorAt = this.workCount();
+          this.data.flags.lastFavorKind = mission.favorKind || null;
+        }
+      } else if (mission.kind === 'practice') {
         const p = AA.Curriculum.parseId(mission.id);
         const reward = AA.Curriculum.practiceReward(mod, p.size);
         noXpReason = reward.reason;

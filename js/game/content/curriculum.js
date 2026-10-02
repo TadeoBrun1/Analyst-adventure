@@ -398,6 +398,38 @@
   // Casos de práctica que suman XP en cada nivel. Después se puede seguir practicando, sin XP.
   const PRACTICE_XP_LIMIT = 4;
 
+  // Favores de Nico (desde Semi-Senior): tareas distintas a las del día a día.
+  // Solo salen de niveles cuya lección ya diste.
+  const FAVOR_XP = 90;
+  const FAVORS = [
+    { mod: 'mod4', template: 'm4_clients', kind: 'clean' },
+    { mod: 'mod4', template: 'm4_codes', kind: 'clean' },
+    { mod: 'mod8', template: 'm8_duplicates', kind: 'clean' },
+    { mod: 'mod8', template: 'm8_blanks', kind: 'clean' },
+    { mod: 'mod8', template: 'm8_textnum', kind: 'clean' },
+    { mod: 'mod8', template: 'm8_validity', kind: 'clean' },
+    { mod: 'mod14', template: 'm14_churn', kind: 'report' },
+    { mod: 'mod14', template: 'm14_returns', kind: 'report' },
+    { mod: 'mod14', template: 'm14_delivery', kind: 'report' },
+    { mod: 'mod15', template: 'm15_ranges', kind: 'review' },
+    { mod: 'mod15', template: 'm15_lookup', kind: 'review' },
+    { mod: 'mod15', template: 'm15_pct', kind: 'review' },
+  ];
+  const FAVOR_TEXT = {
+    clean: {
+      ask: { es: 'Me pasaron una base hecha un desastre: espacios, duplicados, vacíos… Si la limpio yo, tardo una semana. ¿Me das una mano?', en: "They sent me a total mess of a dataset: spaces, duplicates, blanks… If I clean it myself it'll take a week. Can you help?" },
+      mail: { es: '<p>Che, {name}, ¡gracias por aceptar! Te reenvío lo que me pidieron. Yo empecé a limpiarlo pero me perdí. ¿Lo podés dejar prolijo?</p>', en: "<p>Hey {name}, thanks for saying yes! I'm forwarding what they asked me for. I started cleaning it but got lost. Can you tidy it up?</p>" },
+    },
+    report: {
+      ask: { es: 'Marta me pidió un informe con conclusiones y yo solo sé hacer tablas… ¿Me ayudás a encontrar qué pasó y a escribirlo?', en: 'Marta asked me for a report with conclusions and I only know how to make tables… Will you help me find what happened and write it up?' },
+      mail: { es: '<p>{name}, te reenvío el pedido. Lo que más me cuesta es la parte de <b>contar qué pasó y qué hacer</b>. ¡Te debo una!</p>', en: "<p>{name}, I'm forwarding the request. What I struggle with most is <b>explaining what happened and what to do</b>. I owe you one!</p>" },
+    },
+    review: {
+      ask: { es: 'Terminé una planilla pero algo no me cierra y no encuentro qué. ¿La revisás antes de que la vea Marta? 🙏', en: "I finished a spreadsheet but something doesn't add up and I can't find it. Will you review it before Marta sees it? 🙏" },
+      mail: { es: '<p>{name}, acá va mi planilla. Marcá lo que esté mal y arreglalo así aprendo. Prometo no ofenderme… mucho. 😅</p>', en: "<p>{name}, here's my spreadsheet. Flag what's wrong and fix it so I learn. I promise not to get offended… much. 😅</p>" },
+    },
+  };
+
   const ST = () => AA.State;
   const moduleById = (id) => MODULES.find((m) => m.id === id) || null;
   const storyId = (mod, k) => `${mod.id}-${k + 1}`;
@@ -480,6 +512,8 @@
       if (m) return { kind: 'story', mod: m[1], k: Number(m[2]) - 1 };
       m = /^p:(mod\d+):([a-z0-9_]+):(medium|large):(\d+)$/.exec(id);
       if (m) return { kind: 'practice', mod: m[1], template: m[2], size: m[3], seed: Number(m[4]) };
+      m = /^f:(mod\d+):([a-z0-9_]+):(\d+)$/.exec(id);
+      if (m) return { kind: 'favor', mod: m[1], template: m[2], size: 'medium', seed: Number(m[3]) };
       return null;
     },
     practiceId(mod, template, size, seed) {
@@ -490,6 +524,29 @@
       const seed = Math.floor(Math.random() * 1e9);
       return this.practiceId(mod, template, size, seed);
     },
+    // --- Favores de Nico
+    FAVOR_XP,
+    favorPool() {
+      return FAVORS.filter((f) => this.lessonDone(moduleById(f.mod)));
+    },
+    favorKind(id) {
+      const p = this.parseId(id);
+      const f = p && FAVORS.find((x) => x.template === p.template);
+      return f ? f.kind : 'clean';
+    },
+    favorText(kind) {
+      return FAVOR_TEXT[kind] || FAVOR_TEXT.clean;
+    },
+    // Un favor nuevo: preferí un tipo distinto al del último.
+    newFavor(lastKind) {
+      const pool = this.favorPool();
+      if (!pool.length) return null;
+      const fresh = pool.filter((f) => f.kind !== lastKind);
+      const list = fresh.length ? fresh : pool;
+      const f = list[Math.floor(Math.random() * list.length)];
+      return `f:${f.mod}:${f.template}:${Math.floor(Math.random() * 1e9)}`;
+    },
+
     // XP base de un caso de práctica según el tamaño de la tabla.
     practiceXp(mod, size) {
       return size === 'large' ? Math.round(mod.xp * 1.6) : mod.xp;
@@ -529,6 +586,18 @@
         m = AA.Content.build(mod.templates[p.k], { seed: mod.seeds[p.k], size: 'small', story: true, first: mod.id === 'mod1' && p.k === 0, lang });
         m.xp = mod.xp;
         m.order = p.k + 1;
+      } else if (p.kind === 'favor') {
+        m = AA.Content.build(p.template, { seed: p.seed, size: 'medium', lang });
+        const kind = this.favorKind(id);
+        const txt = this.favorText(kind);
+        const L = (o) => (lang === 'en' ? o.en : o.es);
+        m.xp = FAVOR_XP;
+        m.from = 'nico';
+        m.dept = 'data';
+        m.subject = (lang === 'en' ? '🤝 Favor for Nico · ' : '🤝 Favor para Nico · ') + m.subject;
+        m.email = `${L(txt.mail)}<blockquote class="fwd"><div class="muted">${lang === 'en' ? '— Forwarded message —' : '— Mensaje reenviado —'}</div>${m.email}</blockquote>`;
+        m.feedback = lang === 'en' ? 'You saved me! I owe you a coffee. Or two.' : '¡Me salvaste! Te debo un café. O dos.';
+        m.favorKind = kind;
       } else {
         m = AA.Content.build(p.template, { seed: p.seed, size: p.size, lang });
         m.xp = this.practiceXp(mod, p.size);

@@ -48,7 +48,7 @@
             <button class="btn btn-ghost" data-act="back">← ${T('Volver a la oficina', 'Back to the office')} <kbd>Esc</kbd></button>
           </div>
           <div class="mail">
-            <aside class="mail-list">${groups}
+            <aside class="mail-list">${this.renderFavor()}${groups}
               <div class="stage-head future"><span class="chev">🔒</span>${T('Etapa Lead · próximamente', 'Lead stage · coming soon')}</div>
               <div class="mail-group future">
                 <div class="mail-item locked"><div class="mail-subject">${T('Estrategia de datos, priorizar pedidos, acordar métricas con las áreas y gobierno de datos', 'Data strategy, prioritizing requests, agreeing on metrics with other teams and data governance')}</div></div>
@@ -109,8 +109,27 @@
     },
 
     isSelectable(sel) {
+      if (sel.startsWith('f:')) return AA.State.data.favor === sel;
       if (sel.startsWith('lesson:') || sel.startsWith('practice:') || sel.startsWith('locked:')) return true;
       return Cu().missionAvailable(sel);
+    },
+
+    // Pedido de Nico en curso (desde Semi-Senior): siempre arriba de todo, en verde agua.
+    renderFavor() {
+      const st = AA.State;
+      const id = st.data.favor;
+      if (!id) return '';
+      const m = getMission(id, (st.data.progress[id] && st.data.progress[id].lang) || AA.lang);
+      const status = st.data.progress[id] ? `<span class="chip prog">✎ ${T('En progreso', 'In progress')}</span>` : `<span class="chip favor">🤝 ${T('Favor', 'Favor')}</span>`;
+      return `
+        <div class="mail-group favor-group">
+          <div class="mail-group-head">🤝 ${T('Favores de Nico', 'Favors for Nico')}<span>+${m.xp} XP</span></div>
+          <button class="mail-item favor ${this.selected === id ? 'active' : ''}" data-sel="${id}">
+            <div class="mail-from">Nico Ferreyra ${AA.UI.deptBadge('data')}</div>
+            <div class="mail-subject">${esc(m.subject)}</div>
+            <div class="mail-meta">${status}<span class="xp">+${m.xp} XP</span></div>
+          </button>
+        </div>`;
     },
 
     // ¿La etapa está desplegada? Lo que eligió el jugador manda; si no eligió, se abre la etapa actual.
@@ -409,7 +428,7 @@
       root.querySelector('[data-act="inbox"]').addEventListener('click', () => this.leave(() => AA.Game.openComputer()));
       root.querySelector('[data-act="notebook"]').addEventListener('click', () => openNotebook(mission.module));
       root.querySelector('[data-act="email"]').addEventListener('click', () => this.showEmail());
-      root.querySelector('[data-act="help"]').addEventListener('click', () => this.showTutorial());
+      root.querySelector('[data-act="help"]').addEventListener('click', () => AA.Guides.mission(this, true));
       root.querySelector('[data-act="hint"]').addEventListener('click', () => this.useHint());
       this.submitBtn.addEventListener('click', () => this.submit());
       root.querySelectorAll('[data-view]').forEach((b) =>
@@ -432,7 +451,8 @@
       if (this.defs.length) this.showSheet(0, true);
       this.showView(startView, true);
       this.evaluate(true);
-      if (!prog && !st.isCompleted(id) && id === 'mod1-1') setTimeout(() => this.showTutorial(), 250);
+      // Guía de la planilla (o de la herramienta) la primera vez.
+      setTimeout(() => this.mission && AA.Guides.mission(this), 300);
       this.scheduleHeadersTip();
     },
 
@@ -515,7 +535,10 @@
       else if (id === 'dashboard' && v) v.drawCharts();
       else if (id === 'report' && v) v.build();
       else if (id === 'sql' && v) setTimeout(() => v.focus(), 30);
-      if (!initial) this.scheduleSave();
+      if (!initial) {
+        this.scheduleSave();
+        setTimeout(() => this.mission && this.activeView === id && AA.Guides.mission(this), 250);
+      }
     },
 
     // Hoja visible (las grillas se crean al mostrarlas por primera vez).
@@ -612,7 +635,8 @@
       const mission = this.mission;
       const tryShow = () => {
         if (this.mission !== mission) return;
-        if (AA.UI.isModalOpen() || AA.Dialog.isOpen() || this.activeView !== 'sheets') return setTimeout(tryShow, 600);
+        if (st.data.flags.tipHeaders) return; // ya lo explicó la guía
+        if (AA.UI.isModalOpen() || AA.Dialog.isOpen() || AA.Tour.isOpen() || this.activeView !== 'sheets') return setTimeout(tryShow, 600);
         const g = this.grids[this.activeSheet];
         if (!g) return;
         st.data.flags.tipHeaders = true;
@@ -947,14 +971,57 @@
       Object.values(this.views).forEach((v) => v && v.destroy && v.destroy());
       this.views = {};
       this.mission = null;
+      const hintsUsed = this.hints.length;
+      // Evento especial: a veces, al entregar, te toca presentar los resultados frente al equipo.
+      const ev = this.maybeEvent(m, res);
+      if (ev) {
+        AA.Game.presentResults(ev, (out) => this.showResult(m, res, before, hintsUsed, out));
+        return;
+      }
+      this.showResult(m, res, before, hintsUsed, null);
+    },
+
+    // ¿Sale un evento de presentación? Solo en tareas donde armaste resultados en una tabla,
+    // desde el Nivel 2. El primero llega pronto (para que lo conozcas); después, al azar.
+    maybeEvent(m, res) {
+      const st = AA.State;
+      const f = st.data.flags;
+      if (m.kind === 'favor' || Cu().MODULES.indexOf(Cu().moduleById(m.module)) < 1) return null;
+      const qs = AA.Present.questions(m, this.book, this.defs);
+      if (qs.length < 2) return null;
+      const go = f.events ? Math.random() < 0.3 || f.eventMiss >= 5 : f.eventMiss >= 1;
+      if (!go) {
+        f.eventMiss = (f.eventMiss || 0) + 1;
+        st.save();
+        return null;
+      }
+      f.events = (f.events || 0) + 1;
+      f.eventMiss = 0;
+      st.save();
+      return { mission: m, questions: qs, xpEach: res.gained ? Math.max(5, Math.round(m.xp * 0.05)) : 0 };
+    },
+
+    showResult(m, res, before, hintsUsed, ev) {
+      const st = AA.State;
+      let bonus = 0;
+      if (ev && ev.bonus) {
+        bonus = ev.bonus;
+        if (st.addXp(bonus)) {
+          res.promoted = true;
+          res.rank = st.rank();
+        }
+      }
       const ch = st.CHARACTERS[m.from];
       const prog = st.rankProgress();
       const mod = Cu().moduleById(m.module);
       const nextMod = Cu().MODULES[Cu().MODULES.indexOf(mod) + 1];
       const party = res.moduleCompleted || res.promoted;
       AA.Audio.play(party ? 'fanfare' : 'complete');
-      const penalty = res.gained && this.hints.length ? ` <span class="muted">(${this.hints.length} ${T(this.hints.length > 1 ? 'pistas' : 'pista', this.hints.length > 1 ? 'hints' : 'hint')})</span>` : '';
+      const penalty = res.gained && hintsUsed ? ` <span class="muted">(${hintsUsed} ${T(hintsUsed > 1 ? 'pistas' : 'pista', hintsUsed > 1 ? 'hints' : 'hint')})</span>` : '';
       let extra = '';
+      if (ev) {
+        extra += `<div class="promo event-promo">📣 ${T(`Presentación: <b>${ev.correct} de ${ev.total}</b> respuestas correctas`, `Presentation: <b>${ev.correct} of ${ev.total}</b> correct answers`)}${bonus ? ` · <b>+${bonus} XP</b> ${T('extra', 'bonus')}` : ''}</div>`;
+      }
       if (res.moduleCompleted) {
         extra += `<div class="promo">🎉 ${T(`¡<b>Nivel ${levelNum(mod)}</b> completado! Se desbloqueó la <b>práctica libre</b> de este nivel.`, `<b>Level ${levelNum(mod)}</b> complete! <b>Free practice</b> for this level is unlocked.`)}`;
         if (nextMod) {
@@ -998,7 +1065,7 @@
             <div data-el="portrait"></div>
             <div><b>${esc(AA.L(ch.name))}</b><p>“${esc(m.feedback)}”</p></div>
           </div>
-          <div class="xp-gain" ${reveal(1)}>${res.gained ? `<span data-el="xp">+0</span> XP${penalty}` : T('Práctica completada (sin XP extra)', 'Practice completed (no extra XP)')}</div>
+          <div class="xp-gain" ${reveal(1)}>${res.gained + bonus ? `<span data-el="xp">+0</span> XP${penalty}` : T('Práctica completada (sin XP extra)', 'Practice completed (no extra XP)')}</div>
           <div ${reveal(2)}>
             <div class="rank-line"><b>${esc(AA.L(prog.cur.name))}</b><span class="muted">${st.data.xp} XP${prog.next ? ` / ${prog.next.xp} → ${esc(AA.L(prog.next.name))}` : ''}</span></div>
             ${AA.UI.xpBar(fromPct)}
@@ -1013,13 +1080,14 @@
           if (xpEl) {
             setTimeout(() => {
               const t0 = performance.now();
-              const dur = Math.min(1200, 400 + res.gained * 4);
+              const total = res.gained + bonus;
+              const dur = Math.min(1200, 400 + total * 4);
               let ticks = 0;
               const step = (now) => {
                 if (!xpEl.isConnected) return;
                 const k = Math.min(1, (now - t0) / dur);
                 const eased = 1 - Math.pow(1 - k, 3);
-                xpEl.textContent = '+' + Math.round(res.gained * eased);
+                xpEl.textContent = '+' + Math.round(total * eased);
                 if (k * 8 > ticks && ticks < 8) {
                   ticks++;
                   AA.Audio.seq([72 + ticks * 2], 0.03, { type: 'square', vol: 0.035 });

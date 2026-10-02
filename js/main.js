@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.5.2';
+  AA.VERSION = '0.6.0';
 
   const Game = {
     screen: 'title',
@@ -23,7 +23,7 @@
       AA.Office.init(document.getElementById('office-canvas'), {
         onInteract: (id) => this.interact(id),
         getMarkers: () => this.markers(),
-        paused: () => this.screen !== 'office' || AA.Dialog.isOpen() || AA.UI.isModalOpen(),
+        paused: () => this.screen !== 'office' || AA.Dialog.isOpen() || AA.UI.isModalOpen() || AA.Tour.isOpen(),
       });
       AA.Menu.init();
       this.bindHud();
@@ -34,8 +34,12 @@
     show(name) {
       if (name !== this.screen) document.getElementById('toast').innerHTML = '';
       this.screen = name;
-      document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + name));
-      if (name === 'office') AA.Office.start();
+      // La presentación usa la misma pantalla (y lienzo) que la oficina.
+      const section = name === 'present' ? 'office' : name;
+      document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + section));
+      document.getElementById('screen-office').classList.toggle('presenting', name === 'present');
+      if (name !== 'present') AA.Office.stopPresentation();
+      if (name === 'office' || name === 'present') AA.Office.start();
       else AA.Office.stop();
       if (name !== 'title') AA.Menu.close();
       AA.Audio.setDuck(name === 'mission' ? 0.45 : 1);
@@ -90,6 +94,7 @@
       const m = {};
       if (!st.data.flags.intro || st.data.flags.rankSeen < st.rankIndex()) m.marta = true;
       if (st.data.flags.intro && Cu().pendingLesson()) m.leo = true;
+      if (st.rankIndex() >= 2 && (!st.data.flags.metNico || st.favorReady())) m.nico = true;
       else if (st.data.flags.intro && Cu().nextMission()) m.computer = true;
       return m;
     },
@@ -146,14 +151,23 @@
       this.show('office');
       this.updateHud();
       const st = AA.State;
-      if (!st.data.flags.intro) setTimeout(() => AA.Story.intro(), 400);
+      // Primera vez: bienvenida (cómo se juega) → guía de la oficina → Marta.
+      if (!st.data.flags.intro) setTimeout(() => AA.Guides.welcome(() => AA.Guides.office(() => AA.Story.intro())), 400);
       else if (st.data.flags.rankSeen < st.rankIndex()) AA.UI.toast(T('📣 <b>Marta</b> quiere hablar con vos en su oficina.', '📣 <b>Marta</b> wants to talk to you in her office.'), 'info');
       else if (Cu().pendingLesson()) AA.UI.toast(T('☕ <b>Leo</b> tiene algo nuevo para enseñarte (junto al café).', '☕ <b>Leo</b> has something new to teach you (by the coffee machine).'), 'info');
     },
     openComputer() {
       this.show('computer');
       AA.Screens.Inbox.render();
+      setTimeout(() => this.screen === 'computer' && AA.Guides.inbox(), 250);
     },
+    // Evento especial: presentar los resultados frente al equipo.
+    presentResults(ev, done) {
+      AA.UI.closeModal(true);
+      this.show('present');
+      AA.Present.run(ev, done);
+    },
+
     openMission(id) {
       const p = Cu().parseId(id);
       if (!p) return;
@@ -213,6 +227,9 @@
           return;
         case 'leo':
           AA.Story.leo();
+          return;
+        case 'nico':
+          AA.Story.nico();
           return;
         case 'camila':
         case 'tadeo':

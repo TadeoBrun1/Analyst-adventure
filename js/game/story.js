@@ -11,6 +11,11 @@
   const Cu = () => AA.Curriculum;
   const T = (es, en) => ({ es, en });
   const levelNum = (mod) => Cu().MODULES.indexOf(mod) + 1;
+  // El trato cambia con tu rango: 0 pasante · 1 junior · 2 semi-senior · 3 senior · 4 lead.
+  const rk = () => Math.min(S().rankIndex(), 4);
+  const byRank = (arr) => arr[Math.min(rk(), arr.length - 1)];
+  // Mitad de las veces, una frase de tu rango; si no, una del repertorio general.
+  const rankOr = (rankLines, general) => (Math.random() < 0.5 ? byRank(rankLines) : pick(general));
 
   const LEO_TIPS = [
     T('Antes de calcular nada, mirá los datos. Cinco minutos de mirar te ahorran una hora de corregir.', 'Before calculating anything, look at the data. Five minutes of looking saves an hour of fixing.'),
@@ -105,7 +110,18 @@
       if (lesson) {
         lines.push({ who: 'marta', text: T(`Leo te está esperando para explicarte el <b>Nivel ${levelNum(lesson)}: ${lesson.title.es}</b>. Está junto al café.`, `Leo is waiting to walk you through <b>Level ${levelNum(lesson)}: ${lesson.title.en}</b>. He's by the coffee machine.`) });
       } else if (Cu().nextMission()) {
-        lines.push({ who: 'marta', text: pick([T('Buen trabajo hasta ahora. Seguí así.', 'Good work so far. Keep it up.'), T('Me llegan buenos comentarios de las otras áreas. 👌', "I'm hearing good things from the other teams. 👌"), T('Recordá: un dato sin contexto es solo un número.', 'Remember: data without context is just a number.')]) });
+        lines.push({
+          who: 'marta',
+          text: rankOr(
+            [
+              T('Para ser pasante, vas muy bien. Preguntá todo lo que necesites: para eso estás acá.', "For an intern, you're doing great. Ask whatever you need: that's what you're here for."),
+              T('Como junior ya te piden cosas todas las áreas, y me llegan buenos comentarios. 👌', "As a junior every team asks you for things now, and I'm hearing good feedback. 👌"),
+              T('Ahora que sos semi-senior espero análisis completos, no números sueltos. Vas bien.', "Now that you're mid-level I expect full analyses, not loose numbers. You're on track."),
+              T('Gerencia ya pregunta por vos por nombre. Eso es ser senior.', 'Management asks for you by name now. That is what being senior means.'),
+            ],
+            [T('Buen trabajo hasta ahora. Seguí así.', 'Good work so far. Keep it up.'), T('Me llegan buenos comentarios de las otras áreas. 👌', "I'm hearing good things from the other teams. 👌"), T('Recordá: un dato sin contexto es solo un número.', 'Remember: data without context is just a number.')]
+          ),
+        });
         lines.push({ who: 'marta', text: T('Tenés tareas nuevas en tu computadora.', 'You have new tasks on your computer.') });
       } else {
         const ps = Cu().promotionStatus();
@@ -159,7 +175,14 @@
       const learned = Cu().MODULES.filter((m) => Cu().lessonDone(m));
       lines.push({
         who: 'leo',
-        text: pick([T('¿Qué necesitás?', 'What do you need?'), T('¿Un cafecito y una fórmula?', 'A coffee and a formula?'), T('¿En qué te doy una mano?', 'How can I help?')]),
+        text: pick(
+          byRank([
+            [T('¿Qué necesitás, pasante? Acá nadie muerde: preguntá lo que quieras.', 'What do you need, intern? Nobody bites here: ask anything.'), T('¿Un cafecito y una fórmula? Para un pasante, es el combo ideal.', 'A coffee and a formula? The perfect combo for an intern.')],
+            [T('¿Qué onda, junior? ¿En qué te doy una mano?', "What's up, junior? How can I help?"), T('Junior que pregunta es junior que no rompe la planilla. Decime.', 'A junior who asks is a junior who doesn\'t break the sheet. Tell me.')],
+            [T('¡Pero mirá quién viene: semi-senior de la casa! ¿Qué necesitás?', 'Look who it is: our mid-level analyst! What do you need?'), T('Ya sos semi-senior y seguís pasando por el café. Me gusta. ¿En qué te ayudo?', "You're mid-level now and you still stop by the coffee machine. I like it. How can I help?")],
+            [T('Colega senior, ¿un café y hablamos de métricas?', 'Fellow senior, coffee and some metrics talk?'), T('Ahora que somos los dos senior, me podés ayudar vos a mí. Pero dale, ¿qué necesitás?', "Now that we're both senior, you could help me. But sure, what do you need?")],
+          ])
+        ),
         choices: [
           { label: AA.T('📒 Abrir mi libreta', '📒 Open my notebook'), action: () => AA.Screens.openNotebook() },
           ...(learned.length ? [{ label: AA.T('🔁 Repasar una lección', '🔁 Review a lesson'), action: () => this.reviewMenu(learned) }] : []),
@@ -203,6 +226,15 @@
         T('Dato de color: el 80% del trabajo de un analista es limpiar datos. El otro 20% es quejarse de limpiar datos.', "Fun fact: 80% of an analyst's job is cleaning data. The other 20% is complaining about cleaning data."),
         T('Regla de oro: nunca confíes en un dato que no revisaste.', "Golden rule: never trust data you haven't checked."),
       ];
+      lines.push(
+        byRank([
+          T('¿Pasante y ya te hacen trabajar con datos reales? Te damos la bienvenida al mundo real.', 'An intern already working with real data? Welcome to the real world.'),
+          T('Junior: la etapa en la que todo el mundo te pide "un excelcito rápido".', 'Junior: the stage when everybody asks you for "a quick little spreadsheet".'),
+          T('Semi-senior… ahora te toca revisar lo que hace Nico. Paciencia y café.', "Mid-level… now you get to review Nico's work. Patience and coffee."),
+          T('Senior y todavía venís a charlar con la de infraestructura. Así me gusta.', 'Senior and you still come chat with the infrastructure person. I like that.'),
+        ]),
+        motto
+      );
       if (Cu().lessonDone(Cu().MODULES[3])) lines.push(T('Ahora que sabés limpiar texto, te va a encantar cuando lleguen números guardados como texto. Spoiler: llegan.', "Now that you can clean text, you'll love it when numbers stored as text show up. Spoiler: they will."));
       AA.Dialog.open([{ who: 'camila', text: pick(lines) }]);
     },
@@ -211,7 +243,12 @@
       AA.Dialog.open([
         {
           who: 'tadeo',
-          text: pick([
+          text: rankOr([
+            T('¿Vos sos de las prácticas? Leo dice que aprendés rápido. Te voy a tener en cuenta, pasante.', "You're the new intern? Leo says you learn fast. I'll keep you in mind, intern."),
+            T('¡Junior! Ahora te puedo pedir cosas oficialmente. Preparate.', 'Junior! Now I can officially ask you for things. Get ready.'),
+            T('Semi-senior… ¿me explicás por qué bajaron las ventas? Con gráficos, porfa. Muchos gráficos.', 'Mid-level… can you explain why sales dropped? With charts, please. Lots of charts.'),
+            T('Senior: ¿me ayudás a elegir qué KPI mirar? Mi jefe quiere "todos".', 'Senior: will you help me choose which KPI to track? My boss wants "all of them".'),
+          ], [
             T('¡No tengo ni idea de qué estoy haciendo, pero algo estoy haciendo!', "I have no idea what I'm doing, but I'm doing something!"),
             T('En Marketing medimos todo: aperturas, clics, conversiones… lo que no medimos es cuánto café tomamos.', "In Marketing we measure everything: opens, clicks, conversions… what we don't measure is how much coffee we drink."),
             T('Leo es mi hermano. Él sabe de fórmulas; yo sé de campañas. Juntos somos… bueno, dos Bargas.', "Leo is my brother. He knows formulas; I know campaigns. Together we're… well, two Bargas."),
@@ -222,11 +259,75 @@
       ]);
     },
 
+    // Nico vuelve de vacaciones en Semi-Senior y te pide favores (tareas distintas a las del día a día).
+    nico() {
+      const st = S();
+      if (st.rankIndex() < 2) return this.flavor('nico');
+      const lines = [];
+      if (!st.data.flags.metNico) {
+        st.data.flags.metNico = true;
+        st.save();
+        lines.push({ who: 'nico', text: T('¡Volví de vacaciones! Y me entero de que ahora sos <b>semi-senior</b>. ¡Felicitaciones, {name}!', "I'm back from vacation! And I hear you're <b>mid-level</b> now. Congrats, {name}!") });
+        lines.push({ who: 'nico', text: T('Marta me dijo que vas a revisar mi trabajo… y que te puedo pedir una mano cuando me trabe. 😅', 'Marta told me you\'ll be reviewing my work… and that I can ask you for help when I get stuck. 😅') });
+      }
+      if (st.data.favor) {
+        lines.push({ who: 'nico', text: T('¿Pudiste mirar lo que te pasé? Está arriba de todo en tu bandeja, en <b>Favores de Nico</b>.', 'Did you get a chance to look at what I sent you? It\'s at the top of your inbox, under <b>Favors for Nico</b>.') });
+        AA.Dialog.open(lines);
+        return;
+      }
+      if (st.favorReady()) {
+        const id = Cu().newFavor(st.data.flags.lastFavorKind);
+        if (id) {
+          const kind = Cu().favorKind(id);
+          lines.push({
+            who: 'nico',
+            text: Cu().favorText(kind).ask,
+            choices: [
+              {
+                label: AA.T('🤝 Dale, pasámelo', '🤝 Sure, send it over'),
+                action: () => {
+                  st.data.favor = id;
+                  st.save();
+                  AA.Audio.play('unlock');
+                  AA.Dialog.open([{ who: 'nico', text: T('¡Sos lo más! Te lo mando a tu bandeja: está arriba de todo, en <b>Favores de Nico</b>.', "You're the best! I'm sending it to your inbox: it's at the top, under <b>Favors for Nico</b>.") }]);
+                  AA.UI.toast(AA.T('📨 Nico te mandó un pedido: está arriba de todo en tu bandeja.', '📨 Nico sent you a request: it is at the top of your inbox.'), 'info');
+                },
+              },
+              { label: AA.T('Ahora no puedo', "I can't right now"), action: () => AA.Dialog.open([{ who: 'nico', text: T('Tranqui, cuando tengas un rato me avisás.', 'No worries, let me know when you have some time.') }]) },
+            ],
+          });
+          AA.Dialog.open(lines);
+          return;
+        }
+      }
+      lines.push({
+        who: 'nico',
+        text: rankOr(
+          [
+            null,
+            null,
+            T('Algún día voy a ser semi-senior como vos. Por ahora soy semi-senior en tomar mate.', "Someday I'll be mid-level like you. For now I'm mid-level at drinking mate."),
+            T('¡Mirá vos, senior! Cuando sea grande quiero ser como vos. Por ahora soy senior en tomar mate.', "Look at you, senior! When I grow up I want to be like you. For now I'm senior at drinking mate."),
+          ],
+          [
+            T('Si ves un #N/A en mi planilla, no fui yo. Bueno, sí fui yo.', 'If you see an #N/A in my sheet, it wasn\'t me. Well, yes it was.'),
+            T('Mi planilla de presupuesto tiene 47 pestañas. Estoy pensando en ponerle un índice.', 'My budget spreadsheet has 47 tabs. I\'m thinking of adding a table of contents.'),
+            T('Ahora estoy tranquilo. Cuando me trabe con algo, te aviso. 😄', "I'm fine for now. When I get stuck, I'll let you know. 😄"),
+          ]
+        ),
+      });
+      AA.Dialog.open(lines);
+    },
+
     jean() {
+      const title = byRank([T('pasante', 'intern'), T('junior', 'junior'), T('semi-senior', 'mid-level'), T('senior', 'senior')]);
       AA.Dialog.open([
         {
           who: 'jean',
-          text: pick([
+          text: rankOr([
+            T('¿Pasante? Yo también fui pasante. Del concreto, pero pasante.', 'An intern? I was an intern too. Of concrete, but an intern.'),
+            T(`Ah, ascendiste a ${title.es}. Como un buen edificio: piso por piso.`, `Ah, you got promoted to ${title.en}. Like a good building: floor by floor.`),
+          ], [
             T('¿El mejor libro que leí? <i>«5 formas de hacerle el amor al concreto»</i>.', 'The best book I ever read? <i>"5 Ways to Make Love to Concrete"</i>.'),
             T('No soy un simple arquitecto: yo soy un <b>artista del concreto</b>.', "I'm not a mere architect: I am a <b>concrete artist</b>."),
             T('Yo no trabajo acá, eh. Vengo por el café. Es el mejor de la cuadra… y diseñé tres edificios de esta cuadra.', "I don't work here, by the way. I come for the coffee. Best on the block… and I designed three buildings on this block."),

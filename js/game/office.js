@@ -44,6 +44,8 @@
     // en el comedor, frente a frente en la misma mesa
     { id: 'jean', tx: 2, ty: 9, dir: 'down', sitting: true },
     { id: 'juanroberto', tx: 2, ty: 11, dir: 'up', sitting: true },
+    // Nico vuelve de vacaciones cuando llegás a Semi-Senior.
+    { id: 'nico', tx: 10, ty: 6, dir: 'up', sitting: true, when: () => nicoBack() },
   ];
 
   // Zonas interactivas (en tiles).
@@ -58,7 +60,16 @@
     { id: 'lunch', x: 5, y: 5, w: 2, h: 1, label: { es: 'Mesa del comedor', en: 'Lunch table' } },
     { id: 'lunch', x: 5, y: 10, w: 2, h: 1, label: { es: 'Mesa del comedor', en: 'Lunch table' } },
     { id: 'vending', x: 6, y: 12, w: 1, h: 1, label: { es: 'Máquina de snacks', en: 'Snack machine' } },
-    { id: 'nico', x: 10, y: 5, w: 2, h: 1, label: { es: 'Escritorio vacío', en: 'Empty desk' } },
+    {
+      id: 'nico',
+      x: 10,
+      y: 5,
+      w: 2,
+      h: 1,
+      get label() {
+        return nicoBack() ? { es: 'Escritorio de Nico', en: "Nico's desk" } : { es: 'Escritorio vacío', en: 'Empty desk' };
+      },
+    },
     { id: 'books', x: 9, y: 1, w: 1, h: 1, label: { es: 'Biblioteca', en: 'Bookshelf' } },
     { id: 'books', x: 18, y: 1, w: 1, h: 1, label: { es: 'Biblioteca', en: 'Bookshelf' } },
     { id: 'books', x: 20, y: 1, w: 1, h: 1, label: { es: 'Biblioteca', en: 'Bookshelf' } },
@@ -75,11 +86,12 @@
     { id: 'exit', x: 13, y: 13, w: 2, h: 1, label: { es: 'Salida', en: 'Exit' } },
   ];
   const START = { x: 14 * T + 16, y: 8 * T + 26 };
+  const nicoBack = () => !!(AA.State && AA.State.data && AA.State.rankIndex() >= 2);
   // Sillas de oficina libres: la tuya (frente a tu computadora) y la de Nico, que está de vacaciones.
   // Las de Camila y Tadeo se dibujan junto con ellos.
   const CHAIRS = [
     { tx: 10, ty: 4, mine: true },
-    { tx: 10, ty: 6 },
+    { tx: 10, ty: 6, owner: 'nico' },
   ];
 
   const Office = {
@@ -111,6 +123,7 @@
           w: 1,
           h: 1,
           npc: true,
+          when: n.when,
           label: (() => {
             const c = AA.State.CHARACTERS[n.id];
             const nick = c.short || AA.L(c.name).split(' ')[0];
@@ -118,6 +131,9 @@
           })(),
         }))
       );
+
+      this.activeNpcs = () => this.npcs.filter((n) => !n.when || n.when());
+      this.activeSpots = () => this.spots.filter((sp) => !sp.when || sp.when());
 
       window.addEventListener('keydown', (e) => {
         if (!this.running || e.defaultPrevented) return;
@@ -199,9 +215,9 @@
       const tx = Math.floor(x / T);
       const ty = Math.floor(y / T);
       // Los personajes se dibujan más altos que su tile: también cuenta el tile de arriba.
-      const npc = this.spots.find((s) => s.npc && tx === s.x && (ty === s.y || ty === s.y - 1));
+      const npc = this.activeSpots().find((s) => s.npc && tx === s.x && (ty === s.y || ty === s.y - 1));
       if (npc) return npc;
-      return this.spots.find((s) => !s.npc && tx >= s.x && tx < s.x + s.w && ty >= s.y && ty < s.y + s.h) || null;
+      return this.activeSpots().find((s) => !s.npc && tx >= s.x && tx < s.x + s.w && ty >= s.y && ty < s.y + s.h) || null;
     },
     facePlayerTo(s) {
       const cx = (s.x + s.w / 2) * T;
@@ -217,8 +233,8 @@
       const ty = Math.floor(py / T);
       if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return true;
       if (!WALKABLE.has(MAP[ty][tx])) return true;
-      if (CHAIRS.some((c) => !c.mine && c.tx === tx && c.ty === ty)) return true;
-      return this.npcs.some((n) => n.tx === tx && n.ty === ty);
+      if (CHAIRS.some((c) => !c.mine && c.tx === tx && c.ty === ty)) return true; // (la de Nico, vacía u ocupada)
+      return this.activeNpcs().some((n) => n.tx === tx && n.ty === ty);
     },
 
     // El jugador se sienta en su silla antes de usar la computadora.
@@ -275,7 +291,7 @@
       // Lo más cercano con lo que se puede interactuar.
       let best = null;
       let bestD = 30;
-      for (const s of this.spots) {
+      for (const s of this.activeSpots()) {
         const rx1 = s.x * T;
         const ry1 = s.y * T;
         const rx2 = rx1 + s.w * T;
@@ -291,6 +307,179 @@
       this.near = best;
     },
 
+    // Rectángulo en pantalla de un personaje o un objeto (para las guías).
+    rectOf(id) {
+      const v = this.view();
+      const cr = this.canvas.getBoundingClientRect();
+      const toScreen = (x, y, w, h) => ({ left: cr.left + v.ox + x * v.scale, top: cr.top + v.oy + y * v.scale, width: w * v.scale, height: h * v.scale });
+      if (id === 'player') return toScreen(this.player.x - 12, this.player.y - 42, 24, 44);
+      const n = this.activeNpcs().find((x) => x.id === id);
+      if (n) return toScreen(n.x - 12, n.y - 42, 24, 44);
+      const sp = SPOTS.find((x) => x.id === id);
+      if (sp) return toScreen(sp.x * T, sp.y * T - 6, sp.w * T, sp.h * T + 6);
+      return null;
+    },
+
+    // --- Evento especial: escena de presentación frente al pizarrón
+    startPresentation(cfg) {
+      this.pres = Object.assign({ t0: this.t, asking: null, index: 0, correct: 0, reaction: null, reactAt: 0 }, cfg);
+    },
+    presentState(st) {
+      if (!this.pres) return;
+      if (st.reaction) this.pres.reactAt = this.t;
+      Object.assign(this.pres, { reaction: null }, st);
+    },
+    stopPresentation() {
+      this.pres = null;
+    },
+
+    drawPresentation() {
+      const ctx = this.ctx;
+      const P = this.pres;
+      const VW = 500;
+      const VH = 250;
+      const el = this.t - P.t0;
+      ctx.save();
+      ctx.scale(WORLD_W / VW, WORLD_H / VH);
+      const R = (x, y, w, h, col) => {
+        ctx.fillStyle = col;
+        ctx.fillRect(x, y, w, h);
+      };
+      // pared y piso de la sala de reuniones
+      R(0, 0, VW, 100, '#efe3c8');
+      R(0, 92, VW, 8, '#a07a55');
+      for (let x = 0; x < VW; x += 25) for (let y = 100; y < VH; y += 25) R(x, y, 25, 25, (x / 25 + y / 25) % 2 ? '#c9d1dd' : '#c4ccd9');
+      // ventana y planta
+      R(24, 14, 60, 50, '#f7f1e3');
+      R(28, 18, 52, 42, '#a9d8f5');
+      R(28, 44, 52, 16, '#8cc6a5');
+      R(53, 18, 2, 42, '#f7f1e3');
+      ctx.save();
+      ctx.translate(430, 62);
+      ctx.scale(1.4, 1.4);
+      this.drawPlant(-16, -10, true, 3);
+      ctx.restore();
+      // pizarrón (entra deslizándose)
+      const slide = Math.min(1, el / 0.6);
+      const bx = 130;
+      const by = 10 - (1 - slide) * 90;
+      R(bx - 4, by - 4, 228, 92, '#9aa1b5');
+      R(bx, by, 220, 84, '#ffffff');
+      R(bx, by + 84, 220, 5, '#b7bdcc');
+      ctx.fillStyle = '#1d2130';
+      ctx.font = 'bold 8px "Inter", system-ui, sans-serif';
+      ctx.textBaseline = 'top';
+      const title = String(P.title || '').replace(/^🎲 [^·]*· /, '');
+      ctx.fillText(title.length > 46 ? title.slice(0, 45) + '…' : title, bx + 8, by + 6);
+      ctx.fillStyle = '#6b7389';
+      ctx.font = '6px "Inter", system-ui, sans-serif';
+      ctx.fillText(P.file || '', bx + 8, by + 17);
+      // gráfico de barras que "crece" (sin números: los datos los tenés que recordar vos)
+      const grow = Math.min(1, Math.max(0, (el - 0.5) / 0.8));
+      const bars = P.bars || [];
+      const bw = 150 / Math.max(1, bars.length);
+      bars.forEach((h, i) => {
+        const hh = 46 * h * grow;
+        R(bx + 12 + i * bw, by + 76 - hh, bw - 4, hh, i % 3 === 2 ? '#2fbf71' : '#4f8cff');
+      });
+      R(bx + 10, by + 76, 158, 1, '#9aa1b5');
+      ctx.strokeStyle = '#e5484d';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(bx + 176, by + 70);
+      ctx.lineTo(bx + 188, by + 52 - 6 * grow);
+      ctx.lineTo(bx + 200, by + 58);
+      ctx.lineTo(bx + 212, by + 34 - 8 * grow);
+      ctx.stroke();
+      // vos, al lado del pizarrón, señalando
+      const p = AA.State.CHARACTERS.player;
+      const px = 378;
+      const py = 128;
+      AA.Sprites.drawChar(ctx, px, py, p, 'down', 0);
+      ctx.strokeStyle = '#3a3d4a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(px - 9, py - 15);
+      ctx.lineTo(px - 24, py - 30 + Math.sin(this.t * 3) * 2);
+      ctx.stroke();
+      // el equipo, sentado frente a vos (de espaldas a la cámara)
+      const seats = [
+        [150, 186],
+        [205, 186],
+        [260, 186],
+        [315, 186],
+        [178, 234],
+        [233, 234],
+        [288, 234],
+      ];
+      (P.crowd || []).forEach((id, i) => {
+        const [x, y] = seats[i % seats.length];
+        const asking = P.asking === id && !P.done;
+        const hop = asking ? Math.abs(Math.sin(this.t * 6)) * -2 : 0;
+        this.drawChair(x, y, () => AA.Sprites.drawChar(ctx, x, y + hop, AA.State.CHARACTERS[id], 'up', 0, { sitting: true }));
+        if (asking) {
+          // mano levantada y globito de pregunta
+          R(x + 7, y - 40 + hop, 3, 10, AA.Sprites.look(AA.State.CHARACTERS[id]).skin);
+          this.bubble(x + 2, y - 58 + hop, P.reaction === 'ok' && this.t - P.reactAt < 1.2 ? '✔' : P.reaction === 'bad' && this.t - P.reactAt < 1.2 ? '✖' : '?', P.reaction === 'ok' ? '#2fbf71' : P.reaction === 'bad' ? '#e5484d' : '#ffd23f');
+        }
+      });
+      // cartel del evento y marcador
+      const pop = Math.min(1, el / 0.45);
+      ctx.save();
+      ctx.translate(12, 108);
+      ctx.scale(pop, pop);
+      R(0, 0, 104, 34, 'rgba(29,33,48,0.92)');
+      ctx.fillStyle = '#ffd23f';
+      ctx.font = 'bold 7px "Inter", system-ui, sans-serif';
+      ctx.fillText(AA.T('📣 EVENTO ESPECIAL', '📣 SPECIAL EVENT'), 7, 6);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '6px "Inter", system-ui, sans-serif';
+      ctx.fillText(AA.T('Presentación de resultados', 'Results presentation'), 7, 16);
+      ctx.fillText(`${AA.T('Aciertos', 'Correct')}: ${P.correct}/${P.total}`, 7, 25);
+      ctx.restore();
+      ctx.restore();
+      // título que entra con zoom al principio
+      if (el < 1.6) {
+        const k = Math.min(1, el / 0.35);
+        const a = el < 1.2 ? 1 : 1 - (el - 1.2) / 0.4;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, a);
+        ctx.fillStyle = 'rgba(10,12,20,0.55)';
+        ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+        ctx.translate(WORLD_W / 2, WORLD_H / 2);
+        ctx.scale(0.5 + 0.5 * k + (k === 1 ? Math.sin(el * 10) * 0.02 : 0), 0.5 + 0.5 * k);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '22px "Press Start 2P", monospace';
+        ctx.fillStyle = '#8b3a2b';
+        ctx.fillText(AA.T('¡EVENTO ESPECIAL!', 'SPECIAL EVENT!'), 0, 4);
+        ctx.fillStyle = '#ffd23f';
+        ctx.fillText(AA.T('¡EVENTO ESPECIAL!', 'SPECIAL EVENT!'), 0, 0);
+        ctx.font = '600 14px "Inter", system-ui, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(AA.T('Presentá tus resultados al equipo', 'Present your results to the team'), 0, 34);
+        ctx.restore();
+        ctx.textAlign = 'left';
+      }
+    },
+    bubble(x, y, text, color) {
+      const ctx = this.ctx;
+      ctx.fillStyle = '#1d2130';
+      this.roundRect(x - 9, y - 9, 18, 16, 4);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x - 2, y + 7);
+      ctx.lineTo(x + 2, y + 7);
+      ctx.lineTo(x, y + 11);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.font = 'bold 10px "Inter", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, x, y);
+      ctx.textAlign = 'left';
+    },
+
     // --- Dibujo
     draw() {
       const ctx = this.ctx;
@@ -298,6 +487,12 @@
       ctx.setTransform(v.dpr, 0, 0, v.dpr, 0, 0);
       ctx.fillStyle = '#1a1712';
       ctx.fillRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight);
+      if (this.pres) {
+        ctx.setTransform(v.dpr * v.scale, 0, 0, v.dpr * v.scale, v.dpr * v.ox, v.dpr * v.oy);
+        ctx.imageSmoothingEnabled = false;
+        this.drawPresentation();
+        return;
+      }
       ctx.setTransform(v.dpr * v.scale, 0, 0, v.dpr * v.scale, v.dpr * v.ox, v.dpr * v.oy);
       ctx.imageSmoothingEnabled = false;
 
@@ -306,12 +501,13 @@
       this.drawLight();
 
       // Personajes ordenados por profundidad.
-      const actors = this.npcs.map((n) => ({ y: n.y, draw: () => this.drawNpc(n) }));
+      const actors = this.activeNpcs().map((n) => ({ y: n.y, draw: () => this.drawNpc(n) }));
       const p = this.player;
       for (const c of CHAIRS) {
         const cx = c.tx * T + 16;
         const cy = c.ty * T + (c.mine ? 20 : 26);
         if (c.mine && p.sitting) continue;
+        if (c.owner === 'nico' && nicoBack()) continue; // Nico está sentado en su silla
         actors.push({ y: cy - 0.5, draw: () => this.drawChair(cx, cy, null) });
       }
       actors.push({
@@ -329,7 +525,7 @@
       const pc = SPOTS.find((s) => s.id === 'computer');
       const wb = SPOTS.find((s) => s.id === 'whiteboard');
       if (markers.computer) this.drawMarker((pc.x + pc.w / 2) * T, pc.y * T - 14 + bounce, '#ffd23f');
-      for (const n of this.npcs) if (markers[n.id]) this.drawMarker(n.x, n.y - 46 + bounce, '#ffd23f');
+      for (const n of this.activeNpcs()) if (markers[n.id]) this.drawMarker(n.x, n.y - 46 + bounce, '#ffd23f');
       if (markers.whiteboard) this.drawMarker((wb.x + wb.w / 2) * T, wb.y * T - 8 + bounce, '#7cf29a');
 
       const target = this.near || this.hover;
@@ -668,7 +864,7 @@
             const mine = SPOTS.find((s) => s.id === 'computer');
             const nico = SPOTS.find((s) => s.id === 'nico');
             const isMine = ch === 'D' && x === mine.x && y === mine.y;
-            const off = ch === 'D' && x === nico.x && y === nico.y;
+            const off = ch === 'D' && x === nico.x && y === nico.y && !nicoBack();
             const glow = isMine && markers.computer ? (Math.sin(this.t * 4) > 0 ? '#9be7ff' : '#5fc8ff') : ch === 'B' ? '#c9d6ff' : '#6fd3ff';
             R(10, 0, 20, 14, '#2b2e3a');
             R(12, 2, 16, 10, off ? '#3a3e50' : glow);

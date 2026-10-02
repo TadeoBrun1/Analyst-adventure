@@ -39,6 +39,15 @@ se guarda en el navegador (`localStorage`).
   volumen de música, efectos y voces;
   ventana o pantalla completa; tamaño de ventana; idioma **español / inglés**) y *Salir*. Todo se maneja
   también con las flechas, incluidos los cuadros de pausa y confirmación.
+- **Primera vez**: una pantalla de bienvenida explica cómo se juega y cada sección (oficina, computadora,
+  planilla y cada herramienta) tiene una **guía paso a paso** con animaciones sobre la interfaz real. Se pueden
+  volver a ver con **❓ Ayuda**.
+- **Eventos especiales**: a veces, al entregar un informe con resultados en una tabla, el equipo te pide
+  **presentarlos** frente al pizarrón y te hace preguntas sobre **tus datos** (el mayor, el menor, el total, cuántos
+  quedaron en cada categoría…). Las respuestas correctas suman XP extra.
+- **Nico** vuelve de vacaciones cuando llegás a Semi-Senior y te pide **favores**: limpiar datos, escribir un
+  informe o revisar su planilla. Aparecen arriba de todo en la bandeja, en verde agua.
+- Los diálogos cambian con tu rango: te tratan como pasante, junior, semi-senior o senior.
 - **Partida nueva**: elegís tu nombre y armás tu personaje: hombre o mujer, tono de piel, peinado y color de
   pelo, barba y su color, anteojos y ropa (remera, camisa, buzo o saco; pantalón o pollera). Se puede cambiar
   después desde la pausa (*👕 Cambiar aspecto*).
@@ -100,6 +109,7 @@ ver [`docs/CARRERA.md`](docs/CARRERA.md).
 | **0.5** | Creador de personaje, nuevos personajes en el comedor (Jean y Juan Roberto), equipo renombrado, tecla `F` para la libreta, flechas en todos los menús y `Esc` para salir de las tareas. | ✅ |
 | **0.5.1** | Sillas en los escritorios (te sentás antes de usar la computadora), guía ilustrada de la planilla con botón ❓ Ayuda, ayudas en el momento justo (copiar una fórmula arrastrando, marcar filas y columnas) y panel de objetivos con color propio. | ✅ |
 | **0.5.2** | Confeti en cada entrega y animación de "nivel completado" (medalla, rayos, contador de XP y barra que se llena); bandeja con colores por estado (nuevo, en progreso, entregado, práctica extra) y etapas plegables que recuerdan si las abriste o cerraste. | ✅ |
+| **0.6** | Bienvenida y guías paso a paso animadas, eventos especiales de presentación con preguntas sobre tus datos, favores de Nico desde Semi-Senior y diálogos según el rango. | ✅ |
 | **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
@@ -121,6 +131,9 @@ js/
   ui/menu.js, menu-bg.js  menú principal (ranuras, opciones) y su fondo animado
   ui/common.js            modales (con navegación por flechas) y avisos
   ui/creator.js           creador de personaje (aspecto, pelo, barba, ropa)
+  ui/tour.js              motor de guías paso a paso (resaltado + tarjetas)
+  game/guides.js          bienvenida y guías de cada sección
+  game/present.js         eventos especiales: presentación y preguntas sobre tus datos
   game/storage.js         3 ranuras + configuración (archivos en escritorio, localStorage en web)
   game/settings.js        idioma, volúmenes y pantalla
   game/audio.js           música, efectos y voces sintetizados con Web Audio
