@@ -15,9 +15,9 @@
   const RANKS = [
     { name: { es: 'Pasante de Datos', en: 'Data Intern' }, xp: 0 },
     { name: { es: 'Analista Junior', en: 'Junior Analyst' }, xp: 2200 },
-    { name: { es: 'Analista Semi-Senior', en: 'Mid-level Analyst' }, xp: 5550 },
-    { name: { es: 'Analista Senior', en: 'Senior Analyst' }, xp: 9300 },
-    { name: { es: 'Lead de Datos', en: 'Data Lead' }, xp: 14000 },
+    { name: { es: 'Analista Semi-Senior', en: 'Mid-level Analyst' }, xp: 5600 },
+    { name: { es: 'Analista Senior', en: 'Senior Analyst' }, xp: 9450 },
+    { name: { es: 'Lead de Datos', en: 'Data Lead' }, xp: 14200 },
   ];
 
   // voice: tono del "bip" de cada personaje al hablar.
@@ -144,8 +144,10 @@
       RANKS.forEach((r, i) => {
         if (d.xp >= r.xp) byXp = i;
       });
+      // Para ascender al rango siguiente hay que completar la etapa actual, y esa etapa nueva
+      // tiene que existir en el juego (Lead llega en una próxima actualización).
       let idx = 0;
-      while (idx < byXp && AA.Curriculum.tierComplete(idx, d)) idx++;
+      while (idx < byXp && AA.Curriculum.tierComplete(idx, d) && AA.Curriculum.tierModules(idx + 1).length > 0) idx++;
       return Math.max(idx, d.rankReached || 0);
     },
     rank() {

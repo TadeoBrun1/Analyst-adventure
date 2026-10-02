@@ -8,7 +8,7 @@
  *
  * report = { kind: 'story' | 'exec', heading, table?, sections: [
  *   { id, label, prompt, slot: 'title' | 'text' | 'bullets' | 'chart', multi?: n,
- *     options: [{ id, text?, chart?, why? }], correct: id | [ids] } ] }
+ *     options: [{ id, text?, chart?: { spec, table? }, why? }], correct: id | [ids] } ] }
  */
 (function () {
   'use strict';
@@ -44,7 +44,7 @@
       this.report = report;
       this.choices = Object.assign({}, choices || {});
       this.opts = opts || {};
-      this.renderer = report.table ? new AA.ChartRenderer(report.table) : null;
+      this.renderers = new Map();
       this.build();
     }
 
@@ -99,13 +99,19 @@
       this.drawSlide();
     }
 
+    // Cada opción de gráfico puede traer su propia tabla (o usa la del informe).
+    rendererFor(chart) {
+      const table = chart.table || this.report.table;
+      if (!this.renderers.has(table)) this.renderers.set(table, new AA.ChartRenderer(table));
+      return this.renderers.get(table);
+    }
+
     drawThumbs() {
-      if (!this.renderer) return;
       this.root.querySelectorAll('[data-thumb]').forEach((host) => {
         const [sid, oid] = host.dataset.thumb.split(':');
         const sec = this.report.sections.find((x) => x.id === sid);
         const o = sec.options.find((x) => x.id === oid);
-        requestAnimationFrame(() => this.renderer.draw(host, o.chart, { noTitle: false }));
+        requestAnimationFrame(() => this.rendererFor(o.chart).draw(host, o.chart.spec || o.chart, {}));
       });
     }
 
@@ -127,9 +133,9 @@
       }
       slide.className = 'rp-slide ' + (r.kind || 'story');
       slide.innerHTML = html;
-      if (chartOpt && this.renderer) {
+      if (chartOpt) {
         const host = slide.querySelector('.rp-slide-chart');
-        requestAnimationFrame(() => this.renderer.draw(host, chartOpt.chart, {}));
+        requestAnimationFrame(() => this.rendererFor(chartOpt.chart).draw(host, chartOpt.chart.spec || chartOpt.chart, {}));
       }
     }
 

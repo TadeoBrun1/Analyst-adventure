@@ -88,7 +88,7 @@
               <button class="btn btn-sm" data-act="clear">🧹 ${T('Limpiar', 'Clear')}</button>
               <div class="sql-history"></div>
             </div>
-            <div class="sql-result"><div class="cb-empty">${T('Escribí una consulta y ejecutala con <b>Ctrl+Enter</b>.', 'Write a query and run it with <b>Ctrl+Enter</b>.')}</div></div>
+            <div class="sql-result"><div class="cb-empty"><span>${T('Escribí una consulta y ejecutala con <b>Ctrl+Enter</b>.', 'Write a query and run it with <b>Ctrl+Enter</b>.')}</span></div></div>
           </section>
         </div>`;
       this.ta = this.root.querySelector('textarea');
@@ -177,7 +177,7 @@
     run(query, silent) {
       const q = String(query || '').trim();
       if (!q) {
-        this.out.innerHTML = `<div class="cb-empty">${T('La consulta está vacía.', 'The query is empty.')}</div>`;
+        this.out.innerHTML = `<div class="cb-empty"><span>${T('La consulta está vacía.', 'The query is empty.')}</span></div>`;
         return;
       }
       const t0 = performance.now();

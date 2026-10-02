@@ -505,7 +505,8 @@
         next,
         xpMissing: Math.max(0, next.xp - st.data.xp),
         modulesMissing: mods.filter((m) => !this.isModuleComplete(m)),
-        contentReady: mods.length > 0,
+        contentReady: mods.length > 0 && this.tierModules(cur + 1).length > 0,
+        nextStageReady: this.tierModules(cur + 1).length > 0,
       };
     },
 

@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.3.0';
+  AA.VERSION = '0.4.0';
   const START = { x: 11 * 32 + 16, y: 9 * 32 + 26 };
 
   const Game = {

@@ -25,6 +25,8 @@
           return v.toLocaleString('en-US', { maximumFractionDigits: 0 });
         case 'dec2':
           return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        case 'dec5':
+          return v.toLocaleString('en-US', { minimumFractionDigits: 5, maximumFractionDigits: 5 });
         case 'plain':
           return F.fmtNumber(v);
         default: {

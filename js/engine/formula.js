@@ -852,6 +852,29 @@
     const a = toNum(x); if (isErr(a)) return a;
     return a < 0 ? err.num(M('No existe la raíz de un número negativo.', 'Negative numbers have no square root.')) : Math.sqrt(a);
   });
+  def(['SUMAPRODUCTO', 'SUMPRODUCT'], {
+    min: 1, cat: 'Matemáticas', sig: 'SUMAPRODUCTO(rango1; [rango2]; ...)',
+    desc: 'Multiplica los rangos celda por celda y suma los resultados. Ideal para promedios ponderados.', ex: '=SUMAPRODUCTO(B2:B6; C2:C6)/SUMA(B2:B6)',
+    fn: (args) => {
+      const ranges = args.map(asRange);
+      const h = ranges[0].height;
+      const w = ranges[0].width;
+      if (ranges.some((g) => g.height !== h || g.width !== w)) return err.value(M('Todos los rangos tienen que tener el mismo tamaño.', 'All ranges must be the same size.'));
+      let total = 0;
+      for (let i = 0; i < h; i++) {
+        for (let j = 0; j < w; j++) {
+          let prod = 1;
+          for (const g of ranges) {
+            const v = g.rows[i][j];
+            if (isErr(v)) return v;
+            prod *= typeof v === 'number' ? v : 0;
+          }
+          total += prod;
+        }
+      }
+      return total;
+    },
+  });
   def(['PRODUCTO', 'PRODUCT'], {
     min: 1, cat: 'Matemáticas', sig: 'PRODUCTO(valor1; [valor2]; ...)',
     desc: 'Multiplica todos los números.', ex: '=PRODUCTO(B2:D2)',

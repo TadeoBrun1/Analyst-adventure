@@ -43,7 +43,7 @@
 
     renderChrome() {
       document.getElementById('menu-tagline').textContent = T('De pasante a Senior, una celda a la vez.', 'From intern to Senior, one cell at a time.');
-      document.getElementById('menu-foot').innerHTML = `v${AA.VERSION} · ${T('Etapa Pasante: planillas y gráficos', 'Intern stage: spreadsheets and charts')} · <kbd>↑</kbd><kbd>↓</kbd> ${T('mover', 'move')} · <kbd>Enter</kbd> ${T('elegir', 'select')} · <kbd>Esc</kbd> ${T('volver', 'back')}`;
+      document.getElementById('menu-foot').innerHTML = `v${AA.VERSION} · ${T('De Pasante a Senior: 19 niveles', 'From Intern to Senior: 19 levels')} · <kbd>↑</kbd><kbd>↓</kbd> ${T('mover', 'move')} · <kbd>Enter</kbd> ${T('elegir', 'select')} · <kbd>Esc</kbd> ${T('volver', 'back')}`;
     },
 
     show(view) {

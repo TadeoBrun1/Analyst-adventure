@@ -143,6 +143,7 @@
         lang: AA.lang,
       };
       const m = fn(ctx);
+      shuffleOptions(m, rng(((opts.seed || 0) * 7919 + 13) >>> 0));
       const ch = AA.State.CHARACTERS[m.from];
       m.email = AA.T('<p>Hola, {name}:</p>', '<p>Hi {name},</p>') + m.email + `<p class="sign">— ${esc(AA.L(ch.name))} · ${esc(AA.L(ch.role))}</p>`;
       m.lang = AA.lang;
@@ -151,6 +152,20 @@
     } finally {
       AA.setLang(prevLang);
     }
+  }
+
+  // Mezcla las opciones de las preguntas y de los informes (con la misma semilla de la misión),
+  // para que la respuesta correcta no quede siempre en el mismo lugar.
+  function shuffleOptions(m, r) {
+    m.objectives.forEach((o, i) => {
+      if (!o.choices || o.fixedOrder) return;
+      const order = r.shuffle(o.choices.map((_, k) => k));
+      o.choices = order.map((k) => o.choices[k]);
+      if (o.why) o.why = order.map((k) => o.why[k]);
+      o.correct = order.indexOf(o.correct);
+      if (m.solution && m.solution.answers && m.solution.answers[i] !== undefined) m.solution.answers[i] = o.correct;
+    });
+    if (m.report) m.report.sections.forEach((sec) => !sec.fixedOrder && (sec.options = r.shuffle(sec.options)));
   }
 
   // Hoja inicial de una misión (datos originales + celdas fijas).
@@ -163,6 +178,11 @@
     for (const [ref, v] of Object.entries(def.cells || {})) {
       const p = F.parseRef(ref);
       sh.setValue(p.col, p.row, v, true);
+    }
+    // Contenido escrito "como lo tipea una persona" (fórmulas incluidas): el trabajo de otro a revisar.
+    for (const [ref, input] of Object.entries(def.inputs || {})) {
+      const p = F.parseRef(ref);
+      sh.setInput(p.col, p.row, input, true);
     }
     return sh;
   }

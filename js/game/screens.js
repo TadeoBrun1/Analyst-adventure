@@ -49,9 +49,9 @@
           </div>
           <div class="mail">
             <aside class="mail-list">${groups}
-              <div class="stage-head">🔒 ${T('Etapa Junior · próximamente', 'Junior stage · coming soon')}</div>
+              <div class="stage-head">🔒 ${T('Etapa Lead · próximamente', 'Lead stage · coming soon')}</div>
               <div class="mail-group future">
-                <div class="mail-item locked"><div class="mail-subject">${T('BUSCARV / BUSCARX, tablas dinámicas, calidad de datos y SQL básico', 'VLOOKUP / XLOOKUP, pivot tables, data quality and basic SQL')}</div></div>
+                <div class="mail-item locked"><div class="mail-subject">${T('Estrategia de datos, priorizar pedidos, acordar métricas con las áreas y gobierno de datos', 'Data strategy, prioritizing requests, agreeing on metrics with other teams and data governance')}</div></div>
               </div>
             </aside>
             <article class="mail-view">${this.renderView()}</article>
@@ -959,15 +959,13 @@
     ).join('');
     let promo = '';
     if (ps) {
-      const modsOk = ps.contentReady && !ps.modulesMissing.length;
+      const modsOk = !ps.modulesMissing.length;
+      const missing = ps.modulesMissing.map((m) => Cu().MODULES.indexOf(m) + 1).join(', ');
       promo = `
         <h3>${T('Para ascender a', 'To be promoted to')} ${esc(AA.L(ps.next.name))}</h3>
         <ul class="reqs">
-          <li class="${modsOk ? 'ok' : ''}">${modsOk ? '✔' : '○'} ${
-            ps.contentReady
-              ? T(`Completar los niveles de tu etapa${ps.modulesMissing.length ? ` (faltan: ${ps.modulesMissing.map((m) => Cu().MODULES.indexOf(m) + 1).join(', ')})` : ''}`, `Complete your stage's levels${ps.modulesMissing.length ? ` (missing: ${ps.modulesMissing.map((m) => Cu().MODULES.indexOf(m) + 1).join(', ')})` : ''}`)
-              : T('Los niveles de esta etapa llegan en una próxima actualización', "This stage's levels arrive in a future update")
-          }</li>
+          <li class="${modsOk ? 'ok' : ''}">${modsOk ? '✔' : '○'} ${T(`Completar los niveles de tu etapa${missing ? ` (faltan: ${missing})` : ''}`, `Complete your stage's levels${missing ? ` (missing: ${missing})` : ''}`)}</li>
+          ${ps.nextStageReady ? '' : `<li>🔒 ${T(`La etapa ${esc(AA.L(ps.next.name))} llega en una próxima actualización`, `The ${esc(AA.L(ps.next.name))} stage arrives in a future update`)}</li>`}
           <li class="${ps.xpMissing ? '' : 'ok'}">${ps.xpMissing ? '○' : '✔'} ${T(`Llegar a ${ps.next.xp} XP`, `Reach ${ps.next.xp} XP`)}${ps.xpMissing ? ` (${T('faltan', 'missing')} ${ps.xpMissing})` : ''}</li>
         </ul>
         <p class="muted small">${T(`Los primeros ${Cu().PRACTICE_XP_LIMIT} casos de práctica de cada nivel suman XP; los de una etapa que ya superaste, no.`, `The first ${Cu().PRACTICE_XP_LIMIT} practice cases of each level earn XP; those from a stage you already passed don't.`)}</p>`;
@@ -1000,13 +998,15 @@
             <h3>${T('Niveles', 'Levels')}</h3>
             <ul class="levels">${levels}</ul>
             <h3>${T('Hoja de ruta', 'Roadmap')}</h3>
-            <ul class="roadmap">
-              <li class="now"><b>${T('Pasante', 'Intern')}</b> · ${T('Fórmulas, funciones, SI, limpieza, CONTAR.SI y $, gráficos', 'Formulas, functions, IF, cleaning, COUNTIF and $, charts')}</li>
-              <li><b>Junior</b> · ${T('BUSCARV/BUSCARX, tablas dinámicas, calidad de datos, SQL básico', 'VLOOKUP/XLOOKUP, pivot tables, data quality, basic SQL')}</li>
-              <li><b>Semi-Senior</b> · ${T('Dashboards desde cero, storytelling, estadística', 'Dashboards from scratch, storytelling, statistics')}</li>
-              <li><b>Senior</b> · ${T('KPIs, A/B tests, presentaciones ejecutivas, revisar el trabajo de otros', 'KPIs, A/B tests, executive presentations, reviewing others\' work')}</li>
-              <li><b>Lead</b> · ${T('Priorizar, estrategia, stakeholders, gobierno de datos', 'Prioritization, strategy, stakeholders, data governance')}</li>
-            </ul>
+            <ul class="roadmap">${[
+              [T('Pasante', 'Intern'), T('Niveles 1–6: fórmulas, funciones, SI, limpieza, CONTAR.SI y $, gráficos', 'Levels 1–6: formulas, functions, IF, cleaning, COUNTIF and $, charts')],
+              ['Junior', T('Niveles 7–11: BUSCARV/BUSCARX, calidad de datos, tablas dinámicas, SQL, reportes y dashboards existentes', 'Levels 7–11: VLOOKUP/XLOOKUP, data quality, pivot tables, SQL, reports and existing dashboards')],
+              ['Semi-Senior', T('Niveles 12–15: estadística, dashboards desde cero, análisis de punta a punta y storytelling, revisar a un junior', 'Levels 12–15: statistics, dashboards from scratch, end-to-end analysis and storytelling, reviewing a junior')],
+              ['Senior', T('Niveles 16–19: KPIs, pruebas A/B, datos incompletos, resúmenes ejecutivos', 'Levels 16–19: KPIs, A/B tests, incomplete data, executive summaries')],
+              ['Lead', T('Próximamente: estrategia, priorización, stakeholders, gobierno de datos', 'Coming soon: strategy, prioritization, stakeholders, data governance')],
+            ]
+              .map(([name, txt], i) => `<li class="${i === idx ? 'now' : ''}"><b>${name}</b> · ${txt}</li>`)
+              .join('')}</ul>
           </div>
         </div>`,
       buttons: [{ label: T('Cerrar', 'Close'), primary: true }],

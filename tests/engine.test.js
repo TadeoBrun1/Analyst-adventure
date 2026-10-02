@@ -189,6 +189,8 @@ eq(calc(st, '=PENDIENTE(B1:B4;A1:A4)'), 2, 'pendiente');
 eq(calc(st, '=VAR(A1:A4)'), 1.6666666666666667, 'varianza');
 eq(Math.round(calc(st, '=DISTR.NORM.ESTAND.N(1.96;VERDADERO)') * 1000) / 1000, 0.975, 'normal estándar');
 eq(calc(st, '=PERCENTIL(A1:A4;2)'), '#NUM!', 'percentil fuera de rango');
+eq(calc(st, '=SUMAPRODUCTO(A1:A2;B1:B2)'), 10, 'SUMAPRODUCTO');
+eq(calc(st, '=SUMAPRODUCTO(A1:A2;B1:B3)'), '#VALUE!', 'SUMAPRODUCTO con rangos distintos');
 
 console.log(`\n${passed} OK, ${failed} fallidos`);
 process.exit(failed ? 1 : 0);

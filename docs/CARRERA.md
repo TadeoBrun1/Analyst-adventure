@@ -49,7 +49,7 @@ trabajo real.
 | Senior | Elige qué medir (KPIs) | Resumen ejecutivo para gerencia |
 | Lead | Define estándares de visualización | Estrategia y prioridades para la dirección |
 
-## 2. Cómo estaba el juego (v0.2) y qué cambió (v0.3)
+## 2. Cómo estaba el juego (v0.2) y qué cambió (v0.3–v0.4)
 
 | Problema en v0.2 | Cambio en v0.3 |
 |---|---|
@@ -69,10 +69,19 @@ trabajo real.
 | Práctica que suma XP | primeros 4 casos por nivel (tabla grande = ×1,6) |
 | Después de eso / de una etapa anterior | 0 XP (se puede seguir practicando) |
 
-Los umbrales de Semi-Senior (5000), Senior (9500) y Lead (16000) son provisorios hasta que existan los
-niveles de esas etapas; se van a ajustar con la misma regla: *XP de las tareas obligatorias + 3 o 4 prácticas*.
-Mientras una etapa no tenga niveles, no se puede superar, sin importar cuánta XP se acumule
-(lo verifica `tests/progression.test.js`).
+### Economía de XP de todas las etapas (v0.4)
+
+Misma regla en cada ascenso: **XP de las tareas obligatorias de la etapa + 3 o 4 casos de práctica**.
+
+| Ascenso a | Tareas de la etapa | XP por tarea | Umbral |
+|---|---|---|---|
+| Junior | Niveles 1–6 (30 tareas) | 40 → 90 | 2200 |
+| Semi-Senior | Niveles 7–11 (25 tareas) | 100 → 140 | 5600 |
+| Senior | Niveles 12–15 (20 tareas) | 150 → 180 | 9450 |
+| Lead | Niveles 16–19 (20 tareas) | 190 → 220 | 14200 (la etapa Lead todavía no existe) |
+
+Además, un rango solo se alcanza si **su etapa existe en el juego**: hoy el techo es Senior, sin importar
+cuánta XP se acumule (lo verifica `tests/progression.test.js`, junto con el "3 o 4 prácticas" de cada ascenso).
 
 ## 3. Constructor de gráficos (Nivel 6)
 
@@ -88,17 +97,49 @@ directo. Usa los mismos conceptos y nombres:
 Las 5 tareas del nivel: barras por región ordenadas, tendencia mensual con líneas, torta de canales,
 dispersión precio–unidades y barras apiladas por estado con filtro.
 
-## 4. Hoja de ruta recomendada
+## 4. Qué enseña cada etapa en la v0.4
 
-1. **Etapa Junior** (próxima): `BUSCARV` / `BUSCARX` / `INDICE`+`COINCIDIR`, varias hojas por libro,
-   **tablas dinámicas**, calidad de datos (duplicados, números guardados como texto, validación),
-   introducción a SQL y un mini-reporte con 1–2 gráficos.
-2. **Etapa Semi-Senior**: armar **dashboards** desde cero con varios gráficos, filtros y KPIs; estadística
-   descriptiva (mediana, desvío, outliers); análisis de punta a punta; revisar el dashboard de un junior.
-3. **Etapa Senior**: definir KPIs, prueba A/B, casos detective (fraude en viáticos, anomalías) y una
-   **presentación ejecutiva** (qué pasó, por qué, qué hacer).
-4. **Etapa Lead**: priorizar una bandeja de pedidos, encuadrar el problema con el área, revisar el trabajo
-   del equipo, definir métricas únicas (gobierno de datos) y el final de carrera.
+Las herramientas son **versiones simplificadas de las reales**, con los mismos nombres y conceptos, para que
+el salto a Excel, Google Sheets, Tableau, Power BI o una base de datos sea directo.
+
+### Junior (niveles 7–11)
+
+| Nivel | Qué se practica | Herramienta |
+|---|---|---|
+| 7 · Cruzar tablas | Varias hojas, `BUSCARV`, `BUSCARX`, #N/A y `SI.ERROR`, tramos con coincidencia aproximada | Planilla con varias hojas |
+| 8 · Calidad de datos | Duplicados (`CONTAR.SI` con rango que crece), vacíos y % de completitud, números guardados como texto, reglas de validez, informe de calidad | Planilla |
+| 9 · Tablas dinámicas | Filas, Columnas, Valores (Suma, Recuento, Promedio), Filtros, % del total | Tabla dinámica |
+| 10 · SQL básico | `SELECT`, `WHERE`, `ORDER BY` + `LIMIT`, funciones de resumen, `GROUP BY` + `HAVING`, `JOIN` | Consola SQL |
+| 11 · Reportes y dashboards existentes | Arreglar agregaciones y filtros viejos de un dashboard ajeno, responder pedidos puntuales con el filtro global, agregar lo que pide un área, contestar un pedido en dos líneas | Dashboard + tabla dinámica |
+
+**Presentación del Junior:** responder un pedido puntual con "número + comparación" y mantener dashboards.
+
+### Semi-Senior (niveles 12–15)
+
+| Nivel | Qué se practica | Herramienta |
+|---|---|---|
+| 12 · Estadística | Promedio vs mediana, desvío estándar, atípicos, correlación (y un tercer factor), descomponer una caída por segmento | Planilla |
+| 13 · Dashboards desde cero | Título, KPIs, un gráfico por pregunta, filtro global, 4 a 6 elementos | Dashboard |
+| 14 · Análisis de punta a punta | Cruzar hojas, calcular tasas, encontrar dónde se concentra el problema y armar el informe (titular, evidencia, gráfico, recomendación) | Planilla + informe |
+| 15 · Revisar a un junior | Marcar errores (rangos corridos, $ faltantes, números a mano, referencias equivocadas), arreglarlos y dar feedback útil, también en SQL y dashboards | Planilla con 🚩, SQL, dashboard |
+
+**Presentación del Semi-Senior:** historia con datos para otra área (storytelling).
+
+### Senior (niveles 16–19)
+
+| Nivel | Qué se practica | Herramienta |
+|---|---|---|
+| 16 · Definir KPIs | Conversión, churn, OTIF, NPS, metas y semáforos, indicadores adelantados vs atrasados, métricas de vanidad | Planilla + preguntas |
+| 17 · Pruebas A/B | Conversión, lift, puntaje z y significancia, métrica de resguardo, segmentos, tamaño de muestra y reglas del experimento | Planilla con varias hojas |
+| 18 · Datos incompletos | Vacío ≠ cero, estimar y marcar, escenarios pesimista/central/optimista, sesgo de respuesta (`SUMAPRODUCTO`), decidir por etapas | Planilla |
+| 19 · Resumen ejecutivo | Qué pasó / por qué / qué hacer + gráfico de respaldo, sin jerga ni metodología primero | Planilla + resumen ejecutivo |
+
+**Presentación del Senior:** resumen ejecutivo para Gerencia General.
+
+### Próximo: Lead
+
+Priorizar una bandeja de pedidos, encuadrar el problema con el área, definir métricas únicas (gobierno de
+datos), mentorear al equipo y el final de carrera.
 
 ## Fuentes
 

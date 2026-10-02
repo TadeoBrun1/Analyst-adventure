@@ -85,7 +85,7 @@
       const res = Ch.resolve(spec, opts.table || this.table);
       c.innerHTML = '';
       if (res.empty || !res.ok) {
-        c.innerHTML = `<div class="cb-empty">${res.empty ? opts.emptyText || T('Arrastrá una <b>dimensión</b> y una <b>medida</b> a Columnas y Filas para empezar.', 'Drag a <b>dimension</b> and a <b>measure</b> onto Columns and Rows to start.') : '⚠️ ' + esc(res.error)}</div>`;
+        c.innerHTML = `<div class="cb-empty"><span>${res.empty ? opts.emptyText || T('Arrastrá una <b>dimensión</b> y una <b>medida</b> a Columnas y Filas para empezar.', 'Drag a <b>dimension</b> and a <b>measure</b> onto Columns and Rows to start.') : '⚠️ ' + esc(res.error)}</span></div>`;
         return;
       }
       const W = Math.max(320, c.clientWidth);

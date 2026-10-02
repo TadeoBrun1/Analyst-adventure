@@ -382,7 +382,7 @@
     draw() {
       const res = resolve(this.spec, this.table);
       if (res.empty || !res.ok) {
-        this.out.innerHTML = `<div class="cb-empty">${res.empty ? T('Arrastrá un campo a <b>Filas</b> y un número a <b>Valores</b> para armar la tabla.', 'Drag a field to <b>Rows</b> and a number to <b>Values</b> to build the table.') : '⚠️ ' + esc(res.error)}</div>`;
+        this.out.innerHTML = `<div class="cb-empty"><span>${res.empty ? T('Arrastrá un campo a <b>Filas</b> y un número a <b>Valores</b> para armar la tabla.', 'Drag a field to <b>Rows</b> and a number to <b>Values</b> to build the table.') : '⚠️ ' + esc(res.error)}</span></div>`;
         return;
       }
       const money = !!(this.opts.money || []).includes(res.value);

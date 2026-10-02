@@ -214,5 +214,50 @@ chartAttempt('m6_color', (s) => (s.color = null), 1, 'sin color');
   else fail('barras horizontales rechazadas: ' + JSON.stringify(res));
 }
 
+// 7) Errores típicos en los niveles nuevos (libros con varias hojas, SQL, tablas dinámicas…).
+// parts: { writes: [[hoja|null, 'B2', '=…'], …], sql: [...], pivot: {...}, dash: {...} }
+function wrongAttempt(id, objIndex, partsFn, label, expectNote) {
+  AA.setLang('es');
+  const m = AA.Content.build(id, { seed: 5, size: 'small', lang: 'es' });
+  const book = W.buildBook(m);
+  const p = partsFn(m);
+  for (const [name, ref, f] of p.writes || []) {
+    const sh = name ? book.get(name) : book.sheets[0];
+    const q = F.parseRef(ref);
+    sh.setInput(q.col, q.row, f, true);
+  }
+  const parts = Object.assign(W.emptyParts(m), p.parts || {});
+  const res = m.objectives[objIndex].check(W.state(m, book, parts));
+  const okRes = res !== true && (!expectNote || (typeof res === 'string' && res.includes(expectNote)));
+  if (okRes) passed++;
+  else fail(`error típico aceptado (${label}) en ${id} #${objIndex + 1}: ${JSON.stringify(res)}`);
+}
+const colWrites = (col, r1, r2, f) => {
+  const out = [];
+  for (let r = r1; r <= r2; r++) out.push([null, col + r, F.shiftFormula(f, 0, r - r1)]);
+  return out;
+};
+const lastOf = (m) => (m.sheets ? m.sheets[0].data.rows.length : m.sheet.data.rows.length);
+wrongAttempt('m7_prices', 0, (m) => ({ writes: colWrites('D', 2, lastOf(m), '=BUSCARV(B2;Productos!$A$2:$D$9;4;VERDADERO)') }), 'BUSCARV aproximado con códigos');
+wrongAttempt('m7_prices', 0, (m) => ({ writes: colWrites('D', 2, lastOf(m), '=BUSCARV(B2;Productos!$A$2:$D$9;3;FALSO)') }), 'columna equivocada');
+wrongAttempt('m7_prices', 0, (m) => ({ writes: colWrites('D', 2, lastOf(m), '=BUSCARV(B2;Productos!A2:D9;4;FALSO)') }), 'tabla sin $');
+wrongAttempt('m7_tiers', 0, (m) => ({ writes: colWrites('C', 2, lastOf(m), '=BUSCARV(B2;Tramos!$A$2:$B$5;2;FALSO)') }), 'tramos con coincidencia exacta');
+wrongAttempt('m8_duplicates', 1, (m) => ({ writes: colWrites('E', 2, m.sheet.data.rows.length, `=SI(CONTAR.SI($A$2:$A$${m.sheet.data.rows.length};A2)=1;"Sí";"No")`) }), 'primera aparición con rango fijo');
+wrongAttempt('m8_blanks', 2, (m) => ({ writes: [[null, 'H2', `=CONTAR.BLANCO(B2:B${m.sheet.data[0].rows.length})`], [null, 'H3', `=CONTAR.BLANCO(C2:C${m.sheet.data[0].rows.length})`], [null, 'H4', `=CONTAR.BLANCO(D2:D${m.sheet.data[0].rows.length})`], [null, 'H5', `=CONTAR.BLANCO(E2:E${m.sheet.data[0].rows.length})`], [null, 'H7', `=CONTARA(A2:A${m.sheet.data[0].rows.length})`], ...colWrites('I', 2, 5, '=1-H2/H7')] }), '% completo sin $');
+wrongAttempt('m9_sellers', 0, (m) => ({ parts: { pivot: { rows: 'Vendedor', columns: null, value: { field: 'Monto', agg: 'COUNT' }, filter: null, show: 'value', sort: 'desc' } } }), 'recuento en vez de suma', 'Suma');
+wrongAttempt('m9_avg', 0, (m) => ({ parts: { pivot: { rows: 'Zona', columns: null, value: { field: 'Días de entrega', agg: 'SUM' }, filter: null, show: 'value', sort: 'none' } } }), 'sumar días', 'Promedio');
+wrongAttempt('m10_top', 0, (m) => ({ parts: { sql: ['SELECT vendedor, monto FROM ventas ORDER BY monto LIMIT 5'] } }), 'ORDER BY sin DESC');
+wrongAttempt('m10_select', 0, (m) => ({ parts: { sql: ['SELECT nombre, email FROM clientes'] } }), 'sin WHERE', 'fila');
+wrongAttempt('m10_group', 0, (m) => ({ parts: { sql: ['SELECT transportista, COUNT(*) FROM envios'] } }), 'agregación sin GROUP BY');
+wrongAttempt('m11_fixagg', 0, (m) => ({ parts: { dash: m.dashboard.initial } }), 'KPI sin arreglar');
+wrongAttempt('m12_median', 2, (m) => ({ writes: [[null, 'F2', `=PROMEDIO(C2:C${lastOf(m)})`], [null, 'F4', `=CONTAR.SI(C2:C${lastOf(m)};">F2")`]] }), 'criterio ">F2" como texto');
+wrongAttempt('m15_ranges', 0, (m) => ({ parts: { flags: ['F4', 'G3'] } }), 'faltan marcas', '2 de 3');
+wrongAttempt('m15_ranges', 0, (m) => ({ parts: { flags: ['F4', 'G3', 'F7', 'F2'] } }), 'marca de más', 'desmarcalas');
+wrongAttempt('m18_survey', 2, (m) => {
+  const last = m.sheet.data.rows.length;
+  const r = last + 4;
+  return { writes: [['B', 'C', 'D'].map((c) => [null, c + r, `=SUMA(${c}2:${c}${last})/CONTARA($A$2:$A$${last})`])].flat() };
+}, 'vacíos como cero');
+
 console.log(`\n${ids.length} plantillas · ${passed} OK, ${failed} fallidos`);
 process.exit(failed ? 1 : 0);

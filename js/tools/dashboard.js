@@ -261,7 +261,7 @@
 
       const ft = filteredTable(s, this.table);
       if (!s.tiles.length) {
-        this.grid.innerHTML = `<div class="cb-empty db-empty">${T('Dashboard vacío. Agregá <b>KPIs</b> (los números clave) y <b>gráficos</b> con los botones de arriba.', 'Empty dashboard. Add <b>KPIs</b> (the key numbers) and <b>charts</b> with the buttons above.')}</div>`;
+        this.grid.innerHTML = `<div class="cb-empty db-empty"><span>${T('Dashboard vacío. Agregá <b>KPIs</b> (los números clave) y <b>gráficos</b> con los botones de arriba.', 'Empty dashboard. Add <b>KPIs</b> (the key numbers) and <b>charts</b> with the buttons above.')}</span></div>`;
         return;
       }
       const meas = this.fields.filter((f) => f.role === 'measure');

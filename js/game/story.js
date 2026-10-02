@@ -33,6 +33,13 @@
      <b>Ctrl+Z / Ctrl+Y</b>: undo and redo · <b>Shift+arrows</b>: select a range`
   );
 
+  // Qué cambia en cada ascenso (lo que hace ese rango en la vida real).
+  const PROMO_LINES = {
+    1: { who: 'marta', text: T('Como Junior vas a cruzar tablas, usar tablas dinámicas y SQL, cuidar la calidad de los datos y mantener dashboards. Y vas a responder pedidos de todas las áreas.', "As a Junior you'll join tables, use pivot tables and SQL, look after data quality and maintain dashboards. And you'll answer requests from every team.") },
+    2: { who: 'marta', text: T('Como Semi-Senior ya no te voy a pedir números sueltos: vas a llevar análisis de punta a punta, armar dashboards desde cero, explicar <b>por qué</b> pasan las cosas… y revisar el trabajo de Nico.', "As a Mid-level analyst I won't ask you for loose numbers anymore: you'll run analyses end to end, build dashboards from scratch, explain <b>why</b> things happen… and review Nico's work.") },
+    3: { who: 'marta', text: T('Como Senior vas a trabajar con Gerencia: definir KPIs, diseñar experimentos, decidir con datos incompletos y escribir resúmenes ejecutivos. Te van a escuchar: usalo bien.', "As a Senior you'll work with Management: define KPIs, design experiments, decide with incomplete data and write executive summaries. They'll listen to you: use it well.") },
+  };
+
   const Story = {
     SHORTCUTS,
 
@@ -61,13 +68,15 @@
         const rank = st.RANKS[rankIdx];
         st.data.flags.rankSeen = rankIdx;
         st.save();
-        AA.Audio.play('levelup');
+        AA.Audio.play('fanfare');
+        AA.UI.confetti(280);
         AA.Dialog.open(
           [
             { who: 'marta', text: T('{name}, pasá, sentate. Tengo que hablar con vos.', '{name}, come in, have a seat. We need to talk.') },
             { who: 'marta', text: T('Estuve mirando tu trabajo. Fórmulas prolijas, datos que cierran, y las otras áreas están contentas.', "I've been looking at your work. Tidy formulas, numbers that add up, and the other teams are happy.") },
             { who: 'marta', text: T(`Así que es oficial: a partir de hoy sos <b>${rank.name.es}</b>. ¡Felicitaciones! 🎉`, `So it's official: starting today you're a <b>${rank.name.en}</b>. Congratulations! 🎉`) },
-            { who: 'marta', text: T('Más responsabilidad, pedidos más difíciles… y Leo seguro tiene algo nuevo para enseñarte.', "More responsibility, harder requests… and I'm sure Leo has something new to teach you.") },
+            PROMO_LINES[rankIdx] || { who: 'marta', text: T('Más responsabilidad, pedidos más difíciles… y Leo seguro tiene algo nuevo para enseñarte.', "More responsibility, harder requests… and I'm sure Leo has something new to teach you.") },
+            { who: 'marta', text: T('Pasá por donde está Leo: tiene la primera lección de tu nueva etapa.', 'Stop by Leo: he has the first lesson of your new stage.') },
           ],
           () => AA.Game.updateHud()
         );
@@ -93,7 +102,8 @@
           });
         } else if (!cur) {
           lines.push({ who: 'marta', text: T('Ya dominás todo lo que tenemos para tu rango por ahora. Impresionante.', 'You have mastered everything we have for your rank for now. Impressive.') });
-          lines.push({ who: 'marta', text: T('Lo que viene para un Junior (BUSCARV, tablas dinámicas, calidad de datos, SQL básico) llega en la próxima actualización.', 'What comes next for a Junior (VLOOKUP, pivot tables, data quality, basic SQL) arrives in the next update.') });
+          lines.push({ who: 'marta', text: T('El próximo paso es <b>Lead de Datos</b>: estrategia, priorizar los pedidos del equipo, acordar con las áreas qué medir y cuidar el gobierno de los datos. Esa etapa llega en una próxima actualización.', 'The next step is <b>Data Lead</b>: strategy, prioritizing the team\'s requests, agreeing with other teams on what to measure and looking after data governance. That stage arrives in a future update.') });
+          lines.push({ who: 'marta', text: T('Mientras tanto, la práctica libre de cualquier nivel sigue abierta para repasar.', 'Meanwhile, free practice for any level is still open for review.') });
         } else {
           lines.push({ who: 'marta', text: T('Seguí así. Si te sobra tiempo, la práctica libre te ayuda a afianzar lo aprendido.', 'Keep it up. If you have spare time, free practice helps you lock in what you learned.') });
         }

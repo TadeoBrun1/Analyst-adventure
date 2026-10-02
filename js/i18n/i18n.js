@@ -49,6 +49,7 @@
     RESIDUO: ['MOD', 'MOD(number, divisor)', 'Remainder of a division.', '=MOD(A2, 2)'],
     POTENCIA: ['POWER', 'POWER(number, power)', 'Raises a number to a power. Same as number^power.', '=POWER(2, 10)'],
     RAIZ: ['SQRT', 'SQRT(number)', 'Square root.', '=SQRT(16)'],
+    SUMAPRODUCTO: ['SUMPRODUCT', 'SUMPRODUCT(range1, [range2], ...)', 'Multiplies the ranges cell by cell and adds the results. Great for weighted averages.', '=SUMPRODUCT(B2:B6, C2:C6)/SUM(B2:B6)'],
     PRODUCTO: ['PRODUCT', 'PRODUCT(value1, [value2], ...)', 'Multiplies all the numbers.', '=PRODUCT(B2:D2)'],
     SI: ['IF', 'IF(logical_test, value_if_true, [value_if_false])', 'If the condition is met returns one value; otherwise, another.', '=IF(C2>=D2, "Yes", "No")'],
     'SI.CONJUNTO': ['IFS', 'IFS(condition1, value1, [condition2, value2], ...)', 'Checks several conditions in order and returns the value of the first true one.', '=IFS(B2>=90, "A", B2>=70, "B", TRUE, "C")'],
