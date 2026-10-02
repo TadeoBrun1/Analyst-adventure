@@ -889,6 +889,27 @@
   // -------------------------------------------------------------------------
   // Libreta de habilidades
   // -------------------------------------------------------------------------
+  // Ficha del jugador (rango, XP y nivel actual) que se ve arriba en la libreta.
+  function profileHtml() {
+    const st = AA.State;
+    if (!st.data) return '';
+    const prog = st.rankProgress();
+    const cur = Cu().currentModule();
+    const level = cur
+      ? `${T('Nivel', 'Level')} ${levelNum(cur)} · <b>${esc(AA.L(cur.title))}</b><br>${T('Tareas', 'Tasks')}: ${Cu().doneCount(cur)}/${Cu().REQUIRED}`
+      : T('Todos los niveles disponibles completos · ¡Practicá!', 'All available levels complete · Keep practicing!');
+    return `
+      <div class="nb-profile">
+        <span data-portrait></span>
+        <div class="nb-pname">${esc(st.data.name)}</div>
+        <div class="nb-prank">${esc(AA.L(prog.cur.name))}</div>
+        ${AA.UI.xpBar(prog.pct)}
+        <div class="nb-pxp">${st.data.xp} XP${prog.next ? ` · ${T('próximo', 'next')}: ${esc(AA.L(prog.next.name))} (${prog.next.xp})` : ''}</div>
+        <div class="nb-plevel">${level}</div>
+        ${AA.Game.screen === 'office' ? `<button class="nb-pcareer" data-act="career">📈 ${T('Ver plan de carrera', 'See career plan')}</button>` : ''}
+      </div>`;
+  }
+
   function openNotebook(focusModule) {
     const learned = Cu().MODULES.filter((m) => Cu().lessonDone(m));
     let current = focusModule && learned.find((m) => m.id === focusModule) ? focusModule : learned.length ? learned[learned.length - 1].id : 'keys';
@@ -921,7 +942,10 @@
             .join('');
       }
       card.querySelector('.nb').innerHTML = `
-        <nav class="nb-tabs">${tabs}<button class="nb-tab ${current === 'keys' ? 'on' : ''}" data-tab="keys">⌨️ ${T('Atajos', 'Shortcuts')}</button></nav>
+        <div class="nb-side">
+          ${profileHtml()}
+          <nav class="nb-tabs">${tabs}<button class="nb-tab ${current === 'keys' ? 'on' : ''}" data-tab="keys">⌨️ ${T('Atajos', 'Shortcuts')}</button></nav>
+        </div>
         <div class="nb-page">${learned.length || current === 'keys' ? page : `<p class="nb-say">${T('Todavía no aprendiste nada. Hablá con Leo junto a la máquina de café.', "You haven't learned anything yet. Talk to Leo by the coffee machine.")}</p>`}</div>`;
       card.querySelectorAll('[data-tab]').forEach((b) =>
         b.addEventListener('click', () => {
@@ -930,6 +954,14 @@
           render(card);
         })
       );
+      const slot = card.querySelector('[data-portrait]');
+      if (slot) slot.replaceWith(AA.UI.portraitCanvas('player', 48));
+      const career = card.querySelector('[data-act="career"]');
+      if (career)
+        career.addEventListener('click', () => {
+          AA.UI.closeModal();
+          setTimeout(() => openCareer(), 30);
+        });
     };
     AA.Audio.play('page');
     AA.UI.modal({

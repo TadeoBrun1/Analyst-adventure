@@ -172,8 +172,8 @@
         c.height = Math.round(ch * dpr);
       }
       const reserve = cw > 900 ? 40 : 0; // espacio para la barra de ayuda inferior
-      // y para el panel del jugador (arriba a la izquierda), así no tapa el comedor
-      const hud = document.getElementById('hud-player');
+      // y para los botones de arriba (libreta, carrera y menú), así no tapan el mapa
+      const hud = c.parentElement && c.parentElement.querySelector('.hud-right');
       const top = hud && hud.offsetHeight ? hud.offsetTop + hud.offsetHeight + 6 : 0;
       const scale = Math.min(cw / WORLD_W, (ch - reserve - top) / WORLD_H);
       return { scale, ox: (cw - WORLD_W * scale) / 2, oy: top + (ch - reserve - top - WORLD_H * scale) / 2, dpr };

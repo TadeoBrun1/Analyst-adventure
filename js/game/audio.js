@@ -16,7 +16,49 @@
     { bass: 31, arp: [55, 59, 62, 65] },
   ];
   const ARP = [0, 1, 2, 3, 2, 1, 2, 3];
-  const TEMPO = 84;
+
+  // Tema de la oficina: alegre y con swing, al estilo de los juegos de simulación tranquilos.
+  // Acordes (notas del acompañamiento + bajo) y una melodía por compás en corcheas:
+  // número = nota MIDI · -1 = sostener la anterior · 0 = silencio.
+  const CH = {
+    C: { notes: [60, 64, 67], bass: 36 },
+    Am: { notes: [57, 60, 64], bass: 45 },
+    F: { notes: [57, 60, 65], bass: 41 },
+    G: { notes: [55, 59, 62], bass: 43 },
+    Dm: { notes: [57, 62, 65], bass: 38 },
+    Em: { notes: [55, 59, 64], bass: 40 },
+    G7: { notes: [59, 62, 65], bass: 43 },
+  };
+  const OFFICE = [
+    // A
+    ['C', [76, 79, -1, 76, 77, 76, 74, 72]],
+    ['Am', [69, 72, 76, -1, 74, -1, 72, 0]],
+    ['F', [77, -1, 77, 76, 74, 72, 74, -1]],
+    ['G', [79, -1, 74, -1, 71, 74, 79, 0]],
+    ['C', [76, 79, -1, 76, 77, 76, 74, 72]],
+    ['Am', [69, 72, 76, 81, -1, 79, 76, 0]],
+    ['Dm', [77, 76, 74, 72, 74, -1, 77, -1]],
+    ['G', [74, -1, 71, 74, 72, -1, -1, 0]],
+    // B
+    ['F', [81, -1, 79, 77, 76, -1, 77, 79]],
+    ['G', [79, -1, 77, 76, 74, -1, 71, -1]],
+    ['Em', [76, 79, 83, -1, 81, 79, 76, -1]],
+    ['Am', [81, -1, 79, 76, 72, -1, 76, 0]],
+    ['Dm', [74, 77, 81, -1, 79, 77, 74, -1]],
+    ['G', [79, -1, 77, -1, 74, 71, 74, 79]],
+    ['C', [84, -1, 79, 76, 72, -1, 76, 79]],
+    ['G7', [77, -1, 74, -1, 71, -1, 0, 0]],
+    // Puente: solo el ritmo, para respirar
+    ['C', null],
+    ['Am', null],
+    ['F', null],
+    ['G7', null],
+  ];
+
+  const TRACKS = {
+    lofi: { tempo: 84, bright: 2600 },
+    office: { tempo: 112, bright: 5200, swing: 0.3 },
+  };
 
   const Audio = {
     ctx: null,
@@ -24,6 +66,8 @@
     noiseBuf: null,
     wantMusic: false,
     music: null,
+    track: 'lofi',
+    positions: {},
     duck: 1,
 
     // Crea el contexto de audio (los navegadores exigen un gesto del usuario).
@@ -39,7 +83,7 @@
         comp.connect(master);
         master.connect(ctx.destination);
         const music = ctx.createGain();
-        const lp = ctx.createBiquadFilter();
+        const lp = (this.musicFilter = ctx.createBiquadFilter());
         lp.type = 'lowpass';
         lp.frequency.value = 2600;
         music.connect(lp);
@@ -78,7 +122,8 @@
       const t = this.ctx.currentTime;
       const set = (g, val) => g.gain.setTargetAtTime(val, t, 0.05);
       set(this.bus.master, v.master);
-      set(this.bus.music, v.music * 0.55 * this.duck);
+      const on = !AA.Settings || AA.Settings.data.musicOn !== false;
+      set(this.bus.music, on ? v.music * 0.55 * this.duck : 0);
       set(this.bus.sfx, v.sfx * 0.9);
       set(this.bus.voice, v.voice * 0.8);
     },
@@ -104,7 +149,7 @@
       g.gain.exponentialRampToValueAtTime(vol, t + atk);
       g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
       osc.connect(g);
-      g.connect(this.bus[o.bus || 'sfx']);
+      g.connect(o.out || this.bus[o.bus || 'sfx']);
       osc.start(t);
       osc.stop(t + o.dur + 0.02);
     },
@@ -122,7 +167,7 @@
       g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
       src.connect(f);
       f.connect(g);
-      g.connect(this.bus[o.bus || 'sfx']);
+      g.connect(o.out || this.bus[o.bus || 'sfx']);
       src.start(t, Math.random() * 0.5);
       src.stop(t + o.dur + 0.02);
     },
@@ -198,33 +243,66 @@
       }
     },
 
-    // --- Música de fondo (secuenciador simple con planificación anticipada)
-    startMusic() {
+    // --- Música de fondo (secuenciador simple con planificación anticipada).
+    // Cada tema tiene su propia salida, así se puede pasar de uno a otro con un fundido.
+    startMusic(name) {
+      if (name && TRACKS[name]) this.track = name;
       this.wantMusic = true;
-      if (!this.ctx || this.ctx.state !== 'running' || this.music) return;
-      const sixteenth = 60 / TEMPO / 4;
-      this.music = { step: 0, next: this.ctx.currentTime + 0.1 };
+      if (!this.ctx || this.ctx.state !== 'running') return;
+      if (AA.Settings && AA.Settings.data.musicOn === false) return this.fadeOutMusic();
+      if (this.music && this.music.name === this.track) return;
+      this.fadeOutMusic();
+      const ctx = this.ctx;
+      const tr = TRACKS[this.track];
+      const sixteenth = 60 / tr.tempo / 4;
+      const out = ctx.createGain();
+      out.gain.setValueAtTime(0.0001, ctx.currentTime);
+      out.gain.setTargetAtTime(1, ctx.currentTime, 0.35);
+      out.connect(this.bus.music);
+      this.musicFilter.frequency.setTargetAtTime(tr.bright, ctx.currentTime, 0.3);
+      // Retoma el tema desde el compás donde había quedado.
+      const from = Math.floor((this.positions[this.track] || 0) / 16) * 16;
+      const m = (this.music = { name: this.track, step: from, next: ctx.currentTime + 0.12, out });
       const tick = () => {
-        if (!this.music) return;
-        while (this.music.next < this.ctx.currentTime + 0.15) {
-          this.scheduleStep(this.music.step, this.music.next, sixteenth);
-          this.music.next += sixteenth;
-          this.music.step++;
+        if (this.music !== m) return;
+        while (m.next < ctx.currentTime + 0.15) {
+          if (m.name === 'office') this.officeStep(m.step, m.next, sixteenth, out, tr.swing);
+          else this.scheduleStep(m.step, m.next, sixteenth, out);
+          m.next += sixteenth;
+          m.step++;
+          this.positions[m.name] = m.step;
         }
       };
-      this.music.timer = setInterval(tick, 40);
+      m.timer = setInterval(tick, 40);
       tick();
+    },
+    fadeOutMusic() {
+      const m = this.music;
+      if (!m) return;
+      clearInterval(m.timer);
+      this.music = null;
+      if (this.ctx) {
+        m.out.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.25);
+        setTimeout(() => m.out.disconnect(), 2000);
+      }
     },
     stopMusic() {
       this.wantMusic = false;
-      if (this.music) clearInterval(this.music.timer);
-      this.music = null;
+      this.fadeOutMusic();
     },
-    scheduleStep(step, t, sixteenth) {
+    // Encender o apagar la música desde las opciones.
+    setMusicEnabled(on) {
+      this.applyVolumes();
+      if (on && this.wantMusic) this.startMusic();
+      else if (!on) this.fadeOutMusic();
+    },
+
+    // Tema lo-fi tranquilo (menú principal).
+    scheduleStep(step, t, sixteenth, out) {
       const bar = Math.floor(step / 16) % SONG.length;
       const s = step % 16;
       const chord = SONG[bar];
-      const m = { bus: 'music' };
+      const m = { out };
       if (s === 0) {
         // colchón suave del acorde
         chord.arp.forEach((n) => this.tone(Object.assign({ freq: midi(n), dur: sixteenth * 15, type: 'sine', vol: 0.03, attack: 0.25, when: t }, m)));
@@ -238,6 +316,61 @@
         this.tone(Object.assign({ freq: midi(n), dur: sixteenth * 2.4, type: 'triangle', vol: 0.045, when: t }, m));
       }
       if (s % 4 === 2) this.noise(Object.assign({ dur: 0.03, vol: 0.018, freq: 7000, when: t }, m));
+    },
+
+    // Tema de la oficina: marimba, acordes en contratiempo, bajo saltarín y batería suave.
+    officeStep(step, t0, sixteenth, out, swing) {
+      const barIdx = Math.floor(step / 16) % OFFICE.length;
+      const loop = Math.floor(step / (16 * OFFICE.length));
+      const s = step % 16;
+      const [name, mel] = OFFICE[barIdx];
+      const chord = CH[name];
+      const e = s / 2; // corchea dentro del compás
+      // swing: la segunda corchea de cada negra llega un poco tarde
+      const t = s % 4 === 2 ? t0 + sixteenth * swing : t0;
+      const o = (x) => Object.assign({ out, when: t }, x);
+      const eighth = sixteenth * 2;
+
+      if (s === 0) {
+        // colchón muy suave para dar calidez
+        chord.notes.forEach((n) => this.tone(o({ freq: midi(n), dur: sixteenth * 16, type: 'sine', vol: 0.012, attack: 0.3 })));
+      }
+      if (s % 2) {
+        // shaker en semicorcheas
+        if (s % 4 === 3) this.noise(o({ dur: 0.02, vol: 0.006, freq: 9000 }));
+        return;
+      }
+      // batería: bombo en 1 y 3, chasquido en 2 y 4, platillo cerrado en cada corchea
+      if (e === 0 || e === 4 || (e === 5 && barIdx % 4 === 3)) this.tone(o({ freq: 120, slide: 45, dur: 0.16, type: 'sine', vol: 0.17 }));
+      if (e === 2 || e === 6) this.noise(o({ dur: 0.07, vol: 0.045, freq: 1900, filter: 'bandpass' }));
+      this.noise(o({ dur: 0.025, vol: e % 2 ? 0.016 : 0.01, freq: 8000 }));
+      // bajo: fundamental, quinta, octava, quinta
+      const bassLine = { 0: 0, 2: 7, 4: 12, 6: 7 };
+      if (bassLine[e] !== undefined) this.tone(o({ freq: midi(chord.bass + bassLine[e]), dur: eighth * 0.9, type: 'triangle', vol: 0.12 }));
+      // acordes cortos en contratiempo (como un piano eléctrico)
+      if (e % 2 === 1) {
+        chord.notes.forEach((n) => {
+          this.tone(o({ freq: midi(n), dur: eighth * 0.7, type: 'triangle', vol: 0.018 }));
+          this.tone(o({ freq: midi(n + 12), dur: eighth * 0.5, type: 'sine', vol: 0.01 }));
+        });
+      }
+      // melodía de marimba
+      if (mel && mel[e] > 0) {
+        let len = 1;
+        while (e + len < 8 && mel[e + len] === -1) len++;
+        const n = mel[e];
+        const dur = Math.min(eighth * len * 0.95 + 0.05, 0.9);
+        this.tone(o({ freq: midi(n), dur, type: 'sine', vol: 0.075 }));
+        this.tone(o({ freq: midi(n) * 4, dur: 0.06, type: 'sine', vol: 0.012 }));
+        this.tone(o({ freq: midi(n), dur: Math.min(dur, 0.25), type: 'triangle', vol: 0.02 }));
+        // en las vueltas impares, una segunda voz una octava abajo
+        if (loop % 2 === 1) this.tone(o({ freq: midi(n - 12), dur, type: 'triangle', vol: 0.025 }));
+      }
+      // en el puente, un silbido corto que pregunta y responde
+      if (!mel && (barIdx % 2 === 0 ? e === 1 || e === 2 : e === 5)) {
+        const q = barIdx % 2 === 0 ? [chord.notes[2] + 12, chord.notes[1] + 12][e - 1] : chord.notes[0] + 12;
+        this.tone(o({ freq: midi(q), dur: eighth * 1.2, type: 'sine', vol: 0.03, attack: 0.03 }));
+      }
     },
   };
 

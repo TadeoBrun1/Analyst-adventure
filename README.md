@@ -35,12 +35,15 @@ se guarda en el navegador (`localStorage`).
 
 ### Cómo se juega
 
-- **Menú principal**: *Jugar* (3 ranuras de partida), *Opciones* (volumen de música, efectos y voces;
+- **Menú principal**: *Jugar* (3 ranuras de partida), *Opciones* (música de fondo activada/desactivada y
+  volumen de música, efectos y voces;
   ventana o pantalla completa; tamaño de ventana; idioma **español / inglés**) y *Salir*.
 - **Oficina**: caminá con `WASD` / flechas e interactuá con `E` / `Espacio` (o con clic). `Esc` abre la pausa.
   Tiene un **comedor** a la izquierda (cafetera, heladera, mesas), el área de escritorios con sala de reuniones,
   la oficina de vidrio de Marta y un living con sofá; casi todo tiene algo para descubrir.
   - **Leo** (en el comedor, junto al café) explica cada nivel antes de empezarlo; lo que enseña queda en tu **📒 libreta**.
+  - La **📒 libreta** también muestra tu ficha: rango, XP, cuánto falta para el próximo ascenso y el nivel actual.
+  - Música: un tema lo-fi tranquilo en el menú y uno alegre con swing en la oficina (todo sintetizado, sin archivos).
   - Tu **computadora** → bandeja de entrada con las tareas de cada nivel y la **práctica libre**.
   - **Marta** (jefa) → historia y ascensos. **Pizarra** → plan de carrera.
 - **Progresión**: los niveles se agrupan en **etapas**, una por rango (Pasante → Junior → Semi-Senior →
@@ -83,6 +86,7 @@ ver [`docs/CARRERA.md`](docs/CARRERA.md).
 | **0.4 · Semi-Senior** | Niveles 12–15: **estadística** (mediana, desvío, atípicos, correlación ≠ causalidad, descomponer una caída) · **dashboards desde cero** · **análisis de punta a punta + storytelling** · **revisar el trabajo de un junior** (planilla, SQL y dashboard). | ✅ |
 | **0.4 · Senior** | Niveles 16–19: **definir KPIs** (conversión, churn, OTIF, NPS, metas, indicadores adelantados) · **pruebas A/B** (lift, significancia, resguardo, segmentos, diseño) · **datos incompletos** (escenarios, sesgo, estimaciones) · **resúmenes ejecutivos**. | ✅ |
 | **0.4.1** | Oficina rediseñada: más grande y luminosa, con comedor, plantas, sala de reuniones y living. | ✅ |
+| **0.4.2** | Ficha del jugador (rango, XP y nivel) dentro de la libreta; música nueva para la oficina y opción para apagar la música. | ✅ |
 | **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura

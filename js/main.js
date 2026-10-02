@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.4.1';
+  AA.VERSION = '0.4.2';
 
   const Game = {
     screen: 'title',
@@ -18,7 +18,7 @@
       AA.Settings.load();
       AA.Audio.installUnlock();
       AA.Audio.ensure();
-      AA.Audio.startMusic();
+      AA.Audio.startMusic('lofi');
       AA.Dialog.init(document.getElementById('dialog'));
       AA.Office.init(document.getElementById('office-canvas'), {
         onInteract: (id) => this.interact(id),
@@ -39,6 +39,8 @@
       else AA.Office.stop();
       if (name !== 'title') AA.Menu.close();
       AA.Audio.setDuck(name === 'mission' ? 0.45 : 1);
+      // Menú: lo-fi tranquilo · oficina y tareas: el tema alegre de la oficina.
+      AA.Audio.startMusic(name === 'title' ? 'lofi' : 'office');
     },
 
     goToTitle() {
@@ -49,6 +51,7 @@
     // Se llama cuando una ranura quedó cargada (nueva o existente).
     startGame() {
       AA.Screens.clearCache();
+      this.hudXp = undefined;
       AA.Office.player.x = AA.Office.START.x;
       AA.Office.player.y = AA.Office.START.y;
       AA.Office.player.dir = 'up';
@@ -64,17 +67,14 @@
     updateHud() {
       const st = AA.State;
       if (!st.data) return;
-      const prog = st.rankProgress();
-      const cur = Cu().currentModule();
-      const level = cur
-        ? `${T('Nivel', 'Level')} ${Cu().MODULES.indexOf(cur) + 1} · ${esc(AA.L(cur.title))} · ${Cu().doneCount(cur)}/${Cu().REQUIRED}`
-        : T('Todos los niveles disponibles completos · ¡Practicá!', 'All available levels complete · Keep practicing!');
-      document.getElementById('hud-player').innerHTML = `
-        <div class="hud-name">${esc(st.data.name)}</div>
-        <div class="hud-rank">${esc(AA.L(prog.cur.name))}</div>
-        ${AA.UI.xpBar(prog.pct)}
-        <div class="hud-xp">${st.data.xp} XP${prog.next ? ` · ${T('próximo', 'next')}: ${esc(AA.L(prog.next.name))} (${prog.next.xp})` : ''}</div>
-        <div class="hud-level">${level}</div>`;
+      // El rango, la XP y el nivel actual se ven en la libreta; el botón "salta" cuando sumás XP.
+      if (this.hudXp !== undefined && st.data.xp > this.hudXp) {
+        const b = document.getElementById('hud-notebook');
+        b.classList.remove('bump');
+        void b.offsetWidth;
+        b.classList.add('bump');
+      }
+      this.hudXp = st.data.xp;
       document.getElementById('hud-notebook').innerHTML = `📒 ${T('Libreta', 'Notebook')}`;
       document.getElementById('hud-career').innerHTML = `📈 ${T('Carrera', 'Career')}`;
       document.getElementById('hud-help').innerHTML = T(
