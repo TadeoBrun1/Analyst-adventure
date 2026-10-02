@@ -38,9 +38,9 @@
       const st = AA.State;
       const root = document.getElementById('screen-computer');
       if (!this.selected || !this.isSelectable(this.selected)) this.selected = this.defaultSelection();
-      const groups = Cu()
-        .MODULES.map((mod, i) => (i === 0 || Cu().MODULES[i - 1].tier !== mod.tier ? this.renderStageHead(mod.tier) : '') + this.renderGroup(mod))
-        .join('');
+      // Una sección plegable por etapa (rango); lo que el jugador abre o cierra queda guardado.
+      const tiers = [...new Set(Cu().MODULES.map((m) => m.tier))];
+      const groups = tiers.map((tier) => this.renderStage(tier)).join('');
       root.innerHTML = `
         <div class="monitor">
           <div class="os-bar">
@@ -49,7 +49,7 @@
           </div>
           <div class="mail">
             <aside class="mail-list">${groups}
-              <div class="stage-head">🔒 ${T('Etapa Lead · próximamente', 'Lead stage · coming soon')}</div>
+              <div class="stage-head future"><span class="chev">🔒</span>${T('Etapa Lead · próximamente', 'Lead stage · coming soon')}</div>
               <div class="mail-group future">
                 <div class="mail-item locked"><div class="mail-subject">${T('Estrategia de datos, priorizar pedidos, acordar métricas con las áreas y gobierno de datos', 'Data strategy, prioritizing requests, agreeing on metrics with other teams and data governance')}</div></div>
               </div>
@@ -58,6 +58,18 @@
           </div>
         </div>`;
       root.querySelector('[data-act="back"]').addEventListener('click', () => AA.Game.enterOffice());
+      root.querySelectorAll('[data-stage]').forEach((b) =>
+        b.addEventListener('click', () => {
+          const sec = b.closest('.stage');
+          const open = !sec.classList.contains('open');
+          sec.classList.toggle('open', open);
+          b.setAttribute('aria-expanded', open);
+          const flags = st.data.flags;
+          flags.stages = Object.assign({}, flags.stages, { [b.dataset.stage]: open });
+          st.save();
+          AA.Audio.play(open ? 'page' : 'move');
+        })
+      );
       root.querySelectorAll('[data-sel]').forEach((b) =>
         b.addEventListener('click', () => {
           AA.Audio.play('move');
@@ -101,9 +113,34 @@
       return Cu().missionAvailable(sel);
     },
 
-    renderStageHead(tier) {
+    // ¿La etapa está desplegada? Lo que eligió el jugador manda; si no eligió, se abre la etapa actual.
+    stageOpen(tier) {
+      const saved = AA.State.data.flags.stages;
+      if (saved && saved[tier] !== undefined) return !!saved[tier];
+      const cur = Cu().currentModule();
+      const curTier = cur ? cur.tier : AA.State.rankIndex();
+      return tier === curTier;
+    },
+    isNew(id) {
+      const st = AA.State;
+      return Cu().missionAvailable(id) && !st.isCompleted(id) && !st.data.progress[id];
+    },
+    renderStage(tier) {
       const rank = AA.State.RANKS[tier];
-      return `<div class="stage-head">🎓 ${T('Etapa', 'Stage')} ${esc(AA.L(rank.name))}</div>`;
+      const mods = Cu().MODULES.filter((m) => m.tier === tier);
+      const done = mods.reduce((a, m) => a + Cu().doneCount(m), 0);
+      const total = mods.length * Cu().REQUIRED;
+      const locked = mods.every((m) => Cu().lockReason(m));
+      const fresh = mods.reduce((a, m) => a + (Cu().lessonDone(m) && !Cu().lockReason(m) ? Cu().requiredIds(m).filter((id) => this.isNew(id)).length : 0), 0);
+      const open = this.stageOpen(tier);
+      return `
+        <section class="stage ${open ? 'open' : ''} ${locked ? 'locked' : ''}">
+          <button class="stage-head" data-stage="${tier}" aria-expanded="${open}">
+            <span class="chev">▸</span>${locked ? '🔒' : '🎓'} ${T('Etapa', 'Stage')} ${esc(AA.L(rank.name))}
+            <span class="stage-meta">${fresh ? `<span class="stage-new">${fresh} ${T(fresh > 1 ? 'nuevas' : 'nueva', 'new')}</span>` : ''}<span class="${done >= total ? 'ok' : ''}">${done}/${total}</span></span>
+          </button>
+          <div class="stage-body">${mods.map((m) => this.renderGroup(m)).join('')}</div>
+        </section>`;
     },
 
     renderGroup(mod) {
@@ -117,7 +154,7 @@
         return `<div class="mail-group locked">${head}${item('locked:' + mod.id, `<div class="mail-subject">${esc(reason)}</div>`, 'locked')}</div>`;
       }
       if (!Cu().lessonDone(mod)) {
-        return `<div class="mail-group">${head}${item('lesson:' + mod.id, `<div class="mail-from">☕ Leo</div><div class="mail-subject">${T('Primero hablá con Leo', 'Talk to Leo first')}</div><div class="mail-meta"><span class="chip new">${T('Lección pendiente', 'Lesson pending')}</span></div>`)}</div>`;
+        return `<div class="mail-group">${head}${item('lesson:' + mod.id, `<div class="mail-from">☕ Leo</div><div class="mail-subject">${T('Primero hablá con Leo', 'Talk to Leo first')}</div><div class="mail-meta"><span class="chip new">${T('Lección pendiente', 'Lesson pending')}</span></div>`, 'new')}</div>`;
       }
       const items = Cu()
         .requiredIds(mod)
@@ -126,20 +163,21 @@
             return `<div class="mail-item locked"><div class="mail-subject">🔒 ${T('Completá la tarea anterior', 'Complete the previous task')}</div></div>`;
           }
           const m = getMission(id, (st.data.progress[id] && st.data.progress[id].lang) || AA.lang);
-          const status = st.isCompleted(id)
-            ? `<span class="chip ok">✔ ${T('Entregado', 'Delivered')}</span>`
-            : st.data.progress[id]
-              ? `<span class="chip warn">${T('En progreso', 'In progress')}</span>`
-              : `<span class="chip new">${T('Nuevo', 'New')}</span>`;
+          const state = st.isCompleted(id) ? 'read' : st.data.progress[id] ? 'progress' : 'new';
+          const status = {
+            read: `<span class="chip ok">✔ ${T('Entregado', 'Delivered')}</span>`,
+            progress: `<span class="chip prog">✎ ${T('En progreso', 'In progress')}</span>`,
+            new: `<span class="chip new">★ ${T('Nuevo', 'New')}</span>`,
+          }[state];
           const ch = st.CHARACTERS[m.from];
-          return item(id, `<div class="mail-from">${esc(AA.L(ch.name))} ${AA.UI.deptBadge(m.dept)}</div><div class="mail-subject">${esc(m.subject)}</div><div class="mail-meta">${status}<span class="xp">+${m.xp} XP</span></div>`, st.isCompleted(id) ? 'read' : '');
+          return item(id, `<div class="mail-from">${esc(AA.L(ch.name))} ${AA.UI.deptBadge(m.dept)}</div><div class="mail-subject">${esc(m.subject)}</div><div class="mail-meta">${status}<span class="xp">+${m.xp} XP</span></div>`, state);
         })
         .join('');
       const reward = Cu().practiceReward(mod, 'medium');
       const practice = Cu().isModuleComplete(mod)
         ? item(
             'practice:' + mod.id,
-            `<div class="mail-subject">🎲 ${T('Práctica libre', 'Free practice')}</div><div class="mail-meta"><span class="chip">${T('Casos aleatorios', 'Random cases')}</span><span class="xp">${
+            `<div class="mail-subject">🎲 ${T('Práctica libre', 'Free practice')}</div><div class="mail-meta"><span class="chip extra">${T('Extra · casos aleatorios', 'Extra · random cases')}</span><span class="xp">${
               reward.xp ? `+${mod.xp}–${Cu().practiceXp(mod, 'large')} XP · ${reward.left}/${Cu().PRACTICE_XP_LIMIT}` : T('sin XP', 'no XP')
             }</span></div>`,
             'practice'
@@ -904,6 +942,7 @@
       const m = this.mission;
       const st = AA.State;
       const free = m.kind === 'story' && st.isCompleted(m.id);
+      const before = st.rankProgress();
       const res = st.completeMission(m, free ? 0 : this.hints.length);
       Object.values(this.views).forEach((v) => v && v.destroy && v.destroy());
       this.views = {};
@@ -939,23 +978,67 @@
         buttons.push({ label: T('🎲 Otro caso', '🎲 Another case'), action: () => AA.Game.startPractice(mod, p.size) });
       }
       buttons.push({ label: T('Volver a la oficina', 'Back to the office'), primary: true, action: () => AA.Game.enterOffice() });
+      // La barra arranca donde estaba antes de entregar y se llena con animación.
+      const fromPct = res.promoted ? 0 : before.pct;
+      const reveal = (i) => `class="reveal" style="--d:${(party ? 900 : 250) + i * 140}ms"`;
+      const burst = party
+        ? `<div class="lvl-burst">
+             <div class="lvl-rays"></div>
+             <div class="lvl-badge">${res.promoted ? `<span>${T('RANGO', 'RANK')}</span><b>🏅</b>` : `<span>${T('NIVEL', 'LEVEL')}</span><b>${levelNum(mod)}</b>`}</div>
+             <div class="lvl-title">${res.promoted ? T('¡ASCENSO!', 'PROMOTED!') : T('¡COMPLETADO!', 'COMPLETE!')}</div>
+           </div>`
+        : '';
       AA.UI.modal({
         title: party ? T('🎉 ¡Nivel completado!', '🎉 Level complete!') : T('📤 ¡Informe entregado!', '📤 Report submitted!'),
         closable: false,
         className: 'complete' + (party ? ' party' : ''),
         html: `
-          <div class="complete-row">
+          ${burst}
+          <div class="complete-row" ${reveal(0)}>
             <div data-el="portrait"></div>
             <div><b>${esc(AA.L(ch.name))}</b><p>“${esc(m.feedback)}”</p></div>
           </div>
-          <div class="xp-gain">${res.gained ? `+${res.gained} XP${penalty}` : T('Práctica completada (sin XP extra)', 'Practice completed (no extra XP)')}</div>
-          <div class="rank-line"><b>${esc(AA.L(prog.cur.name))}</b><span class="muted">${st.data.xp} XP${prog.next ? ` / ${prog.next.xp} → ${esc(AA.L(prog.next.name))}` : ''}</span></div>
-          ${AA.UI.xpBar(prog.pct)}
-          ${extra}`,
+          <div class="xp-gain" ${reveal(1)}>${res.gained ? `<span data-el="xp">+0</span> XP${penalty}` : T('Práctica completada (sin XP extra)', 'Practice completed (no extra XP)')}</div>
+          <div ${reveal(2)}>
+            <div class="rank-line"><b>${esc(AA.L(prog.cur.name))}</b><span class="muted">${st.data.xp} XP${prog.next ? ` / ${prog.next.xp} → ${esc(AA.L(prog.next.name))}` : ''}</span></div>
+            ${AA.UI.xpBar(fromPct)}
+          </div>
+          <div ${reveal(3)}>${extra}</div>`,
         buttons,
-        onOpen: (card) => card.querySelector('[data-el="portrait"]').appendChild(AA.UI.portraitCanvas(m.from, 72)),
+        onOpen: (card) => {
+          card.querySelector('[data-el="portrait"]').appendChild(AA.UI.portraitCanvas(m.from, 72));
+          const start = (party ? 900 : 250) + 140;
+          // Contador de XP que sube y barra que se llena.
+          const xpEl = card.querySelector('[data-el="xp"]');
+          if (xpEl) {
+            setTimeout(() => {
+              const t0 = performance.now();
+              const dur = Math.min(1200, 400 + res.gained * 4);
+              let ticks = 0;
+              const step = (now) => {
+                if (!xpEl.isConnected) return;
+                const k = Math.min(1, (now - t0) / dur);
+                const eased = 1 - Math.pow(1 - k, 3);
+                xpEl.textContent = '+' + Math.round(res.gained * eased);
+                if (k * 8 > ticks && ticks < 8) {
+                  ticks++;
+                  AA.Audio.seq([72 + ticks * 2], 0.03, { type: 'square', vol: 0.035 });
+                }
+                if (k < 1) requestAnimationFrame(step);
+                else xpEl.parentElement.classList.add('pop');
+              };
+              requestAnimationFrame(step);
+            }, start);
+          }
+          const fill = card.querySelector('.xpbar-fill');
+          if (fill) setTimeout(() => (fill.style.width = Math.round(Math.max(0, Math.min(1, prog.pct)) * 100) + '%'), start + 380);
+        },
       });
-      if (party) AA.UI.confetti(res.promoted ? 260 : 170);
+      // Siempre hay festejo: chico al entregar, grande al completar un nivel o ascender.
+      if (party) {
+        AA.UI.confetti(res.promoted ? 260 : 170);
+        setTimeout(() => AA.UI.confetti(res.promoted ? 160 : 110), 750);
+      } else AA.UI.confetti(80);
     },
   };
 
