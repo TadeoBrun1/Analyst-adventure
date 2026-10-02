@@ -21,15 +21,18 @@
     }
   }
 
+  // Mensajes en el idioma del juego (AA.lang lo define js/i18n/i18n.js; por defecto, español).
+  const M = (es, en) => (AA.lang === 'en' ? en : es);
+
   const err = {
-    div0: () => new FormulaError('#DIV/0!', 'División por cero.'),
-    value: (d) => new FormulaError('#VALUE!', d || 'Tipo de dato incorrecto.'),
-    name: (d) => new FormulaError('#NAME?', d || 'Nombre desconocido.'),
-    ref: (d) => new FormulaError('#REF!', d || 'Referencia inválida.'),
-    na: (d) => new FormulaError('#N/A', d || 'Valor no encontrado.'),
-    num: (d) => new FormulaError('#NUM!', d || 'Número inválido.'),
-    circ: () => new FormulaError('#CIRC!', 'Referencia circular: la fórmula depende de sí misma.'),
-    parse: (d) => new FormulaError('#ERROR!', d || 'Error de sintaxis.'),
+    div0: () => new FormulaError('#DIV/0!', M('División por cero.', 'Division by zero.')),
+    value: (d) => new FormulaError('#VALUE!', d || M('Tipo de dato incorrecto.', 'Wrong data type.')),
+    name: (d) => new FormulaError('#NAME?', d || M('Nombre desconocido.', 'Unknown name.')),
+    ref: (d) => new FormulaError('#REF!', d || M('Referencia inválida.', 'Invalid reference.')),
+    na: (d) => new FormulaError('#N/A', d || M('Valor no encontrado.', 'Value not found.')),
+    num: (d) => new FormulaError('#NUM!', d || M('Número inválido.', 'Invalid number.')),
+    circ: () => new FormulaError('#CIRC!', M('Referencia circular: la fórmula depende de sí misma.', 'Circular reference: the formula depends on itself.')),
+    parse: (d) => new FormulaError('#ERROR!', d || M('Error de sintaxis.', 'Syntax error.')),
   };
   const isErr = (v) => v instanceof FormulaError;
 
@@ -124,13 +127,13 @@
     if (v === null || v === undefined) return 0;
     if (typeof v === 'boolean') return v ? 1 : 0;
     const n = parseNumberStrict(String(v));
-    return n === null ? err.value(`"${v}" no es un número.`) : n;
+    return n === null ? err.value(M(`"${v}" no es un número.`, `"${v}" is not a number.`)) : n;
   }
 
   function toText(v) {
     if (isErr(v)) return v.code;
     if (v === null || v === undefined) return '';
-    if (typeof v === 'boolean') return v ? 'VERDADERO' : 'FALSO';
+    if (typeof v === 'boolean') return v ? M('VERDADERO', 'TRUE') : M('FALSO', 'FALSE');
     if (typeof v === 'number') return fmtNumber(v);
     return String(v);
   }
@@ -143,13 +146,13 @@
     const t = normName(String(v).trim());
     if (t === 'TRUE' || t === 'VERDADERO') return true;
     if (t === 'FALSE' || t === 'FALSO') return false;
-    return err.value(`"${v}" no es VERDADERO ni FALSO.`);
+    return err.value(M(`"${v}" no es VERDADERO ni FALSO.`, `"${v}" is not TRUE or FALSE.`));
   }
 
   function scalar(v) {
     if (v instanceof RangeValue) {
       if (v.height === 1 && v.width === 1) return v.rows[0][0];
-      return err.value('Se esperaba una sola celda y recibí un rango.');
+      return err.value(M('Se esperaba una sola celda y recibí un rango.', 'Expected a single cell but got a range.'));
     }
     return v;
   }
@@ -204,7 +207,7 @@
         let j = i + 1;
         let out = '';
         for (;;) {
-          if (j >= n) throw err.parse('Falta cerrar las comillas de un texto.');
+          if (j >= n) throw err.parse(M('Falta cerrar las comillas de un texto.', 'A text is missing its closing quote.'));
           if (src[j] === '"') {
             if (src[j + 1] === '"') {
               out += '"';
@@ -267,7 +270,7 @@
           i = end;
           continue;
         }
-        throw err.parse(`No entiendo "${ch}".`);
+        throw err.parse(M(`No entiendo "${ch}".`, `I don't understand "${ch}".`));
       }
       const two = src.substr(i, 2);
       if (two === '<=' || two === '>=' || two === '<>') {
@@ -295,7 +298,7 @@
         i++;
         continue;
       }
-      throw err.parse(`Carácter inesperado: "${ch}".`);
+      throw err.parse(M(`Carácter inesperado: "${ch}".`, `Unexpected character: "${ch}".`));
     }
     return toks;
   }
@@ -345,7 +348,7 @@
 
     function parsePrimary() {
       const tok = next();
-      if (!tok) throw err.parse('La fórmula está incompleta.');
+      if (!tok) throw err.parse(M('La fórmula está incompleta.', 'The formula is incomplete.'));
       switch (tok.t) {
         case 'num':
           return { type: 'num', value: tok.v };
@@ -369,7 +372,7 @@
           if (isOp(peek(), ':')) {
             next();
             const t2 = next();
-            if (!t2 || t2.t !== 'ref') throw err.parse('Rango incompleto: después de ":" tiene que ir otra celda (ej: A1:A10).');
+            if (!t2 || t2.t !== 'ref') throw err.parse(M('Rango incompleto: después de ":" tiene que ir otra celda (ej: A1:A10).', 'Incomplete range: another cell must follow ":" (e.g. A1:A10).'));
             return {
               type: 'range',
               c1: Math.min(tok.col, t2.col),
@@ -382,7 +385,7 @@
         }
         case 'func': {
           const open = next();
-          if (!open || open.t !== 'lparen') throw err.parse(`Falta abrir el paréntesis de ${tok.v}.`);
+          if (!open || open.t !== 'lparen') throw err.parse(M(`Falta abrir el paréntesis de ${tok.v}.`, `Missing opening parenthesis for ${tok.v}.`));
           const args = [];
           if (peek() && peek().t === 'rparen') {
             next();
@@ -391,26 +394,26 @@
           for (;;) {
             args.push(parseCompare());
             const t = next();
-            if (!t) throw err.parse(`Falta cerrar el paréntesis de ${tok.v.toUpperCase()}.`);
+            if (!t) throw err.parse(M(`Falta cerrar el paréntesis de ${tok.v.toUpperCase()}.`, `Missing closing parenthesis for ${tok.v.toUpperCase()}.`));
             if (t.t === 'rparen') break;
-            if (t.t !== 'sep') throw err.parse(`Se esperaba ";" o ")" y encontré "${text(t)}".`);
+            if (t.t !== 'sep') throw err.parse(M(`Se esperaba ";" o ")" y encontré "${text(t)}".`, `Expected "," or ")" but found "${text(t)}".`));
           }
           return { type: 'func', name: tok.v, args };
         }
         case 'lparen': {
           const e = parseCompare();
           const t = next();
-          if (!t || t.t !== 'rparen') throw err.parse('Falta cerrar un paréntesis.');
+          if (!t || t.t !== 'rparen') throw err.parse(M('Falta cerrar un paréntesis.', 'A parenthesis is not closed.'));
           return e;
         }
         default:
-          throw err.parse(`No esperaba "${text(tok)}" en esa posición.`);
+          throw err.parse(M(`No esperaba "${text(tok)}" en esa posición.`, `Did not expect "${text(tok)}" there.`));
       }
     }
 
-    if (!toks.length) throw err.parse('La fórmula está vacía.');
+    if (!toks.length) throw err.parse(M('La fórmula está vacía.', 'The formula is empty.'));
     const ast = parseCompare();
-    if (p < toks.length) throw err.parse(`Sobra "${src.slice(toks[p].s).trim()}" al final de la fórmula.`);
+    if (p < toks.length) throw err.parse(M(`Sobra "${src.slice(toks[p].s).trim()}" al final de la fórmula.`, `Unexpected "${src.slice(toks[p].s).trim()}" at the end of the formula.`));
     return ast;
   }
 
@@ -424,9 +427,9 @@
       case 'bool':
         return node.value;
       case 'referr':
-        return err.ref('La referencia quedó fuera de la hoja.');
+        return err.ref(M('La referencia quedó fuera de la hoja.', 'The reference is outside the sheet.'));
       case 'name':
-        return err.name(`"${node.name}" no es una función ni una celda válida. ¿Te faltaron comillas para un texto?`);
+        return err.name(M(`"${node.name}" no es una función ni una celda válida. ¿Te faltaron comillas para un texto?`, `"${node.name}" is not a function or a valid cell. Did you forget quotes around a text?`));
       case 'ref':
         return ctx.getCell(node.col, node.row);
       case 'range':
@@ -523,12 +526,19 @@
 
   function callFunction(node, ctx) {
     const d = ALIASES[normName(node.name)];
-    if (!d) return err.name(`No conozco la función "${node.name.toUpperCase()}". Revisá cómo está escrita.`);
+    if (!d) return err.name(M(`No conozco la función "${node.name.toUpperCase()}". Revisá cómo está escrita.`, `Unknown function "${node.name.toUpperCase()}". Check the spelling.`));
     if (node.args.length < d.min || node.args.length > d.max) {
-      return err.value(`Cantidad de argumentos incorrecta para ${d.name}. Sintaxis: ${d.sig}`);
+      return err.value(argCountMessage(d));
     }
     if (d.lazy) return d.fn(node.args.map((a) => () => evaluate(a, ctx)), ctx);
     return d.fn(node.args.map((a) => evaluate(a, ctx)), ctx);
+  }
+
+  function argCountMessage(d) {
+    const doc = AA.fnDoc ? AA.fnDoc(d.name) : null;
+    const nm = doc ? doc.name : d.name;
+    const sig = doc ? doc.sig : d.sig;
+    return M(`Cantidad de argumentos incorrecta para ${nm}. Sintaxis: ${sig}`, `Wrong number of arguments for ${nm}. Syntax: ${sig}`);
   }
 
   function callByName(name, args) {
@@ -691,7 +701,7 @@
     desc: 'Raíz cuadrada.', ex: '=RAIZ(16)',
   }, (x) => {
     const a = toNum(x); if (isErr(a)) return a;
-    return a < 0 ? err.num('No existe la raíz de un número negativo.') : Math.sqrt(a);
+    return a < 0 ? err.num(M('No existe la raíz de un número negativo.', 'Negative numbers have no square root.')) : Math.sqrt(a);
   });
   def(['PRODUCTO', 'PRODUCT'], {
     min: 1, cat: 'Matemáticas', sig: 'PRODUCTO(valor1; [valor2]; ...)',
@@ -715,13 +725,13 @@
     desc: 'Evalúa varias condiciones en orden y devuelve el valor de la primera verdadera.',
     ex: '=SI.CONJUNTO(B2>=90; "A"; B2>=70; "B"; VERDADERO; "C")',
     fn: (t) => {
-      if (t.length % 2) return err.value('SI.CONJUNTO necesita pares de condición y valor.');
+      if (t.length % 2) return err.value(M('SI.CONJUNTO necesita pares de condición y valor.', 'IFS needs pairs of condition and value.'));
       for (let i = 0; i < t.length; i += 2) {
         const c = toBool(scalar(t[i]()));
         if (isErr(c)) return c;
         if (c) return t[i + 1]();
       }
-      return err.na('Ninguna condición se cumplió.');
+      return err.na(M('Ninguna condición se cumplió.', 'No condition was met.'));
     },
   });
   def(['SI.ERROR', 'IFERROR'], {
@@ -747,7 +757,7 @@
         out.push(b);
       }
     }
-    return out.length ? out : err.value('No hay valores lógicos para evaluar.');
+    return out.length ? out : err.value(M('No hay valores lógicos para evaluar.', 'There are no logical values to evaluate.'));
   }
   def(['Y', 'AND'], {
     min: 1, cat: 'Lógica', sig: 'Y(condición1; [condición2]; ...)',
@@ -863,7 +873,7 @@
   }, (x) => {
     if (typeof x === 'number') return x;
     const n = parseNumberStrict(toText(x));
-    return n === null ? err.value(`"${toText(x)}" no se puede convertir en número.`) : n;
+    return n === null ? err.value(M(`"${toText(x)}" no se puede convertir en número.`, `"${toText(x)}" can't be converted to a number.`)) : n;
   });
   sdef(['ENCONTRAR', 'FIND'], {
     min: 2, max: 3, cat: 'Texto', sig: 'ENCONTRAR(texto_buscado; dentro_de; [posición_inicial])',
@@ -871,7 +881,7 @@
   }, (q, s, k) => {
     const st = k === undefined ? 1 : toNum(k); if (isErr(st)) return st;
     const i = toText(s).indexOf(toText(q), Math.trunc(st) - 1);
-    return i < 0 ? err.value(`No encontré "${toText(q)}".`) : i + 1;
+    return i < 0 ? err.value(M(`No encontré "${toText(q)}".`, `"${toText(q)}" not found.`)) : i + 1;
   });
   sdef(['HALLAR', 'SEARCH'], {
     min: 2, max: 3, cat: 'Texto', sig: 'HALLAR(texto_buscado; dentro_de; [posición_inicial])',
@@ -879,7 +889,7 @@
   }, (q, s, k) => {
     const st = k === undefined ? 1 : toNum(k); if (isErr(st)) return st;
     const i = toText(s).toLowerCase().indexOf(toText(q).toLowerCase(), Math.trunc(st) - 1);
-    return i < 0 ? err.value(`No encontré "${toText(q)}".`) : i + 1;
+    return i < 0 ? err.value(M(`No encontré "${toText(q)}".`, `"${toText(q)}" not found.`)) : i + 1;
   });
 
   // ---- Información
@@ -969,7 +979,7 @@
     const mask = new Array(h * w).fill(true);
     for (const [rg, crit] of pairs) {
       const r = asRange(rg);
-      if (r.height !== h || r.width !== w) return err.value('Todos los rangos de criterios deben tener el mismo tamaño.');
+      if (r.height !== h || r.width !== w) return err.value(M('Todos los rangos de criterios deben tener el mismo tamaño.', 'All criteria ranges must be the same size.'));
       const test = makeCriterion(crit);
       if (isErr(test)) return test;
       const vals = r.flat();
@@ -1005,7 +1015,7 @@
     min: 2, cat: 'Condicionales', sig: 'CONTAR.SI.CONJUNTO(rango1; criterio1; [rango2; criterio2]; ...)',
     desc: 'Cuenta las filas que cumplen TODOS los criterios.', ex: '=CONTAR.SI.CONJUNTO(B2:B25; "Sur"; D2:D25; "Demorado")',
     fn: (args) => {
-      if (args.length % 2) return err.value('Los rangos y criterios van de a pares.');
+      if (args.length % 2) return err.value(M('Los rangos y criterios van de a pares.', 'Ranges and criteria go in pairs.'));
       const mask = matchMask(pairsFrom(args, 0));
       return isErr(mask) ? mask : mask.filter(Boolean).length;
     },
@@ -1032,7 +1042,7 @@
     desc: 'Suma los valores de las filas que cumplen TODOS los criterios. ¡Ojo: el rango a sumar va primero!',
     ex: '=SUMAR.SI.CONJUNTO(E2:E25; B2:B25; "Sur"; D2:D25; "Entregado")',
     fn: (args) => {
-      if ((args.length - 1) % 2) return err.value('Los rangos y criterios van de a pares.');
+      if ((args.length - 1) % 2) return err.value(M('Los rangos y criterios van de a pares.', 'Ranges and criteria go in pairs.'));
       const mask = matchMask(pairsFrom(args, 1));
       if (isErr(mask)) return mask;
       const r = asRange(args[1]);
@@ -1073,7 +1083,7 @@
     min: 3, cat: 'Condicionales', sig: 'PROMEDIO.SI.CONJUNTO(rango_promedio; rango1; criterio1; ...)',
     desc: 'Promedio de las filas que cumplen TODOS los criterios.', ex: '=PROMEDIO.SI.CONJUNTO(E2:E25; B2:B25; "Sur")',
     fn: (args) => {
-      if ((args.length - 1) % 2) return err.value('Los rangos y criterios van de a pares.');
+      if ((args.length - 1) % 2) return err.value(M('Los rangos y criterios van de a pares.', 'Ranges and criteria go in pairs.'));
       const mask = matchMask(pairsFrom(args, 1));
       if (isErr(mask)) return mask;
       const r = asRange(args[1]);
@@ -1082,7 +1092,7 @@
   });
   function extremeIfs(pick) {
     return (args) => {
-      if ((args.length - 1) % 2) return err.value('Los rangos y criterios van de a pares.');
+      if ((args.length - 1) % 2) return err.value(M('Los rangos y criterios van de a pares.', 'Ranges and criteria go in pairs.'));
       const mask = matchMask(pairsFrom(args, 1));
       if (isErr(mask)) return mask;
       const r = asRange(args[1]);
@@ -1130,13 +1140,13 @@
     fn: (args) => {
       const val = scalar(args[0]);
       if (isErr(val)) return val;
-      if (!(args[1] instanceof RangeValue)) return err.value('El segundo argumento tiene que ser un rango (la tabla).');
+      if (!(args[1] instanceof RangeValue)) return err.value(M('El segundo argumento tiene que ser un rango (la tabla).', 'The second argument must be a range (the table).'));
       const tbl = args[1];
       const idx = toNum(scalar(args[2]));
       if (isErr(idx)) return idx;
       const col = Math.trunc(idx);
-      if (col < 1) return err.value('El número de columna tiene que ser 1 o mayor.');
-      if (col > tbl.width) return err.ref(`La tabla tiene ${tbl.width} columnas y pediste la ${col}.`);
+      if (col < 1) return err.value(M('El número de columna tiene que ser 1 o mayor.', 'The column number must be 1 or greater.'));
+      if (col > tbl.width) return err.ref(M(`La tabla tiene ${tbl.width} columnas y pediste la ${col}.`, `The table has ${tbl.width} columns and you asked for column ${col}.`));
       let approx = true;
       if (args.length > 3) {
         const b = toBool(scalar(args[3]));
@@ -1145,7 +1155,7 @@
       }
       const keys = tbl.rows.map((r) => r[0]);
       const i = approx ? approxIndex(keys, val, false) : exactIndex(keys, val);
-      if (i < 0) return err.na(`No encontré "${toText(val)}" en la primera columna de la tabla.`);
+      if (i < 0) return err.na(M(`No encontré "${toText(val)}" en la primera columna de la tabla.`, `"${toText(val)}" not found in the first column of the table.`));
       const out = tbl.rows[i][col - 1];
       return out === null || out === undefined ? 0 : out;
     },
@@ -1160,10 +1170,10 @@
       const look = asRange(args[1]);
       const ret = asRange(args[2]);
       const vertical = look.width === 1;
-      if (!vertical && look.height !== 1) return err.value('El rango de búsqueda tiene que ser una sola fila o columna.');
+      if (!vertical && look.height !== 1) return err.value(M('El rango de búsqueda tiene que ser una sola fila o columna.', 'The lookup range must be a single row or column.'));
       const list = vertical ? look.rows.map((r) => r[0]) : look.rows[0];
       const i = exactIndex(list, val);
-      if (i < 0) return args.length > 3 ? scalar(args[3]) : err.na(`No encontré "${toText(val)}".`);
+      if (i < 0) return args.length > 3 ? scalar(args[3]) : err.na(M(`No encontré "${toText(val)}".`, `"${toText(val)}" not found.`));
       if (vertical) {
         const row = ret.rows[i];
         if (!row) return err.ref();
@@ -1180,7 +1190,7 @@
       const val = scalar(args[0]);
       if (isErr(val)) return val;
       const rg = asRange(args[1]);
-      if (rg.width !== 1 && rg.height !== 1) return err.na('El rango tiene que ser una sola fila o columna.');
+      if (rg.width !== 1 && rg.height !== 1) return err.na(M('El rango tiene que ser una sola fila o columna.', 'The range must be a single row or column.'));
       const list = rg.flat();
       let type = 1;
       if (args.length > 2) {
@@ -1189,7 +1199,7 @@
         type = Math.sign(t);
       }
       const i = type === 0 ? exactIndex(list, val) : approxIndex(list, val, type < 0);
-      return i < 0 ? err.na(`No encontré "${toText(val)}".`) : i + 1;
+      return i < 0 ? err.na(M(`No encontré "${toText(val)}".`, `"${toText(val)}" not found.`)) : i + 1;
     },
   });
   def(['INDICE', 'INDEX'], {
@@ -1209,7 +1219,7 @@
         c = r;
         r = 1;
       }
-      if (r < 1 || c < 1 || r > rg.height || c > rg.width) return err.ref('La posición pedida está fuera del rango.');
+      if (r < 1 || c < 1 || r > rg.height || c > rg.width) return err.ref(M('La posición pedida está fuera del rango.', 'The requested position is outside the range.'));
       const v = rg.rows[r - 1][c - 1];
       return v === null || v === undefined ? 0 : v;
     },

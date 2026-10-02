@@ -5,33 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Analyst Adventure</title>
   <meta name="description" content="Juego 2D para aprender planillas de cálculo: de pasante a analista de datos senior.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+  <link rel="icon" href="assets/icon.png">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div id="app">
-    <!-- Título -->
+    <!-- Menú principal -->
     <section id="screen-title" class="screen">
-      <div class="title-bg" aria-hidden="true"></div>
-      <div class="title-card">
-        <div class="logo">
-          <span class="logo-cell">=</span>
-          <h1>ANALYST<br>ADVENTURE</h1>
-        </div>
-        <p class="tagline">De pasante a Senior, una celda a la vez.</p>
-        <form id="new-game" class="new-game" autocomplete="off">
-          <label for="player-name">¿Cómo te llamás?</label>
-          <div class="row">
-            <input id="player-name" maxlength="24" placeholder="Tu nombre">
-            <button class="btn btn-primary" type="submit">Nueva partida</button>
-          </div>
-        </form>
-        <button id="btn-continue" class="btn btn-wide" hidden></button>
-        <button id="btn-reset" class="btn btn-link" hidden>Borrar partida guardada</button>
-        <p class="title-foot">Etapa 1 · Fórmulas, funciones, SI, limpieza de datos y CONTAR.SI</p>
+      <canvas id="menu-bg" aria-hidden="true"></canvas>
+      <div class="menu-vignette" aria-hidden="true"></div>
+      <div class="menu-layout">
+        <header class="menu-title">
+          <h1><span class="logo-cell">=</span><span class="logo-text">ANALYST ADVENTURE</span></h1>
+          <p class="tagline" id="menu-tagline"></p>
+        </header>
+        <div id="menu-content" class="menu-content"></div>
       </div>
+      <footer class="menu-foot" id="menu-foot"></footer>
     </section>
 
     <!-- Oficina -->
@@ -39,14 +31,11 @@
       <canvas id="office-canvas"></canvas>
       <div class="hud hud-left" id="hud-player"></div>
       <div class="hud hud-right">
-        <span class="chip" id="hud-missions"></span>
-        <button class="btn btn-sm" id="hud-career">📈 Carrera</button>
-        <button class="btn btn-sm" id="hud-manual">📖 Manual</button>
-        <button class="btn btn-sm" id="hud-menu">☰</button>
+        <button class="btn btn-sm" id="hud-notebook"></button>
+        <button class="btn btn-sm" id="hud-career"></button>
+        <button class="btn btn-sm" id="hud-menu" aria-label="Menú">☰</button>
       </div>
-      <div class="hud hud-bottom">
-        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · o hacé clic sobre las cosas
-      </div>
+      <div class="hud hud-bottom" id="hud-help"></div>
       <div id="dialog" class="dialog hidden"></div>
     </section>
 
@@ -63,19 +52,32 @@
   <!-- Motor -->
   <script src="js/engine/formula.js"></script>
   <script src="js/engine/sheet.js"></script>
+  <script src="js/i18n/i18n.js"></script>
+  <!-- Sistema -->
+  <script src="js/game/storage.js"></script>
+  <script src="js/game/settings.js"></script>
+  <script src="js/game/audio.js"></script>
+  <script src="js/game/state.js"></script>
   <!-- Interfaz -->
   <script src="js/ui/grid.js"></script>
   <script src="js/ui/common.js"></script>
-  <!-- Juego -->
-  <script src="js/game/state.js"></script>
+  <!-- Contenido -->
   <script src="js/game/validators.js"></script>
-  <script src="js/game/missions/registry.js"></script>
-  <script src="js/game/missions/stage1.js"></script>
+  <script src="js/game/content/lib.js"></script>
+  <script src="js/game/content/mod1.js"></script>
+  <script src="js/game/content/mod2.js"></script>
+  <script src="js/game/content/mod3.js"></script>
+  <script src="js/game/content/mod4.js"></script>
+  <script src="js/game/content/mod5.js"></script>
+  <script src="js/game/content/curriculum.js"></script>
+  <!-- Juego -->
   <script src="js/game/sprites.js"></script>
   <script src="js/game/dialog.js"></script>
   <script src="js/game/office.js"></script>
   <script src="js/game/story.js"></script>
   <script src="js/game/screens.js"></script>
+  <script src="js/ui/menu-bg.js"></script>
+  <script src="js/ui/menu.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

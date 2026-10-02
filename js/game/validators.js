@@ -51,14 +51,42 @@
     opts = opts || {};
     if (S.empty(ref)) return false;
     const val = S.v(ref);
-    if (F.isErr(val)) return `${ref} muestra ${val.code}: ${val.detail}`;
-    if (!matches(val, expected, opts)) return opts.wrongNote || `${ref} tiene un valor, pero no es el esperado.`;
-    if (opts.formula !== false && !S.isF(ref)) return `${ref} tiene el valor correcto, pero escrito a mano. Usá una fórmula para que se actualice sola.`;
+    if (F.isErr(val)) return AA.T(`${ref} muestra ${val.code}: ${val.detail}`, `${ref} shows ${val.code}: ${val.detail}`);
+    if (!matches(val, expected, opts)) return opts.wrongNote || AA.T(`${ref} tiene un valor, pero no es el esperado.`, `${ref} has a value, but not the expected one.`);
+    if (opts.formula !== false && !S.isF(ref)) {
+      return AA.T(`${ref} tiene el valor correcto, pero escrito a mano. Usá una fórmula para que se actualice sola.`, `${ref} has the right value, but typed by hand. Use a formula so it updates by itself.`);
+    }
     const info = S.info(ref);
-    if (opts.uses && !usesAny(info.funcs, opts.uses)) return `${ref} da bien, pero esta vez usá la función ${opts.uses[0]}.`;
+    if (opts.uses && !usesAny(info.funcs, opts.uses)) {
+      return AA.T(`${ref} da bien, pero esta vez usá la función ${AA.fnName(opts.uses[0])}.`, `${ref} is right, but this time use the ${AA.fnName(opts.uses[0])} function.`);
+    }
     if (opts.refs) {
-      const missing = opts.refs.filter((r) => !info.refs.has(r));
-      if (missing.length) return `${ref} debería calcularse a partir de ${opts.refs.join(' y ')}, no con números fijos.`;
+      // Una celda cuenta como usada si aparece sola (C2) o dentro de un rango (C2:D2, C:C).
+      const covered = (ref) => {
+        if (info.refs.has(ref)) return true;
+        const p = F.parseRef(ref);
+        return info.ranges.some((g) => p.col >= g.c1 && p.col <= g.c2 && p.row >= g.r1 && (g.r2 === null || p.row <= g.r2));
+      };
+      const missing = opts.refs.filter((r) => !covered(r));
+      if (missing.length) {
+        return AA.T(`${ref} debería calcularse a partir de ${opts.refs.join(' y ')}, no con números fijos.`, `${ref} should be calculated from ${opts.refs.join(' and ')}, not with fixed numbers.`);
+      }
+    }
+    if (opts.absRows) {
+      // Celdas que tienen que estar fijadas con $ (al menos la fila) para poder copiar la fórmula.
+      const fixed = new Set();
+      try {
+        for (const t of F.tokenize(S.input(ref).slice(1))) if (t.t === 'ref' && t.absR) fixed.add(F.makeRef(t.col, t.row));
+      } catch (e) {
+        /* fórmula inválida: ya la reporta el valor */
+      }
+      const loose = opts.absRows.filter((r) => !fixed.has(r));
+      if (loose.length) {
+        return AA.T(
+          `${ref} da bien, pero fijá ${loose.join(', ')} con $ (F4) para que no se corra al copiar.`,
+          `${ref} is right, but lock ${loose.join(', ')} with $ (F4) so it doesn't shift when copied.`
+        );
+      }
     }
     return true;
   }
@@ -72,7 +100,9 @@
     text(ref, expected) {
       return (S) => {
         if (S.empty(ref)) return false;
-        return norm(S.v(ref)) === norm(expected) ? true : `${ref} dice "${F.toText(S.v(ref))}". Tiene que decir "${expected}".`;
+        return norm(S.v(ref)) === norm(expected)
+          ? true
+          : AA.T(`${ref} dice "${F.toText(S.v(ref))}". Tiene que decir "${expected}".`, `${ref} says "${F.toText(S.v(ref))}". It should say "${expected}".`);
       };
     },
 
@@ -99,9 +129,9 @@
         if (ok === total) return true;
         if (!anyFilled) return false;
         if (ok > 0 && opts.dollarHint && firstNote) {
-          return `${ok} de ${total} correctas. ${firstNote} ¿Copiaste la fórmula sin fijar el rango con $? (F4)`;
+          return AA.T(`${ok} de ${total} correctas. ${firstNote} ¿Copiaste la fórmula sin fijar el rango con $? (F4)`, `${ok} of ${total} correct. ${firstNote} Did you copy the formula without locking the range with $? (F4)`);
         }
-        return `${ok} de ${total} correctas.` + (firstNote ? ' ' + firstNote : '');
+        return AA.T(`${ok} de ${total} correctas.`, `${ok} of ${total} correct.`) + (firstNote ? ' ' + firstNote : '');
       };
     },
 
@@ -113,13 +143,14 @@
         let anyFilled = false;
         for (const [ref, exp] of list) {
           if (!S.empty(ref)) anyFilled = true;
-          const res = checkCell(S, ref, exp, opts);
+          const cellOpts = opts && opts.usesByRef ? Object.assign({}, opts, { uses: opts.usesByRef[ref] }) : opts;
+          const res = checkCell(S, ref, exp, cellOpts);
           if (res === true) ok++;
           else if (!firstNote && typeof res === 'string') firstNote = res;
         }
         if (ok === list.length) return true;
         if (!anyFilled) return false;
-        return `${ok} de ${list.length} correctas.` + (firstNote ? ' ' + firstNote : '');
+        return AA.T(`${ok} de ${list.length} correctas.`, `${ok} of ${list.length} correct.`) + (firstNote ? ' ' + firstNote : '');
       };
     },
 

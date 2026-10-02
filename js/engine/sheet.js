@@ -7,6 +7,7 @@
   'use strict';
   const AA = (globalThis.AA = globalThis.AA || {});
   const F = AA.Formula;
+  const T = (es, en) => (AA.lang === 'en' ? en : es);
 
   // Convierte lo que el usuario escribe en el contenido de una celda.
   function parseInput(input) {
@@ -103,7 +104,7 @@
     }
 
     getValue(c, r) {
-      if (!this.inBounds(c, r)) return F.errors.ref('La referencia está fuera de la hoja.');
+      if (!this.inBounds(c, r)) return F.errors.ref(T('La referencia está fuera de la hoja.', 'The reference is outside the sheet.'));
       const k = this.key(c, r);
       if (this.cache.has(k)) return this.cache.get(k);
       const cell = this.cells.get(k);
@@ -120,7 +121,7 @@
           if (val instanceof F.RangeValue) {
             val = val.height === 1 && val.width === 1
               ? val.rows[0][0]
-              : F.errors.value('La fórmula devuelve un rango entero. Usá una función como SUMA para resumirlo.');
+              : F.errors.value(T('La fórmula devuelve un rango entero. Usá una función como SUMA para resumirlo.', 'The formula returns a whole range. Use a function like SUM to summarize it.'));
           }
           if (val === null || val === undefined) val = 0;
           if (typeof val === 'number' && !isFinite(val)) val = F.errors.num();
