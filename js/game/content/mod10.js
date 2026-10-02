@@ -115,7 +115,7 @@
     const exp1 = { rows: rows.filter((x) => x.city === city).map((x) => [x.name, x.email]) };
     const exp2 = { rows: q2.map((x) => [x.name, x.date]) };
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T(`Clientes de ${city} para un evento`, `Customers in ${city} for an event`),
       file: T('crm.db', 'crm.db'),

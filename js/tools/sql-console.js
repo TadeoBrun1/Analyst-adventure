@@ -110,6 +110,8 @@
         } else if (e.key === 'Tab') {
           e.preventDefault();
           this.insert('  ');
+        } else if (e.key === 'Escape') {
+          this.ta.blur(); // el siguiente Esc vuelve a la bandeja
         }
       });
       this.root.querySelector('[data-act="run"]').addEventListener('click', () => this.run(this.ta.value));

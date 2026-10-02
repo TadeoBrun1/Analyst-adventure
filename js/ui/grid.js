@@ -742,6 +742,7 @@
           return;
         case 'Escape':
           if (this.clipboard) {
+            e.preventDefault(); // solo cancela el copiado: no salir de la tarea
             this.clipboard = null;
             this.renderSelection();
           }

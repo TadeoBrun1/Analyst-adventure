@@ -90,7 +90,7 @@
                 <label for="slot-name-${i}">${T('¿Cómo te llamás?', "What's your name?")}</label>
                 <input id="slot-name-${i}" maxlength="20" autocomplete="off" data-nav data-autofocus placeholder="${T('Tu nombre', 'Your name')}">
                 <div class="slot-actions">
-                  <button class="btn btn-primary" type="submit" data-nav>${T('Comenzar', 'Start')}</button>
+                  <button class="btn btn-primary" type="submit" data-nav>${T('Siguiente', 'Next')} →</button>
                   <button class="btn btn-ghost" type="button" data-nav data-act="cancel">${T('Cancelar', 'Cancel')}</button>
                 </div>
               </form>`;
@@ -174,14 +174,55 @@
               setTimeout(() => input.classList.remove('shake'), 400);
               return;
             }
-            AA.Audio.play('unlock');
-            AA.State.newGame(i, name);
-            AA.Game.startGame();
+            AA.Audio.play('select');
+            this.renderCreator(i, name);
           });
         }
       });
       const auto = this.root.querySelector('[data-autofocus]');
       if (auto) auto.focus({ preventScroll: true });
+    },
+
+    // -----------------------------------------------------------------------
+    // Paso 2 de la partida nueva: elegir el aspecto del personaje.
+    renderCreator(i, name, look) {
+      this.view = 'creator';
+      this.creating = { i, name };
+      this.root.className = 'menu-content view-creator';
+      this.root.innerHTML = `
+        <h2 class="menu-h">${T('Creá tu personaje', 'Create your character')}</h2>
+        <p class="muted cr-sub">${T(`Así te van a ver en la oficina, <b>${esc(name)}</b>. Lo podés cambiar después desde el menú de pausa.`, `This is how they'll see you at the office, <b>${esc(name)}</b>. You can change it later from the pause menu.`)}</p>
+        <div class="cr-host"></div>`;
+      const actions = `
+        <button type="button" class="btn btn-primary" data-act="start">${T('Comenzar', 'Start')} ▶</button>
+        <button type="button" class="btn btn-ghost" data-act="back-name">← ${T('Volver', 'Back')}</button>`;
+      const bind = (host) => {
+        host.querySelector('[data-act="start"]').addEventListener('click', () => {
+          AA.Audio.play('unlock');
+          const chosen = this.creator.look;
+          this.creator.destroy();
+          this.creating = null;
+          AA.State.newGame(i, name, chosen);
+          AA.Game.startGame();
+        });
+        host.querySelector('[data-act="back-name"]').addEventListener('click', () => this.backToName());
+      };
+      this.creator = AA.Creator.mount(this.root.querySelector('.cr-host'), { look, actions, onRender: bind });
+      this.creator.focus();
+    },
+    backToName() {
+      const c = this.creating;
+      AA.Audio.play('back');
+      if (this.creator) this.creator.destroy();
+      this.creating = null;
+      this.view = 'slots';
+      this.root.className = 'menu-content view-slots';
+      this.renderSlots(c.i);
+      const input = document.getElementById('slot-name-' + c.i);
+      if (input) {
+        input.value = c.name;
+        input.focus();
+      }
     },
 
     // -----------------------------------------------------------------------
@@ -313,7 +354,8 @@
         items[(i - 1 + items.length) % items.length].focus();
       } else if (e.key === 'Escape' && this.view !== 'main' && AA.Game.screen === 'title' && !AA.UI.isModalOpen()) {
         e.preventDefault();
-        if (this.view === 'slots' && this.root.querySelector('form.slot-card')) this.renderSlots();
+        if (this.view === 'creator' && this.creating) this.backToName();
+        else if (this.view === 'slots' && this.root.querySelector('form.slot-card')) this.renderSlots();
         else this.back();
       }
     },

@@ -283,8 +283,8 @@
       templates: ['m1_orders', 'm1_budget', 'm1_stock', 'm1_vat', 'm1_unit'],
       seeds: [101, 102, 103, 104, 105],
       intro: {
-        es: '¡Hola! Así que vos sos la persona nueva. Antes de que toques datos reales, te explico lo básico de las planillas. Prestá atención, que es la base de todo.',
-        en: "Hi! So you're the new hire. Before you touch real data, let me explain spreadsheet basics. Pay attention: it's the foundation of everything.",
+        es: 'Bueno, vamos a lo nuestro. Antes de que toques datos reales, te explico lo básico de las planillas. Prestá atención, que es la base de todo.',
+        en: "Alright, down to business. Before you touch real data, let me explain spreadsheet basics. Pay attention: it's the foundation of everything.",
       },
     },
     {

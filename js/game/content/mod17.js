@@ -160,7 +160,7 @@
     const ds = T('Datos', 'Data');
     const res = resultSheet(ds, rows.length + 1, s);
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('Resultado de la prueba del botón nuevo', 'Result of the new button test'),
       file: T('prueba_ab_boton.xlsx', 'ab_test_button.xlsx'),
@@ -200,7 +200,7 @@
     const ds = T('Datos', 'Data');
     const res = resultSheet(ds, rows.length + 1, s);
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¡La landing nueva vende muchísimo más!', 'The new landing page sells way more!'),
       file: T('prueba_ab_landing.xlsx', 'ab_test_landing.xlsx'),
@@ -212,7 +212,7 @@
       objectives: [
         ...res.objectives,
         {
-          text: T('❓ ¿Qué le respondés a Tomás?', '❓ What do you tell Tomás?'),
+          text: T('❓ ¿Qué le respondés a Tadeo?', '❓ What do you tell Tadeo?'),
           choices: [T(`Implementarla ya: ${pct(s.lift)} más es muchísimo.`, `Roll it out now: ${pct(s.lift)} more is huge.`), T(`Todavía no se puede concluir: con tan pocos visitantes la diferencia puede ser azar (z = ${s.z.toFixed(2)}). Hay que seguir hasta el tamaño de muestra planeado.`, `We can't conclude yet: with so few visitors the difference may be chance (z = ${s.z.toFixed(2)}). We must keep going until the planned sample size.`), T('Descartar B: no funciona.', "Discard B: it doesn't work.")],
           correct: 1,
           why: [T('El lift es grande, pero con esta muestra puede ser suerte: mirá B10.', 'The lift is big, but with this sample it may be luck: look at B10.'), null, T('No significativo no prueba que B no sirva: solo que todavía no sabemos.', "Not significant doesn't prove B doesn't work: just that we don't know yet.")],
@@ -384,7 +384,7 @@
     const perGroup = (16 * p * (1 - p)) / (mde * mde);
     const days = Math.ceil((2 * perGroup) / daily);
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('Queremos probar un formulario más corto', 'We want to test a shorter form'),
       file: T('diseno_prueba.xlsx', 'test_design.xlsx'),

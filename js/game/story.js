@@ -18,8 +18,25 @@
     T('Si un número te sorprende, desconfiá primero de tu fórmula, después de los datos y recién al final del mundo.', 'If a number surprises you, doubt your formula first, then the data, and only then the world.'),
     T('Una fórmula con un número fijo adentro (=B2*1.21) es una bomba de tiempo. Poné el 1.21 en una celda y referencialo.', 'A formula with a hard-coded number (=B2*1.21) is a time bomb. Put 1.21 in a cell and reference it.'),
     T('Un buen análisis responde una pregunta concreta. Si no sabés cuál es, preguntá antes de abrir la planilla.', "A good analysis answers a concrete question. If you don't know which one, ask before opening the sheet."),
+    T('Si mi hermano Tadeo te pide «un numerito rápido», preguntale para qué es. Siempre es para una presentación en diez minutos.', 'If my brother Tadeo asks you for "a quick number", ask him what it\'s for. It\'s always for a presentation in ten minutes.'),
     T('La práctica libre es donde se hace la diferencia: tablas más grandes, mismos conceptos, más experiencia.', 'Free practice is where you get good: bigger tables, same concepts, more experience.'),
     T('<b>Ctrl+flecha</b> salta hasta el final de un bloque de datos. Con Shift además lo selecciona.', '<b>Ctrl+arrow</b> jumps to the end of a block of data. With Shift it selects it too.'),
+  ];
+
+  const POEMS = [
+    { es: 'Caminante, no hay camino, se hace camino al andar.', en: 'Traveler, there is no road; the road is made by walking.', by: 'Antonio Machado' },
+    { es: 'Ser o no ser, esa es la cuestión.', en: 'To be, or not to be, that is the question.', by: 'William Shakespeare' },
+    { es: 'La esperanza es esa cosa con plumas que se posa en el alma.', en: 'Hope is the thing with feathers that perches in the soul.', by: 'Emily Dickinson' },
+    { es: 'Juventud, divino tesoro, ¡ya te vas para no volver!', en: 'Youth, divine treasure, you leave never to return!', by: 'Rubén Darío' },
+    { es: 'Y yo me iré. Y se quedarán los pájaros cantando.', en: 'And I will leave. And the birds will stay, singing.', by: 'Juan Ramón Jiménez' },
+    { es: '¿Me contradigo? Muy bien, me contradigo. Soy amplio, contengo multitudes.', en: 'Do I contradict myself? Very well then I contradict myself. I am large, I contain multitudes.', by: 'Walt Whitman' },
+    { es: 'Dos caminos se bifurcaban en un bosque, y yo tomé el menos transitado, y eso hizo toda la diferencia.', en: 'Two roads diverged in a wood, and I took the one less traveled by, and that has made all the difference.', by: 'Robert Frost' },
+    { es: 'Ver un mundo en un grano de arena y un cielo en una flor silvestre.', en: 'To see a world in a grain of sand and a heaven in a wild flower.', by: 'William Blake' },
+    { es: 'Nada te turbe, nada te espante; todo se pasa.', en: 'Let nothing disturb you, let nothing frighten you; all things pass.', by: 'Santa Teresa de Jesús' },
+    { es: 'Hay golpes en la vida, tan fuertes… ¡Yo no sé!', en: "There are blows in life, so hard… I don't know!", by: 'César Vallejo' },
+    { es: 'Yo no sé muchas cosas, es verdad. Digo tan sólo lo que he visto.', en: "I don't know many things, it's true. I only tell what I have seen.", by: 'León Felipe' },
+    { es: 'No te quedes inmóvil al borde del camino.', en: "Don't stand still at the edge of the road.", by: 'Mario Benedetti' },
+    { es: 'Tú me quieres alba, me quieres de espumas, me quieres de nácar.', en: 'You want me white as dawn, you want me made of foam, you want me made of pearl.', by: 'Alfonsina Storni' },
   ];
 
   const SHORTCUTS = T(
@@ -131,6 +148,7 @@
         st.data.flags.metLeo = true;
         st.save();
         lines.push({ who: 'leo', text: T('¡Hola! Vos sos {name}, ¿no? Yo soy Leo, analista senior. Bah, "senior": tengo más horas de planillas que de sueño.', 'Hey! You must be {name}. I\'m Leo, senior analyst. Well, "senior": I have more hours of spreadsheets than of sleep.') });
+        lines.push({ who: 'leo', text: T('El de Marketing que anda por ahí es Tadeo, mi hermano. Si te pide algo "para ayer", es normal.', 'The Marketing guy around here is Tadeo, my brother. If he asks for something "for yesterday", that\'s normal.') });
       }
       const pending = Cu().pendingLesson();
       if (pending && st.data.flags.intro) {
@@ -166,7 +184,7 @@
       ]);
     },
 
-    sofi() {
+    camila() {
       const lines = Cu().lessonDone(Cu().MODULES[3])
         ? [T('Ahora que sabés limpiar texto, te va a encantar cuando lleguen números guardados como texto. Spoiler: llegan.', "Now that you can clean text, you'll love it when numbers stored as text show up. Spoiler: they will.")]
         : [
@@ -174,20 +192,55 @@
             T('Dato de color: el 80% del trabajo de un analista es limpiar datos. El otro 20% es quejarse de limpiar datos.', "Fun fact: 80% of an analyst's job is cleaning data. The other 20% is complaining about cleaning data."),
             T('Regla de oro: nunca confíes en un dato que no revisaste.', "Golden rule: never trust data you haven't checked."),
           ];
-      AA.Dialog.open([{ who: 'sofi', text: pick(lines) }]);
+      AA.Dialog.open([{ who: 'camila', text: pick(lines) }]);
     },
 
-    tomas() {
+    tadeo() {
       AA.Dialog.open([
         {
-          who: 'tomas',
+          who: 'tadeo',
           text: pick([
+            T('¡No tengo ni idea de qué estoy haciendo, pero algo estoy haciendo!', "I have no idea what I'm doing, but I'm doing something!"),
             T('En Marketing medimos todo: aperturas, clics, conversiones… lo que no medimos es cuánto café tomamos.', "In Marketing we measure everything: opens, clicks, conversions… what we don't measure is how much coffee we drink."),
+            T('Leo es mi hermano. Él sabe de fórmulas; yo sé de campañas. Juntos somos… bueno, dos Bargas.', "Leo is my brother. He knows formulas; I know campaigns. Together we're… well, two Bargas."),
             T('Cuando aprendas a limpiar texto te voy a pasar la base de clientes. Preparate.', "Once you learn to clean text I'll send you the customer list. Get ready."),
             T('¿Viste que la práctica libre genera casos nuevos cada vez? Yo practiqué tanto que sueño en celdas.', 'Did you notice free practice generates new cases every time? I practiced so much I dream in cells.'),
           ]),
         },
       ]);
+    },
+
+    jean() {
+      AA.Dialog.open([
+        {
+          who: 'jean',
+          text: pick([
+            T('¿El mejor libro que leí? <i>«5 formas de hacerle el amor al concreto»</i>.', 'The best book I ever read? <i>"5 Ways to Make Love to Concrete"</i>.'),
+            T('No soy un simple arquitecto: yo soy un <b>artista del concreto</b>.', "I'm not a mere architect: I am a <b>concrete artist</b>."),
+            T('Yo no trabajo acá, eh. Vengo por el café. Es el mejor de la cuadra… y diseñé tres edificios de esta cuadra.', "I don't work here, by the way. I come for the coffee. Best on the block… and I designed three buildings on this block."),
+            T('Un buen dashboard es como un buen edificio: si lo tenés que explicar, está mal diseñado.', 'A good dashboard is like a good building: if you have to explain it, it was badly designed.'),
+            T('Ustedes tienen celdas; yo tengo vigas. En el fondo, todos sostenemos algo.', 'You have cells; I have beams. Deep down, we all hold something up.'),
+            T('Juan Roberto me recita poesía mientras tomo el café. Yo le dibujo catedrales en las servilletas. Es un buen trato.', 'Juan Roberto recites poetry while I drink my coffee. I draw cathedrals on his napkins. Fair deal.'),
+          ]),
+        },
+      ]);
+    },
+
+    // Juan Roberto recita fragmentos cortos de poemas para que pienses un poco.
+    juanroberto() {
+      const p = pick(POEMS);
+      const lines = [{ who: 'juanroberto', text: T(`«${p.es}»<br><span class="muted">— ${p.by}</span>`, `"${p.en}"<br><span class="muted">— ${p.by}</span>`) }];
+      if (Math.random() < 0.4) {
+        lines.push({
+          who: 'juanroberto',
+          text: pick([
+            T('Pensalo un rato. Con el café se piensa mejor.', 'Think about it for a while. Coffee helps.'),
+            T('Los datos dicen qué pasó. La poesía, qué significa.', 'Data tells you what happened. Poetry, what it means.'),
+            T('Volvé cuando quieras: tengo versos para toda la jornada laboral.', 'Come back anytime: I have verses for the whole workday.'),
+          ]),
+        });
+      }
+      AA.Dialog.open(lines);
     },
 
     flavor(id) {
@@ -221,7 +274,7 @@
         printer: T('La impresora está imprimiendo un dashboard de 40 páginas. Nadie lo va a leer.', 'The printer is printing a 40-page dashboard. Nobody will read it.'),
         magazines: T('Revistas en la mesa ratona: «Datos Hoy», «El Analista Moderno» y un catálogo de plantas.', 'Magazines on the coffee table: "Data Today", "The Modern Analyst" and a plant catalog.'),
         plant: pick([
-          T('Una planta muy bien cuidada. Tiene un cartelito: "Me riega Sofi los lunes".', 'A well-kept plant. It has a little tag: "Sofi waters me on Mondays".'),
+          T('Una planta muy bien cuidada. Tiene un cartelito: "Me riega Camila los lunes".', 'A well-kept plant. It has a little tag: "Camila waters me on Mondays".'),
           T('La planta crece un poco cada semana. Como tu XP.', 'The plant grows a little each week. Like your XP.'),
         ]),
         exit: T('¿Irte ya? Todavía hay datos que analizar. (Usá el menú ☰ para salir del juego.)', 'Leaving already? There is still data to analyze. (Use the ☰ menu to quit.)'),

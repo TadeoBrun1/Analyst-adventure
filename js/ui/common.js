@@ -19,6 +19,30 @@
       this.modalEl.addEventListener('mousedown', (e) => {
         if (e.target === this.modalEl && this.modalClosable) this.closeModal();
       });
+      // Flechas: moverse entre los botones del cuadro (pausa, confirmaciones, opciones…). Enter elige.
+      this.modalEl.addEventListener('keydown', (e) => this.modalKey(e));
+    },
+
+    modalKey(e) {
+      const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+      if (!keys.includes(e.key) || e.defaultPrevented) return;
+      const a = document.activeElement;
+      const isRange = a && a.type === 'range';
+      const isText = a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !isRange));
+      if (isText) return;
+      // en una barra de volumen, izquierda/derecha cambian el valor
+      if (isRange && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+      const card = this.modalEl.querySelector('.modal-card');
+      if (!card) return;
+      const items = [...card.querySelectorAll('[data-nav], .nb-tab, .modal-foot .btn')].filter((el) => !el.disabled && el.offsetParent !== null);
+      if (!items.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const i = items.indexOf(a);
+      const next = e.key === 'ArrowDown' || e.key === 'ArrowRight';
+      const j = i < 0 ? (next ? 0 : items.length - 1) : (i + (next ? 1 : -1) + items.length) % items.length;
+      items[j].focus();
+      AA.Audio.play('move');
     },
 
     isModalOpen() {

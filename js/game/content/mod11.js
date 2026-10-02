@@ -203,7 +203,7 @@
       return Ch.resolve(Q.spec, Q.table).categories.length === nM ? true : T(`El gráfico todavía no muestra los ${nM} meses: tiene un filtro viejo.`, `The chart still doesn't show all ${nM} months: it has an old filter.`);
     };
     return {
-      from: 'sofi',
+      from: 'camila',
       dept: 'data',
       subject: T('El dashboard de soporte quedó congelado en junio', 'The support dashboard is stuck in June'),
       file: T('dashboard_soporte.bi', 'support_dashboard.bi'),
@@ -350,14 +350,14 @@
     };
     const keep = (check) => (S) => {
       const ids = S.dash.spec.tiles.map((t) => t.id);
-      if (!ids.includes('k1') || !ids.includes('c1')) return T('No borres lo que ya estaba: Tomás pidió agregar, no reemplazar. Usá ⟲ para recuperarlo.', 'Don\'t delete what was there: Tomás asked to add, not replace. Use ⟲ to get it back.');
+      if (!ids.includes('k1') || !ids.includes('c1')) return T('No borres lo que ya estaba: Tadeo pidió agregar, no reemplazar. Usá ⟲ para recuperarlo.', 'Don\'t delete what was there: Tadeo asked to add, not replace. Use ⟲ to get it back.');
       return check(S);
     };
     const fixed = JSON.parse(JSON.stringify(initial));
     fixed.tiles.push({ id: 'n1', kind: 'kpi', title: T('Conversiones', 'Conversions'), field: H.conv, agg: 'SUM', format: 'num' });
     fixed.tiles.push({ id: 'n2', kind: 'chart', chart: spec({ mark: 'bar', columns: { field: H.ch }, rows: { field: H.conv, agg: 'SUM' }, sort: 'desc', title: T('Conversiones por canal', 'Conversions by channel') }) });
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¿Podés sumar las conversiones al dashboard?', 'Can you add conversions to the dashboard?'),
       file: T('dashboard_marketing.bi', 'marketing_dashboard.bi'),

@@ -272,7 +272,7 @@
     const last = n + 1;
     const fn = AA.fnName;
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('Promo de envío gratis', 'Free shipping promo'),
       file: T('pedidos_web.xlsx', 'web_orders.xlsx'),
@@ -348,7 +348,7 @@
     const last = n + 1;
     const fn = AA.fnName;
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¿Quiénes son nuestros clientes VIP?', 'Who are our VIP customers?'),
       file: T('clientes_segmentos.xlsx', 'customer_segments.xlsx'),

@@ -316,7 +316,7 @@
       root.innerHTML = `
         <header class="ms-top">
           <button class="btn btn-ghost" data-act="office">← ${T('Oficina', 'Office')}</button>
-          <button class="btn btn-ghost" data-act="inbox">📨 ${T('Bandeja', 'Inbox')}</button>
+          <button class="btn btn-ghost" data-act="inbox">📨 ${T('Bandeja', 'Inbox')} <kbd>Esc</kbd></button>
           <div class="ms-title">
             <span class="file-icon sm">${icon}</span>
             <div><b>${esc(mission.file)}</b><span class="muted">${T('Nivel', 'Level')} ${levelNum(mod)} · ${esc(mission.subject)} · ${esc(AA.L(ch.name))}</span></div>
@@ -645,7 +645,10 @@
         .join('');
       this.objList.querySelectorAll('form[data-answer]').forEach((form) => {
         const input = form.querySelector('input');
-        input.addEventListener('keydown', (e) => e.stopPropagation());
+        input.addEventListener('keydown', (e) => {
+          e.stopPropagation();
+          if (e.key === 'Escape') input.blur();
+        });
         form.addEventListener('submit', (e) => {
           e.preventDefault();
           const i = +form.dataset.answer;
@@ -952,6 +955,8 @@
           current = b.dataset.tab;
           AA.Audio.play('page');
           render(card);
+          const on = card.querySelector('.nb-tab.on');
+          if (on) on.focus({ preventScroll: true });
         })
       );
       const slot = card.querySelector('[data-portrait]');

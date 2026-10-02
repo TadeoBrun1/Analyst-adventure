@@ -325,7 +325,7 @@
     } while (!(cIS > 0.6 && cTS > cIS + 0.03 && cTI > 0.6));
     const last = n + 1;
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¡La publicidad funciona! (¿o no?)', 'Advertising works! (or does it?)'),
       file: T('helados_semanal.xlsx', 'weekly_ice_cream.xlsx'),
@@ -351,7 +351,7 @@
         { text: T('G2: correlación entre <b>temperatura y ventas</b>.', 'G2: correlation between <b>temperature and sales</b>.'), hint: `=${fn('COEF.DE.CORREL')}(B2:B${last}; D2:D${last})`, check: V.cell('G2', cTS, { uses: ['COEF.DE.CORREL'], tol: 0.001 }) },
         { text: T('G3: correlación entre <b>temperatura e inversión</b>.', 'G3: correlation between <b>temperature and spend</b>.'), hint: `=${fn('COEF.DE.CORREL')}(B2:B${last}; C2:C${last})`, check: V.cell('G3', cTI, { uses: ['COEF.DE.CORREL'], tol: 0.001 }) },
         {
-          text: T('❓ ¿Qué le decís a Tomás?', '❓ What do you tell Tomás?'),
+          text: T('❓ ¿Qué le decís a Tadeo?', '❓ What do you tell Tadeo?'),
           choices: [
             T(`Que sí: una correlación de ${cIS.toFixed(2)} prueba que la publicidad causa las ventas.`, `Yes: a ${cIS.toFixed(2)} correlation proves advertising causes sales.`),
             T('Que la temperatura se mueve junto con las ventas Y con la inversión: el calor puede explicar las dos cosas. Para saber el efecto real de la publicidad hace falta un experimento (prueba A/B o por zonas).', 'Temperature moves with sales AND with spend: heat may explain both. To know the real effect of advertising we need an experiment (A/B test or by region).'),

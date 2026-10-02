@@ -637,3 +637,29 @@ canvas.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointe
   .sql { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .sql-schema { max-height: 160px; border-right: none; border-bottom: 1px solid #e3e6ee; }
 }
+
+/* ---------- Creador de personaje ---------- */
+.cr-sub { margin: -6px 0 0; text-align: center; }
+.cr-host { width: 100%; }
+.creator { display: grid; grid-template-columns: 220px 1fr; gap: 20px; width: 100%; padding: 18px; border-radius: 14px; border: 2px solid rgba(120, 140, 200, 0.25); background: rgba(24, 27, 42, 0.92); }
+.creator-modal .creator { border: none; background: none; padding: 4px; }
+.cr-preview { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.cr-canvas { width: 200px; height: 250px; border-radius: 12px; background: radial-gradient(ellipse at 50% 88%, #3a3f5c 0 22%, transparent 23%), linear-gradient(#c9d1dd, #b4bece); image-rendering: pixelated; }
+.cr-rot { display: flex; gap: 6px; }
+.cr-help { margin: 0; text-align: center; }
+.cr-form { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.cr-row { display: grid; grid-template-columns: 130px 1fr; align-items: center; gap: 10px; }
+.cr-label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.cr-opts { display: flex; flex-wrap: wrap; gap: 5px; }
+.cr-chip { padding: 5px 10px; border-radius: 99px; border: 1px solid var(--line); background: #0d0e15; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.cr-chip:hover { border-color: var(--muted); }
+.cr-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.cr-sw { width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.15); background: var(--c); cursor: pointer; padding: 0; }
+.cr-sw.on { border-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+.cr-chip:focus-visible, .cr-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+@media (max-width: 720px) {
+  .creator { grid-template-columns: 1fr; }
+  .cr-row { grid-template-columns: 1fr; gap: 4px; }
+  .cr-canvas { width: 150px; height: 190px; }
+}

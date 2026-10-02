@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.4.2';
+  AA.VERSION = '0.5.0';
 
   const Game = {
     screen: 'title',
@@ -75,11 +75,11 @@
         b.classList.add('bump');
       }
       this.hudXp = st.data.xp;
-      document.getElementById('hud-notebook').innerHTML = `📒 ${T('Libreta', 'Notebook')}`;
+      document.getElementById('hud-notebook').innerHTML = `📒 ${T('Libreta', 'Notebook')} <kbd>F</kbd>`;
       document.getElementById('hud-career').innerHTML = `📈 ${T('Carrera', 'Career')}`;
       document.getElementById('hud-help').innerHTML = T(
-        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · <kbd>Esc</kbd>: menú',
-        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows: walk · <kbd>E</kbd> or <kbd>Space</kbd>: interact · <kbd>Esc</kbd>: menu'
+        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · <kbd>F</kbd>: libreta · <kbd>Esc</kbd>: menú',
+        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows: walk · <kbd>E</kbd> or <kbd>Space</kbd>: interact · <kbd>F</kbd>: notebook · <kbd>Esc</kbd>: menu'
       );
     },
 
@@ -98,6 +98,7 @@
       const desk = AA.Storage.desktop();
       const buttons = [
         { label: `⚙ ${T('Opciones', 'Options')}`, action: () => this.openOptions() },
+        { label: `👕 ${T('Cambiar aspecto', 'Change look')}`, action: () => AA.Creator.openModal() },
         {
           label: `⌂ ${T('Menú principal', 'Main menu')}`,
           action: () => {
@@ -211,11 +212,11 @@
         case 'leo':
           AA.Story.leo();
           return;
-        case 'sofi':
-          AA.Story.sofi();
-          return;
-        case 'tomas':
-          AA.Story.tomas();
+        case 'camila':
+        case 'tadeo':
+        case 'jean':
+        case 'juanroberto':
+          AA.Story[id]();
           return;
         default:
           AA.Story.flavor(id);
@@ -224,6 +225,21 @@
 
     handleKey(e) {
       if (e.defaultPrevented) return;
+      // F abre y cierra la libreta en la oficina (en la computadora se usa el botón: la F hace falta para escribir).
+      const isF = (e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat;
+      if (isF && this.screen === 'office' && !AA.Dialog.isOpen()) {
+        if (!AA.UI.isModalOpen()) {
+          e.preventDefault();
+          AA.Screens.openNotebook();
+          return;
+        }
+        if (document.querySelector('#modal .modal-card.notebook')) {
+          e.preventDefault();
+          AA.Audio.play('page');
+          AA.UI.closeModal();
+          return;
+        }
+      }
       if (AA.UI.isModalOpen()) {
         if (e.key === 'Escape' && AA.UI.modalClosable) {
           e.preventDefault();
@@ -237,7 +253,17 @@
         return;
       }
       if (e.key !== 'Escape') return;
-      if (this.screen === 'computer') {
+      if (this.screen === 'mission') {
+        // Primer Esc: salir del campo de texto en el que estés. Siguiente: volver a la bandeja de entrada.
+        e.preventDefault();
+        const a = document.activeElement;
+        if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && a.type !== 'range' && a.type !== 'checkbox'))) {
+          a.blur();
+          return;
+        }
+        AA.Audio.play('back');
+        AA.Screens.MissionScreen.leave(() => this.openComputer());
+      } else if (this.screen === 'computer') {
         e.preventDefault();
         this.enterOffice();
       } else if (this.screen === 'office') {

@@ -116,7 +116,7 @@
     const trendWords = up ? [T('crec', 'grow'), T('sub', 'increas'), T('aument', 'rise'), T('mejor', 'up')] : [T('baj', 'declin'), T('cae', 'decreas'), T('dismin', 'fall'), T('descend', 'drop'), T('cay', 'down')];
     const base = Ch.expect({ marks: ['line'], dim: H.mo, measure: H.ord, aggs: ['SUM'], color: null, markNote: T('Para mostrar una evolución en el tiempo, el gráfico ideal es de líneas.', 'To show change over time, a line chart is the right choice.') });
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¿Cómo vienen los pedidos este año?', 'How are orders doing this year?'),
       file: T('pedidos_mensuales.twb', 'monthly_orders.twb'),
@@ -199,7 +199,7 @@
     const base = Ch.expect({ marks: ['pie'], dim: H.ch, measure: Ch.COUNT_FIELD, aggs: ['COUNT'], markNote: T('Para mostrar cómo se reparte un total entre pocas categorías, usá una torta.', 'To show how a total splits across a few categories, use a pie.') });
     const pctAnswer = (a) => V.answerNumber(pct, 0.6)(a) || V.answerNumber(pct / 100, 0.006)(a);
     return {
-      from: 'sofi',
+      from: 'camila',
       dept: 'data',
       subject: T('¿Por dónde nos contactan los clientes?', 'How do customers contact us?'),
       file: T('tickets_canales.twb', 'ticket_channels.twb'),

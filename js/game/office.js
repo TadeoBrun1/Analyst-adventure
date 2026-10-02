@@ -39,8 +39,11 @@
   const NPCS = [
     { id: 'marta', tx: 23, ty: 3, dir: 'down' },
     { id: 'leo', tx: 4, ty: 2, dir: 'down' },
-    { id: 'sofi', tx: 16, ty: 4, dir: 'up', sitting: true },
-    { id: 'tomas', tx: 15, ty: 6, dir: 'up', sitting: true },
+    { id: 'camila', tx: 16, ty: 4, dir: 'up', sitting: true },
+    { id: 'tadeo', tx: 15, ty: 6, dir: 'up', sitting: true },
+    // en el comedor, frente a frente en la misma mesa
+    { id: 'jean', tx: 2, ty: 9, dir: 'down', sitting: true },
+    { id: 'juanroberto', tx: 2, ty: 11, dir: 'up', sitting: true },
   ];
 
   // Zonas interactivas (en tiles).
@@ -53,7 +56,6 @@
     { id: 'cooler', x: 7, y: 1, w: 1, h: 1, label: { es: 'Dispenser de agua', en: 'Water cooler' } },
     { id: 'lunch', x: 2, y: 5, w: 2, h: 1, label: { es: 'Mesa del comedor', en: 'Lunch table' } },
     { id: 'lunch', x: 5, y: 5, w: 2, h: 1, label: { es: 'Mesa del comedor', en: 'Lunch table' } },
-    { id: 'lunch', x: 2, y: 10, w: 2, h: 1, label: { es: 'Mesa del comedor', en: 'Lunch table' } },
     { id: 'lunch', x: 5, y: 10, w: 2, h: 1, label: { es: 'Mesa del comedor', en: 'Lunch table' } },
     { id: 'vending', x: 6, y: 12, w: 1, h: 1, label: { es: 'Máquina de snacks', en: 'Snack machine' } },
     { id: 'nico', x: 10, y: 5, w: 2, h: 1, label: { es: 'Escritorio vacío', en: 'Empty desk' } },
@@ -103,7 +105,11 @@
           w: 1,
           h: 1,
           npc: true,
-          label: { es: 'Hablar con ' + AA.L(AA.State.CHARACTERS[n.id].name).split(' ')[0], en: 'Talk to ' + AA.L(AA.State.CHARACTERS[n.id].name).split(' ')[0] },
+          label: (() => {
+            const c = AA.State.CHARACTERS[n.id];
+            const nick = c.short || AA.L(c.name).split(' ')[0];
+            return { es: 'Hablar con ' + nick, en: 'Talk to ' + nick };
+          })(),
         }))
       );
 
@@ -346,8 +352,8 @@
         const dy = this.player.y - n.y;
         if (Math.hypot(dx, dy) < 70) dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
       }
-      if (n.sitting) {
-        // silla de oficina
+      if (n.sitting && MAP[n.ty][n.tx] !== 'h') {
+        // silla de oficina (en el comedor ya hay sillas dibujadas)
         ctx.fillStyle = '#2f3b55';
         ctx.fillRect(n.x - 9, n.y - 14, 18, 12);
         ctx.fillStyle = '#44547a';

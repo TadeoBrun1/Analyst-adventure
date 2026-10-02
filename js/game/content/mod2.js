@@ -125,7 +125,7 @@
     const last = n + 1;
     const fn = AA.fnName;
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¿Cómo vino el tráfico del sitio?', 'How was the website traffic?'),
       file: T('visitas_web.xlsx', 'web_visits.xlsx'),

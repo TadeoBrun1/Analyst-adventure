@@ -359,7 +359,7 @@
     Object.assign(fixed.tiles[2].chart, { mark: 'bar', sort: 'desc' });
     const fb = feedbackChoice(T('"Nico: tres ajustes. El KPI Tickets sumaba horas (va Recuento); la línea de meses estaba ordenada por valor (los meses van en orden); y la torta tenía 9 porciones (mejor barras ordenadas). Te paso una guía de qué gráfico usar para cada pregunta."', '"Nico: three tweaks. The Tickets KPI was summing hours (it should be Count); the months line was sorted by value (months go in order); and the pie had 9 slices (sorted bars work better). I\'ll send you a guide on which chart fits each question."'));
     return {
-      from: 'sofi',
+      from: 'camila',
       dept: 'data',
       subject: T('Nico hizo su primer dashboard', 'Nico made his first dashboard'),
       file: T('dashboard_nico.bi', 'nico_dashboard.bi'),
