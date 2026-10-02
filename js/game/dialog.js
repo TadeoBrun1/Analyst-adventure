@@ -10,7 +10,6 @@
     root: null,
     lines: [],
     index: 0,
-    shown: 0,
     timer: null,
     onDone: null,
 
@@ -58,7 +57,7 @@
     },
 
     close() {
-      clearInterval(this.timer);
+      clearTimeout(this.timer);
       this.root.classList.add('hidden');
       const cb = this.onDone;
       this.onDone = null;
@@ -72,42 +71,55 @@
     showLine() {
       const line = this.current();
       const ch = AA.State.CHARACTERS[line.who] || { name: line.who };
-      const name = line.who === 'player' ? AA.State.data.name : ch.name;
-      this.nameEl.innerHTML = `${AA.escapeHtml(name)}${ch.role ? ` <span>· ${AA.escapeHtml(ch.role)}</span>` : ''}`;
+      const name = line.who === 'player' ? AA.State.data.name : AA.L(ch.name);
+      const role = AA.L(ch.role);
+      this.nameEl.innerHTML = `${AA.escapeHtml(name)}${role ? ` <span>· ${AA.escapeHtml(role)}</span>` : ''}`;
       if (ch.skin) {
         this.portrait.style.display = '';
         AA.Sprites.drawPortrait(this.portrait, ch);
       } else this.portrait.style.display = 'none';
-      this.full = AA.fillName(line.text);
-      this.shown = 0;
+      this.voice = ch.voice || 0;
+      this.full = AA.fillName(AA.L(line.text));
+      // La línea se divide en etiquetas HTML, espacios y palabras; se revela palabra por palabra.
+      this.tokens = this.full.match(/<[^>]*>|\s+|[^<\s]+/g) || [];
+      this.pos = 0;
       this.textEl.innerHTML = '';
       this.choicesEl.innerHTML = '';
       this.nextEl.style.visibility = 'hidden';
-      clearInterval(this.timer);
-      this.timer = setInterval(() => this.tick(), 16);
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.tick(), 80);
     },
 
-    // Avanza la escritura respetando las etiquetas HTML.
+    // Muestra la siguiente palabra (con su "bip") y programa la próxima.
     tick() {
-      this.shown += 2;
-      if (this.shown >= this.full.length) {
+      let word = null;
+      while (this.pos < this.tokens.length) {
+        const tok = this.tokens[this.pos++];
+        if (tok[0] !== '<' && /\S/.test(tok)) {
+          word = tok;
+          break;
+        }
+      }
+      if (!word) {
         this.finishLine();
         return;
       }
-      // Si el corte cae dentro de una etiqueta (<b>…), saltamos al final de la etiqueta.
-      const lt = this.full.lastIndexOf('<', this.shown - 1);
-      const gt = this.full.lastIndexOf('>', this.shown - 1);
-      if (lt > gt) {
-        const close = this.full.indexOf('>', lt);
-        if (close > 0) this.shown = close + 1;
+      this.textEl.innerHTML = this.tokens.slice(0, this.pos).join('');
+      const plain = word.replace(/&[a-z]+;/g, 'x');
+      if (/[\p{L}\p{N}]/u.test(plain)) AA.Audio.blip(this.voice);
+      let delay = 55 + Math.min(plain.length, 10) * 7;
+      if (/[.!?…:]$/.test(plain)) delay += 160;
+      else if (/[,;]$/.test(plain)) delay += 70;
+      if (this.pos >= this.tokens.length) {
+        this.finishLine();
+        return;
       }
-      this.textEl.innerHTML = this.full.slice(0, this.shown);
+      this.timer = setTimeout(() => this.tick(), delay);
     },
 
     finishLine() {
-      clearInterval(this.timer);
+      clearTimeout(this.timer);
       this.timer = null;
-      this.shown = this.full.length;
       this.textEl.innerHTML = this.full;
       const line = this.current();
       if (line.choices) {
@@ -136,8 +148,9 @@
       const c = line.choices[i];
       if (!c) return;
       this.root.classList.add('hidden');
-      clearInterval(this.timer);
+      clearTimeout(this.timer);
       this.onDone = null;
+      AA.Audio.play('select');
       if (c.action) c.action();
     },
 

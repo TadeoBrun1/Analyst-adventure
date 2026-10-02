@@ -65,8 +65,8 @@ También se pueden bajar las builds desde GitHub → **Actions** → la última 
 
 ## 4. Steam Cloud (partidas guardadas)
 
-El juego guarda la partida en un archivo, así que se puede sincronizar con **Steam Auto-Cloud**
-sin tocar código. En Steamworks → **Steam Cloud**:
+El juego guarda cada ranura de partida en un archivo (`saves/slot1.json` … `slot3.json`), así que se
+puede sincronizar con **Steam Auto-Cloud** sin tocar código. En Steamworks → **Steam Cloud**:
 
 | Sistema | Root | Subdirectorio | Patrón |
 |---------|------|---------------|--------|
@@ -87,7 +87,7 @@ Requisitos mínimos orientativos (Electron/Chromium): Windows 10 64 bits, 4 GB d
 
 - **Logros y overlay de Steam**: se pueden agregar con la librería
   [`steamworks.js`](https://github.com/ceifa/steamworks.js) desde `electron/main.js`.
-  Por ejemplo, un logro por cada ascenso de rango. Para probarlo fuera de Steam hace falta un
+  Por ejemplo, un logro por cada nivel completado y otro por cada ascenso de rango. Para probarlo fuera de Steam hace falta un
   archivo `steam_appid.txt` con el App ID junto al ejecutable (no se sube a Steam).
 - **Firma del ejecutable** (Windows): sin firma, Windows SmartScreen puede mostrar una advertencia
   si alguien ejecuta el `.exe` descargado fuera de Steam. Dentro de Steam no hace falta.

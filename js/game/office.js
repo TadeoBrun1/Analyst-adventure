@@ -38,15 +38,15 @@
 
   // Zonas interactivas (en tiles).
   const SPOTS = [
-    { id: 'computer', x: 2, y: 3, w: 2, h: 1, label: 'Usar computadora' },
-    { id: 'whiteboard', x: 3, y: 1, w: 2, h: 1, label: 'Plan de carrera' },
-    { id: 'coffee', x: 15, y: 8, w: 1, h: 1, label: 'Máquina de café' },
-    { id: 'nico', x: 2, y: 5, w: 2, h: 1, label: 'Escritorio vacío' },
-    { id: 'books', x: 1, y: 1, w: 1, h: 1, label: 'Biblioteca' },
-    { id: 'books', x: 18, y: 1, w: 1, h: 1, label: 'Biblioteca' },
-    { id: 'bossdesk', x: 13, y: 1, w: 2, h: 1, label: 'Escritorio de Marta' },
-    { id: 'sofa', x: 7, y: 8, w: 3, h: 1, label: 'Sofá' },
-    { id: 'exit', x: 8, y: 11, w: 2, h: 1, label: 'Salida' },
+    { id: 'computer', x: 2, y: 3, w: 2, h: 1, label: { es: 'Usar computadora', en: 'Use computer' } },
+    { id: 'whiteboard', x: 3, y: 1, w: 2, h: 1, label: { es: 'Plan de carrera', en: 'Career plan' } },
+    { id: 'coffee', x: 15, y: 8, w: 1, h: 1, label: { es: 'Máquina de café', en: 'Coffee machine' } },
+    { id: 'nico', x: 2, y: 5, w: 2, h: 1, label: { es: 'Escritorio vacío', en: 'Empty desk' } },
+    { id: 'books', x: 1, y: 1, w: 1, h: 1, label: { es: 'Biblioteca', en: 'Bookshelf' } },
+    { id: 'books', x: 18, y: 1, w: 1, h: 1, label: { es: 'Biblioteca', en: 'Bookshelf' } },
+    { id: 'bossdesk', x: 13, y: 1, w: 2, h: 1, label: { es: 'Escritorio de Marta', en: "Marta's desk" } },
+    { id: 'sofa', x: 7, y: 8, w: 3, h: 1, label: { es: 'Sofá', en: 'Sofa' } },
+    { id: 'exit', x: 8, y: 11, w: 2, h: 1, label: { es: 'Salida', en: 'Exit' } },
   ];
 
   const Office = {
@@ -77,7 +77,7 @@
           w: 1,
           h: 1,
           npc: true,
-          label: 'Hablar con ' + AA.State.CHARACTERS[n.id].name.split(' ')[0],
+          label: { es: 'Hablar con ' + AA.L(AA.State.CHARACTERS[n.id].name).split(' ')[0], en: 'Talk to ' + AA.L(AA.State.CHARACTERS[n.id].name).split(' ')[0] },
         }))
       );
 
@@ -279,7 +279,7 @@
 
     drawPrompt(s, canUse) {
       const ctx = this.ctx;
-      const text = (canUse ? 'E · ' : '') + s.label;
+      const text = (canUse ? 'E · ' : '') + AA.L(s.label);
       ctx.font = '600 10px "Inter", system-ui, sans-serif';
       const w = ctx.measureText(text).width + 14;
       let x = (s.x + s.w / 2) * T - w / 2;
@@ -479,7 +479,7 @@
             ctx.font = 'bold 7px system-ui, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('SALIDA', px + T, py + 15.5);
+            ctx.fillText(AA.T('SALIDA', 'EXIT'), px + T, py + 15.5);
             ctx.textAlign = 'left';
           }
           break;

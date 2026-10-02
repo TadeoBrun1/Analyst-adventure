@@ -1,113 +1,179 @@
 /*
- * Resuelve cada misión con las fórmulas "de manual" y verifica que todos los objetivos
- * se cumplan; también prueba errores típicos que NO deberían aceptarse.
+ * Resuelve automáticamente cada plantilla de misión con su solución de referencia, en varios
+ * tamaños, semillas e idiomas, y verifica que:
+ *   - todos los objetivos se cumplan con la solución,
+ *   - ninguno se cumpla con la hoja vacía o con respuestas incorrectas,
+ *   - la solución solo escriba en celdas no bloqueadas y dentro de la hoja.
  * Ejecutar con: node tests/missions.test.js
  */
 'use strict';
 require('../js/engine/formula.js');
 require('../js/engine/sheet.js');
+require('../js/i18n/i18n.js');
 require('../js/game/validators.js');
-require('../js/game/missions/registry.js');
-require('../js/game/missions/stage1.js');
+require('../js/game/state.js');
+require('../js/game/content/lib.js');
+for (const m of ['mod1', 'mod2', 'mod3', 'mod4', 'mod5']) require(`../js/game/content/${m}.js`);
+require('../js/game/content/curriculum.js');
 
 const AA = globalThis.AA;
 const F = AA.Formula;
+const V = AA.V;
 let passed = 0;
 let failed = 0;
+const fail = (msg) => {
+  failed++;
+  if (failed <= 40) console.error('✗ ' + msg);
+};
 
-function setup(id, inputs) {
-  const m = AA.Missions.byId(id);
-  const sh = AA.Missions.buildSheet(m.sheet);
-  for (const [ref, input] of Object.entries(inputs)) {
-    const p = F.parseRef(ref);
-    sh.setInput(p.col, p.row, input, true);
+function solutionWrites(sol) {
+  const out = [];
+  for (const [col, r1, r2, f] of sol.fill || []) {
+    for (let r = r1; r <= r2; r++) out.push([col + r, F.shiftFormula(f, 0, r - r1)]);
   }
-  return { m, sh, S: AA.V.query(sh) };
-}
-// Rellena una fórmula hacia abajo como lo haría el controlador de relleno.
-function fillDown(inputs, col, r1, r2, formula) {
-  for (let r = r1; r <= r2; r++) inputs[col + r] = F.shiftFormula(formula, 0, r - r1);
-  return inputs;
-}
-function expectObjective(id, inputs, index, expected, label, answer) {
-  const { m, S } = setup(id, inputs);
-  const o = m.objectives[index];
-  const res = o.answer ? o.answer(answer) : o.check(S);
-  const ok = expected === 'note' ? typeof res === 'string' : res === expected;
-  if (ok) passed++;
-  else {
-    failed++;
-    console.error(`✗ [${id} #${index + 1}] ${label}: esperado ${expected}, obtuve ${JSON.stringify(res)}`);
+  for (const [row, c1, c2, f] of sol.fillRight || []) {
+    const a = F.colToIndex(c1);
+    const b = F.colToIndex(c2);
+    for (let c = a; c <= b; c++) out.push([F.indexToCol(c) + row, F.shiftFormula(f, c - a, 0)]);
   }
+  for (const [c1, c2, r1, r2, f] of sol.fillBlock || []) {
+    const a = F.colToIndex(c1);
+    const b = F.colToIndex(c2);
+    for (let c = a; c <= b; c++) for (let r = r1; r <= r2; r++) out.push([F.indexToCol(c) + r, F.shiftFormula(f, c - a, r - r1)]);
+  }
+  for (const [ref, f] of Object.entries(sol.cells || {})) out.push([ref, f]);
+  return out;
 }
-function expectAll(id, inputs, answers) {
-  const { m, S } = setup(id, inputs);
+
+function checkMission(m, label) {
+  const sh = AA.Content.buildSheet(m.sheet);
+  const locked = (m.sheet.locked || []).map(F.parseRange);
+  // Hoja vacía: nada cumplido.
+  const S0 = V.query(sh);
   m.objectives.forEach((o, i) => {
-    const res = o.answer ? o.answer(answers[i]) : o.check(S);
-    if (res === true) passed++;
-    else {
-      failed++;
-      console.error(`✗ [${id} #${i + 1}] solución correcta rechazada: ${JSON.stringify(res)}`);
+    const res = o.answer ? o.answer('respuesta-incorrecta-xyz') : o.check(S0);
+    if (res === true) fail(`${label} #${i + 1} se cumple sin hacer nada`);
+    else passed++;
+  });
+  // Solución de referencia.
+  for (const [ref, f] of solutionWrites(m.solution)) {
+    const p = F.parseRef(ref);
+    if (!sh.inBounds(p.col, p.row)) {
+      fail(`${label}: la solución escribe fuera de la hoja (${ref})`);
+      continue;
     }
+    if (locked.some((k) => p.col >= k.c1 && p.col <= k.c2 && p.row >= k.r1 && p.row <= k.r2)) fail(`${label}: la solución escribe en una celda bloqueada (${ref})`);
+    sh.setInput(p.col, p.row, f, true);
+  }
+  const S = V.query(sh);
+  m.objectives.forEach((o, i) => {
+    let res;
+    if (o.answer) {
+      const a = (m.solution.answers || {})[i];
+      if (a === undefined) {
+        fail(`${label} #${i + 1}: falta la respuesta en la solución`);
+        return;
+      }
+      res = o.answer(a);
+    } else res = o.check(S);
+    if (res === true) passed++;
+    else fail(`${label} #${i + 1}: la solución no lo cumple → ${JSON.stringify(res)}`);
   });
 }
 
-// --- M1
-const m1 = fillDown({ E1: 'Total' }, 'E', 2, 11, '=C2*D2');
-expectAll('m1_pedidos', m1, { 3: 'Notebook' });
-expectObjective('m1_pedidos', { E2: '75' }, 1, 'note', 'valor escrito a mano');
-expectObjective('m1_pedidos', { E2: '=3*25' }, 1, 'note', 'fórmula con números fijos');
-expectObjective('m1_pedidos', { E2: '=C2*D2', E3: '=C2*D2' }, 2, 'note', 'relleno incompleto');
-expectObjective('m1_pedidos', {}, 3, false, 'respuesta incorrecta', 'Escritorio');
-
-// --- M2
-const m2 = fillDown({}, 'F', 2, 13, '=SUMA(C2:E2)');
-Object.assign(m2, { I2: '=SUMA(F2:F13)', I3: '=PROMEDIO(F2:F13)', I4: '=MAX(F2:F13)', I5: '=MIN(F2:F13)', I6: '=CONTARA(A2:A13)' });
-expectAll('m2_resumen', m2, { 5: 'Carla Méndez' });
-const m2en = fillDown({}, 'F', 2, 13, '=SUM(C2:E2)');
-Object.assign(m2en, { I2: '=SUM(F:F)', I3: '=AVERAGE(F2:F13)', I4: '=MAX(F2:F13)', I5: '=MIN(F2:F13)', I6: '=COUNT(F2:F13)' });
-expectAll('m2_resumen', m2en, { 5: 'carla' });
-expectObjective('m2_resumen', fillDown({}, 'F', 2, 13, '=C2+D2+E2'), 0, 'note', 'sin SUMA');
-expectObjective('m2_resumen', { I3: '=SUMA(F2:F13)/12' }, 2, 'note', 'promedio sin PROMEDIO');
-
-// --- M3
-const m3 = fillDown({}, 'E', 2, 13, '=SI(C2>=D2;"Sí";"No")');
-fillDown(m3, 'F', 2, 13, '=SI(E2="Sí";C2*10%;0)');
-m3.I2 = '=SUMA(F2:F13)';
-expectAll('m3_bonos', m3, { 3: '7', 4: 'Sí' });
-const m3b = fillDown({}, 'E', 2, 13, '=IF(C2>=D2,"Si","No")');
-fillDown(m3b, 'F', 2, 13, '=IF(C2>=D2,C2*0.1,0)');
-m3b.I2 = '=SUM(F2:F13)';
-expectAll('m3_bonos', m3b, { 3: '7', 4: 'si' });
-expectObjective('m3_bonos', fillDown({}, 'E', 2, 13, '=SI(C2>D2;"Sí";"No")'), 0, 'note', '> en vez de >=');
-expectObjective('m3_bonos', {}, 4, false, 'Valeria no cobra', 'No');
-
-// --- M4
-const m4 = fillDown({}, 'E', 2, 13, '=NOMPROPIO(ESPACIOS(A2))');
-fillDown(m4, 'F', 2, 13, '=MINUSC(ESPACIOS(B2))');
-fillDown(m4, 'G', 2, 13, '=PROPER(TRIM(C2))');
-expectAll('m4_limpieza', m4, { 3: '9' });
-expectObjective('m4_limpieza', fillDown({}, 'E', 2, 13, '=NOMPROPIO(A2)'), 0, 'note', 'sin ESPACIOS');
-expectObjective('m4_limpieza', fillDown({}, 'F', 2, 13, '=ESPACIOS(B2)'), 1, 'note', 'sin MINUSC');
-expectObjective('m4_limpieza', {}, 3, false, 'contó sin deduplicar', '12');
-
-// --- M5
-const m5 = fillDown({}, 'I', 2, 5, '=CONTAR.SI($B$2:$B$25;H2)');
-fillDown(m5, 'J', 2, 5, '=SUMAR.SI($B$2:$B$25;H2;$E$2:$E$25)');
-fillDown(m5, 'K', 2, 5, '=CONTAR.SI.CONJUNTO($B$2:$B$25;H2;$D$2:$D$25;"Demorado")');
-expectAll('m5_envios', m5, { 3: 'Sur', 4: 'LogiExpress' });
-const m5cols = fillDown({}, 'I', 2, 5, '=COUNTIF(B:B,H2)');
-fillDown(m5cols, 'J', 2, 5, '=SUMIF(B:B,H2,E:E)');
-fillDown(m5cols, 'K', 2, 5, '=COUNTIFS(B:B,H2,D:D,"Demorado")');
-expectAll('m5_envios', m5cols, { 3: 'sur', 4: 'logiexpress' });
-const noDollar = fillDown({}, 'I', 2, 5, '=CONTAR.SI(B2:B25;H2)');
-const { m: mm5, S: s5 } = setup('m5_envios', noDollar);
-const res5 = mm5.objectives[0].check(s5);
-if (typeof res5 === 'string' && res5.includes('$')) passed++;
-else {
-  failed++;
-  console.error('✗ [m5_envios #1] sin $ debería sugerir referencias absolutas:', res5);
+// 1) Todas las plantillas, en ambos idiomas, en todos los tamaños.
+const ids = Object.keys(AA.Content.templates);
+for (const id of ids) {
+  for (const lang of ['es', 'en']) {
+    for (const [size, seeds] of [['small', [1, 2, 3]], ['medium', [11, 12, 13]], ['large', [21, 22]]]) {
+      for (const seed of seeds) {
+        AA.setLang(lang);
+        let m;
+        try {
+          m = AA.Content.build(id, { seed, size, lang });
+        } catch (e) {
+          fail(`${id} ${lang} ${size} ${seed}: error al generar → ${e.stack}`);
+          continue;
+        }
+        checkMission(m, `${id} [${lang} ${size} #${seed}]`);
+      }
+    }
+  }
 }
 
-console.log(`\n${passed} OK, ${failed} fallidos`);
+// 2) Las misiones obligatorias del currículum (semillas fijas).
+for (const mod of AA.Curriculum.MODULES) {
+  for (const id of AA.Curriculum.requiredIds(mod)) {
+    for (const lang of ['es', 'en']) {
+      AA.setLang(lang);
+      const m = AA.Curriculum.build(id, lang);
+      if (!m || m.id !== id || !m.xp) fail(`currículum: ${id} mal armada`);
+      else checkMission(m, `${id} [${lang}]`);
+    }
+  }
+}
+
+// 3) Los identificadores de práctica se pueden reconstruir.
+const mod1 = AA.Curriculum.MODULES[0];
+const pid = AA.Curriculum.newPractice(mod1, 'large');
+const pm = AA.Curriculum.build(pid, 'es');
+if (pm && pm.kind === 'practice' && pm.xp === AA.Curriculum.practiceXp(mod1, 'large')) passed++;
+else fail('práctica: no se reconstruye desde su id');
+
+// 4) Determinismo: misma semilla, misma misión.
+const a = JSON.stringify(AA.Content.build('m5_matrix', { seed: 7, size: 'medium', lang: 'es' }).sheet);
+const b = JSON.stringify(AA.Content.build('m5_matrix', { seed: 7, size: 'medium', lang: 'es' }).sheet);
+if (a === b) passed++;
+else fail('las plantillas no son deterministas');
+
+// 5) Errores típicos que NO tienen que aceptarse.
+function attempt(id, writes, objIndex, expectNoteIncludes) {
+  AA.setLang('es');
+  const m = AA.Content.build(id, { seed: 5, size: 'small', lang: 'es' });
+  const sh = AA.Content.buildSheet(m.sheet);
+  for (const [ref, f] of writes(m)) {
+    const p = F.parseRef(ref);
+    sh.setInput(p.col, p.row, f, true);
+  }
+  const res = m.objectives[objIndex].check(V.query(sh));
+  const ok = res !== true && (!expectNoteIncludes || (typeof res === 'string' && res.includes(expectNoteIncludes)));
+  if (ok) passed++;
+  else fail(`error típico aceptado en ${id} #${objIndex + 1}: ${JSON.stringify(res)}`);
+}
+const lastRow = (m) => m.sheet.data.rows.length;
+const fillCol = (col, r1, r2, f) => {
+  const out = [];
+  for (let r = r1; r <= r2; r++) out.push([col + r, F.shiftFormula(f, 0, r - r1)]);
+  return out;
+};
+attempt('m1_orders', (m) => [['E2', String(m.sheet.data.rows[1][2] * m.sheet.data.rows[1][3])]], 1, 'a mano');
+// Variantes válidas que SÍ tienen que aceptarse.
+function accepted(id, writes, objIndex) {
+  AA.setLang('es');
+  const m = AA.Content.build(id, { seed: 5, size: 'small', lang: 'es' });
+  const sh = AA.Content.buildSheet(m.sheet);
+  for (const [ref, f] of writes(m)) {
+    const p = F.parseRef(ref);
+    sh.setInput(p.col, p.row, f, true);
+  }
+  const res = m.objectives[objIndex].check(V.query(sh));
+  if (res === true) passed++;
+  else fail(`variante válida rechazada en ${id} #${objIndex + 1}: ${JSON.stringify(res)}`);
+}
+accepted('m1_orders', () => [['E2', '=PRODUCTO(C2:D2)']], 1);
+accepted('m1_orders', () => [['E2', '=D2*C2']], 1);
+accepted('m2_quarter', (m) => fillCol('F', 2, lastRow(m), '=C2+D2+E2').map(([r]) => [r, '=SUM(C' + r.slice(1) + ':E' + r.slice(1) + ')']), 0);
+accepted('m5_commission', (m) => fillCol('C', 2, lastRow(m), '=B2*F$2'), 0);
+accepted('m5_shipments', () => fillCol('I', 2, 5, '=COUNTIF(B:B,H2)'), 0);
+attempt('m1_budget', (m) => fillCol('E', 2, lastRow(m), '=C2-D2'), 0, null);
+attempt('m3_bonus', (m) => fillCol('E', 2, lastRow(m), '=SI(C2>D2;"Sí";"No")'), 0, '>=');
+attempt('m3_vip', (m) => fillCol('D', 2, lastRow(m), '=SI(O(B2>=5;C2>=100000);"VIP";"Estándar")'), 0, null);
+attempt('m4_clients', (m) => fillCol('E', 2, lastRow(m), '=NOMPROPIO(A2)'), 0, null);
+attempt('m4_phones', (m) => fillCol('C', 2, lastRow(m), '=LARGO(B2)'), 0, null);
+attempt('m5_shipments', () => fillCol('I', 2, 5, `=CONTAR.SI(B2:B24;H2)`), 0, '$');
+attempt('m5_tickets', () => fillCol('G', 2, 4, '=F2/F5').concat([['F2', '=CONTAR.SI($C$2:$C$40;E2)'], ['F5', '=SUMA(F2:F4)']]), 2, null);
+attempt('m5_commission', (m) => fillCol('C', 2, lastRow(m), '=B2*5%'), 0, null);
+attempt('m5_commission', (m) => fillCol('C', 2, lastRow(m), '=B2*F2'), 0, null);
+
+console.log(`\n${ids.length} plantillas · ${passed} OK, ${failed} fallidos`);
 process.exit(failed ? 1 : 0);

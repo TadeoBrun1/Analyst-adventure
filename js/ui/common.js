@@ -32,7 +32,7 @@
       this.onModalClose = opts.onClose || null;
       el.innerHTML = `
         <div class="modal-card ${opts.wide ? 'wide' : ''} ${opts.className || ''}" role="dialog" aria-modal="true">
-          ${opts.title ? `<header class="modal-head"><h2>${opts.title}</h2>${this.modalClosable ? '<button class="modal-x" aria-label="Cerrar">✕</button>' : ''}</header>` : ''}
+          ${opts.title ? `<header class="modal-head"><h2>${opts.title}</h2>${this.modalClosable ? `<button class="modal-x" aria-label="${AA.T('Cerrar', 'Close')}">✕</button>` : ''}</header>` : ''}
           <div class="modal-body">${opts.html || ''}</div>
           ${opts.buttons && opts.buttons.length ? `<footer class="modal-foot">${opts.buttons
             .map((b, i) => `<button class="btn ${b.primary ? 'btn-primary' : ''}" data-btn="${i}">${b.label}</button>`)
@@ -44,6 +44,7 @@
       el.querySelectorAll('[data-btn]').forEach((btn) => {
         btn.addEventListener('click', () => {
           const b = opts.buttons[+btn.dataset.btn];
+          AA.Audio.play(b.primary ? 'select' : 'move');
           if (!b.keepOpen) this.closeModal(true);
           if (b.action) b.action();
         });
@@ -73,8 +74,7 @@
     },
 
     deptBadge(dept) {
-      const color = AA.State.DEPT_COLORS[dept] || '#8b95a7';
-      return `<span class="badge" style="--c:${color}">${AA.escapeHtml(dept)}</span>`;
+      return `<span class="badge" style="--c:${AA.deptColor(dept)}">${AA.escapeHtml(AA.deptName(dept))}</span>`;
     },
 
     xpBar(pct) {

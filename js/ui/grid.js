@@ -14,7 +14,7 @@
   function formatValue(v, fmt) {
     if (v === null || v === undefined) return '';
     if (F.isErr(v)) return v.code;
-    if (typeof v === 'boolean') return v ? 'VERDADERO' : 'FALSO';
+    if (typeof v === 'boolean') return v ? AA.T('VERDADERO', 'TRUE') : AA.T('FALSO', 'FALSE');
     if (typeof v === 'number') {
       switch (fmt) {
         case 'currency':
@@ -77,7 +77,7 @@
       const fx = el('div', 'ss-fx', 'fx');
       this.bar = el('input', 'ss-formula');
       this.bar.spellcheck = false;
-      this.bar.setAttribute('aria-label', 'Barra de fórmulas');
+      this.bar.setAttribute('aria-label', AA.T('Barra de fórmulas', 'Formula bar'));
       bar.append(this.nameBox, fx, this.bar);
 
       this.hint = el('div', 'ss-hint');
@@ -293,7 +293,7 @@
       this.rowHeads.forEach((th, r) => th.classList.toggle('sel', r >= r1 && r <= r2));
       const ref = F.makeRef(this.sel.ac, this.sel.ar);
       this.nameBox.textContent =
-        c1 !== c2 || r1 !== r2 ? `${ref}  (${r2 - r1 + 1}F × ${c2 - c1 + 1}C)` : ref;
+        c1 !== c2 || r1 !== r2 ? `${ref}  (${r2 - r1 + 1}${AA.T('F', 'R')} × ${c2 - c1 + 1}C)` : ref;
       if (!this.editing) this.bar.value = this.sheet.getInput(this.sel.ac, this.sel.ar);
       if (this.clipboard) {
         const k = this.clipboard;
@@ -600,7 +600,9 @@
           const hit = names.find((nm) => F.normName(nm).startsWith(pref));
           if (hit && !seen.has(d.name)) {
             seen.add(d.name);
-            this.suggestions.push({ name: hit, def: d });
+            // Se muestra el nombre del idioma del juego si coincide; si no, el que escribió.
+            const local = AA.fnName(d.name);
+            this.suggestions.push({ name: F.normName(local).startsWith(pref) ? local : hit, def: d });
           }
         }
         this.suggestions.sort((a, b) => a.name.length - b.name.length);
@@ -629,31 +631,36 @@
     setHint(h) {
       this.suggestions = h && h.suggestions ? h.suggestions : [];
       if (!h) {
-        this.hint.innerHTML = '<span class="ss-hint-muted">Seleccioná una celda y escribí. Las fórmulas empiezan con <b>=</b> · Doble clic o F2 para editar.</span>';
+        this.hint.innerHTML = `<span class="ss-hint-muted">${AA.T('Seleccioná una celda y escribí. Las fórmulas empiezan con <b>=</b> · Doble clic o F2 para editar.', 'Select a cell and type. Formulas start with <b>=</b> · Double-click or F2 to edit.')}</span>`;
         return;
       }
       if (h.suggestions) {
         this.hint.innerHTML =
-          '<span class="ss-hint-muted">Funciones:</span> ' +
+          `<span class="ss-hint-muted">${AA.T('Funciones:', 'Functions:')}</span> ` +
           h.suggestions
-            .map((s, i) => `<button class="ss-chip${i === 0 ? ' first' : ''}" data-fn="${s.name}" title="${escapeHtml(s.def.desc)}">${s.name}</button>`)
+            .map((s, i) => `<button class="ss-chip${i === 0 ? ' first' : ''}" data-fn="${s.name}" title="${escapeHtml(AA.fnDoc(s.def.name).desc)}">${s.name}</button>`)
             .join('') +
-          '<span class="ss-hint-muted"> · <kbd>Tab</kbd> completa la primera</span>';
+          `<span class="ss-hint-muted"> · <kbd>Tab</kbd> ${AA.T('completa la primera', 'completes the first one')}</span>`;
         return;
       }
       if (h.fn) {
-        const sig = h.fn.sig;
+        const doc = AA.fnDoc(h.fn.name);
+        const sig = doc.sig;
+        const sep = AA.lang === 'en' ? ', ' : '; ';
         const open = sig.indexOf('(');
         const inner = sig.slice(open + 1, sig.lastIndexOf(')'));
-        const params = inner.split(';').map((p) => p.trim());
+        const params = inner.split(/[;,]/).map((p) => p.trim());
         const idx = Math.min(h.arg, params.length - 1);
         const shown = params
           .map((p, i) => (i === idx || (p === '...' && h.arg >= params.length - 1 && i === params.length - 1) ? `<b class="cur">${escapeHtml(p)}</b>` : escapeHtml(p)))
-          .join('; ');
-        this.hint.innerHTML = `<span class="ss-sig">${escapeHtml(sig.slice(0, open))}(${shown})</span> <span class="ss-hint-muted">— ${escapeHtml(h.fn.desc)}</span>`;
+          .join(sep);
+        this.hint.innerHTML = `<span class="ss-sig">${escapeHtml(sig.slice(0, open))}(${shown})</span> <span class="ss-hint-muted">— ${escapeHtml(doc.desc)}</span>`;
         return;
       }
-      this.hint.innerHTML = '<span class="ss-hint-muted">Hacé clic en una celda (o arrastrá un rango) para agregar su referencia. <kbd>F4</kbd> la fija con $. <kbd>Enter</kbd> confirma, <kbd>Esc</kbd> cancela.</span>';
+      this.hint.innerHTML = `<span class="ss-hint-muted">${AA.T(
+        'Hacé clic en una celda (o arrastrá un rango) para agregar su referencia. <kbd>F4</kbd> la fija con $. <kbd>Enter</kbd> confirma, <kbd>Esc</kbd> cancela.',
+        'Click a cell (or drag a range) to add its reference. <kbd>F4</kbd> locks it with $. <kbd>Enter</kbd> confirms, <kbd>Esc</kbd> cancels.'
+      )}</span>`;
     }
 
     applySuggestion(name) {
@@ -809,7 +816,7 @@
         /* sin acceso al portapapeles del sistema */
       }
       this.renderSelection();
-      if (this.opts.onToast) this.opts.onToast('Copiado. Elegí el destino y pegá con Ctrl+V.');
+      if (this.opts.onToast) this.opts.onToast(AA.T('Copiado. Elegí el destino y pegá con Ctrl+V.', 'Copied. Pick the destination and paste with Ctrl+V.'));
     }
     paste() {
       const k = this.clipboard;

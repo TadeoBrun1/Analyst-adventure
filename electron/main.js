@@ -1,7 +1,7 @@
 /*
  * Analyst Adventure — Proceso principal de la versión de escritorio (Electron).
- * Abre la ventana del juego, guarda la partida en un archivo (compatible con Steam Cloud)
- * y maneja pantalla completa (F11 / Alt+Enter).
+ * Abre la ventana del juego, guarda las 3 ranuras de partida y la configuración en archivos
+ * (compatibles con Steam Cloud) y maneja pantalla completa y tamaño de ventana.
  */
 'use strict';
 const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
@@ -9,51 +9,67 @@ const path = require('path');
 const fs = require('fs');
 
 const ROOT = path.join(__dirname, '..');
+const SLOTS = [1, 2, 3];
+const WINDOW_SIZES = ['1280x720', '1366x768', '1600x900', '1920x1080'];
 
 // Carpeta de datos: %APPDATA%/Analyst Adventure (Windows), ~/.config/Analyst Adventure (Linux),
 // ~/Library/Application Support/Analyst Adventure (macOS).
 const saveDir = () => path.join(app.getPath('userData'), 'saves');
-const saveFile = () => path.join(saveDir(), 'save.json');
+const slotFile = (i) => path.join(saveDir(), `slot${i}.json`);
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 
-function readJson(file, fallback) {
+function readText(file) {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    return fs.readFileSync(file, 'utf8');
   } catch (e) {
-    return fallback;
+    return null;
   }
 }
-// Escritura atómica: si el juego se cierra a mitad de camino, el guardado anterior queda intacto.
+function readSettings() {
+  try {
+    return JSON.parse(readText(settingsFile()) || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+// Escritura atómica: si el juego se cierra a mitad de camino, el archivo anterior queda intacto.
 function writeAtomic(file, text) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, text, 'utf8');
   fs.renameSync(tmp, file);
 }
-
-let win = null;
-let settings = { fullscreen: false };
-
-function setFullscreen(on) {
-  if (!win) return;
-  win.setFullScreen(on);
-  settings.fullscreen = on;
+function patchSettings(patch) {
   try {
-    writeAtomic(settingsFile(), JSON.stringify(settings));
+    writeAtomic(settingsFile(), JSON.stringify(Object.assign(readSettings(), patch)));
   } catch (e) {
     /* no es crítico */
   }
 }
+// La versión 0.1 tenía una sola partida (save.json): pasa a la ranura 1.
+function migrateLegacySave() {
+  const legacy = path.join(saveDir(), 'save.json');
+  try {
+    if (fs.existsSync(legacy) && !fs.existsSync(slotFile(1))) fs.renameSync(legacy, slotFile(1));
+  } catch (e) {
+    /* se ignora: la partida vieja queda donde estaba */
+  }
+}
+const validSlot = (i) => SLOTS.includes(Number(i));
+
+let win = null;
 
 function createWindow() {
-  settings = Object.assign(settings, readJson(settingsFile(), {}));
+  const settings = readSettings();
+  const size = WINDOW_SIZES.includes(settings.windowSize) ? settings.windowSize : '1366x768';
+  const [width, height] = size.split('x').map(Number);
   win = new BrowserWindow({
-    width: 1366,
-    height: 800,
+    width,
+    height,
     minWidth: 1024,
     minHeight: 640,
     title: 'Analyst Adventure',
-    backgroundColor: '#12131c',
+    backgroundColor: '#0d0f18',
     icon: path.join(ROOT, 'assets', 'icon.png'),
     show: false,
     autoHideMenuBar: true,
@@ -64,6 +80,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       spellcheck: false,
+      autoplayPolicy: 'no-user-gesture-required',
     },
   });
 
@@ -79,7 +96,8 @@ function createWindow() {
     }
     if (!app.isPackaged && input.key === 'F12') win.webContents.toggleDevTools();
   });
-  win.on('leave-full-screen', () => (settings.fullscreen = false));
+  win.on('enter-full-screen', () => notifyFullscreen(true));
+  win.on('leave-full-screen', () => notifyFullscreen(false));
 
   // El juego nunca navega fuera de su propio index.html; los enlaces externos van al navegador.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -91,33 +109,62 @@ function createWindow() {
   });
 }
 
+function setFullscreen(on) {
+  if (!win) return;
+  win.setFullScreen(!!on);
+  patchSettings({ fullscreen: !!on });
+}
+function notifyFullscreen(on) {
+  patchSettings({ fullscreen: on });
+  if (win && !win.isDestroyed()) win.webContents.send('window:fullscreenChanged', on);
+}
+
 // --- Puente con la página (ver preload.js)
-ipcMain.on('save:load', (event) => {
-  try {
-    event.returnValue = fs.existsSync(saveFile()) ? fs.readFileSync(saveFile(), 'utf8') : null;
-  } catch (e) {
-    event.returnValue = null;
-  }
+ipcMain.on('slot:load', (event, i) => {
+  event.returnValue = validSlot(i) ? readText(slotFile(i)) : null;
 });
-ipcMain.on('save:write', (event, text) => {
+ipcMain.on('slot:write', (event, i, text) => {
   try {
-    writeAtomic(saveFile(), String(text));
+    if (!validSlot(i)) throw new Error('ranura inválida');
+    writeAtomic(slotFile(i), String(text));
     event.returnValue = true;
   } catch (e) {
     event.returnValue = false;
   }
 });
-ipcMain.on('save:delete', (event) => {
+ipcMain.on('slot:delete', (event, i) => {
   try {
-    fs.rmSync(saveFile(), { force: true });
+    if (validSlot(i)) fs.rmSync(slotFile(i), { force: true });
     event.returnValue = true;
   } catch (e) {
     event.returnValue = false;
   }
 });
-ipcMain.on('window:fullscreen', () => win && setFullscreen(!win.isFullScreen()));
+ipcMain.on('settings:load', (event) => {
+  event.returnValue = readText(settingsFile());
+});
+ipcMain.on('settings:write', (event, text) => {
+  try {
+    // Se conservan las claves que maneja este proceso (pantalla completa, tamaño).
+    const incoming = JSON.parse(String(text));
+    writeAtomic(settingsFile(), JSON.stringify(Object.assign(readSettings(), incoming)));
+    event.returnValue = true;
+  } catch (e) {
+    event.returnValue = false;
+  }
+});
+ipcMain.on('window:setFullscreen', (event, on) => setFullscreen(on));
 ipcMain.on('window:isFullscreen', (event) => {
   event.returnValue = !!(win && win.isFullScreen());
+});
+ipcMain.on('window:setSize', (event, w, h) => {
+  const size = `${w}x${h}`;
+  if (!win || !WINDOW_SIZES.includes(size)) return;
+  if (win.isFullScreen()) win.setFullScreen(false);
+  if (win.isMaximized()) win.unmaximize();
+  win.setSize(Number(w), Number(h));
+  win.center();
+  patchSettings({ windowSize: size });
 });
 ipcMain.on('app:quit', () => app.quit());
 
@@ -132,6 +179,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
+    migrateLegacySave();
     createWindow();
   });
   app.on('window-all-closed', () => app.quit());
