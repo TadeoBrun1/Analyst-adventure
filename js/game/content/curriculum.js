@@ -42,10 +42,18 @@
     fill: {
       title: { es: 'Rellenar y copiar fórmulas', en: 'Fill and copy formulas' },
       say: {
-        es: 'No hace falta escribir la misma fórmula 50 veces. Seleccioná la celda y arrastrá el <b>cuadradito azul</b> de la esquina: la planilla ajusta las referencias solas (B2 pasa a B3, B4…). También sirven <b>Ctrl+D</b> y <b>Ctrl+C / Ctrl+V</b>.',
-        en: "You don't need to type the same formula 50 times. Select the cell and drag the <b>little blue square</b> in its corner: the sheet adjusts the references by itself (B2 becomes B3, B4…). <b>Ctrl+D</b> and <b>Ctrl+C / Ctrl+V</b> work too.",
+        es: 'No hace falta escribir la misma fórmula 50 veces. Escribila una vez en la primera fila, seleccioná esa celda y <b>arrastrá hacia abajo el cuadradito azul</b> de su esquina inferior derecha: cada fila recibe la fórmula de arriba y las referencias se ajustan solas (B2 pasa a B3, B4…). También sirven <b>Ctrl+D</b> y <b>Ctrl+C / Ctrl+V</b>.',
+        en: "You don't need to type the same formula 50 times. Type it once in the first row, select that cell and <b>drag the little blue square</b> in its bottom-right corner down: each row gets the formula from above and the references adjust by themselves (B2 becomes B3, B4…). <b>Ctrl+D</b> and <b>Ctrl+C / Ctrl+V</b> work too.",
       },
       tip: { es: 'Seleccioná un rango y apretá Ctrl+D: copia la primera fila en todas.', en: 'Select a range and press Ctrl+D: it copies the first row into all of them.' },
+    },
+    headers: {
+      title: { es: 'Marcar una columna o fila entera', en: 'Select a whole column or row' },
+      say: {
+        es: 'Para ver todos los datos de una columna, hacé clic en su <b>letra</b> (A, B, C…), arriba de todo: se marca la columna entera. Con el <b>número</b> de la izquierda se marca la fila entera. Así seguís fácil los datos de un producto o de un mes sin perderte.',
+        en: 'To see all the data in a column, click its <b>letter</b> (A, B, C…) at the very top: the whole column is selected. Click the <b>number</b> on the left to select the whole row. It makes it easy to follow a product or a month without getting lost.',
+      },
+      tip: { es: 'La letra y el número de la celda en la que estás siempre quedan resaltados.', en: 'The letter and number of the cell you are on are always highlighted.' },
     },
     rawdata: {
       title: { es: 'Regla de oro: no tocar los datos originales', en: "Golden rule: don't touch the original data" },
@@ -279,12 +287,12 @@
       title: { es: 'Fórmulas básicas', en: 'Basic formulas' },
       xp: 40,
       tier: 0,
-      skills: ['formulas', 'refs', 'operators', 'fill', 'rawdata'],
+      skills: ['formulas', 'refs', 'operators', 'fill', 'headers', 'rawdata'],
       templates: ['m1_orders', 'm1_budget', 'm1_stock', 'm1_vat', 'm1_unit'],
       seeds: [101, 102, 103, 104, 105],
       intro: {
-        es: '¡Hola! Así que vos sos la persona nueva. Antes de que toques datos reales, te explico lo básico de las planillas. Prestá atención, que es la base de todo.',
-        en: "Hi! So you're the new hire. Before you touch real data, let me explain spreadsheet basics. Pay attention: it's the foundation of everything.",
+        es: 'Bueno, vamos a lo nuestro. Antes de que toques datos reales, te explico lo básico de las planillas. Prestá atención, que es la base de todo.',
+        en: "Alright, down to business. Before you touch real data, let me explain spreadsheet basics. Pay attention: it's the foundation of everything.",
       },
     },
     {
@@ -390,6 +398,38 @@
   // Casos de práctica que suman XP en cada nivel. Después se puede seguir practicando, sin XP.
   const PRACTICE_XP_LIMIT = 4;
 
+  // Favores de Nico (desde Semi-Senior): tareas distintas a las del día a día.
+  // Solo salen de niveles cuya lección ya diste.
+  const FAVOR_XP = 90;
+  const FAVORS = [
+    { mod: 'mod4', template: 'm4_clients', kind: 'clean' },
+    { mod: 'mod4', template: 'm4_codes', kind: 'clean' },
+    { mod: 'mod8', template: 'm8_duplicates', kind: 'clean' },
+    { mod: 'mod8', template: 'm8_blanks', kind: 'clean' },
+    { mod: 'mod8', template: 'm8_textnum', kind: 'clean' },
+    { mod: 'mod8', template: 'm8_validity', kind: 'clean' },
+    { mod: 'mod14', template: 'm14_churn', kind: 'report' },
+    { mod: 'mod14', template: 'm14_returns', kind: 'report' },
+    { mod: 'mod14', template: 'm14_delivery', kind: 'report' },
+    { mod: 'mod15', template: 'm15_ranges', kind: 'review' },
+    { mod: 'mod15', template: 'm15_lookup', kind: 'review' },
+    { mod: 'mod15', template: 'm15_pct', kind: 'review' },
+  ];
+  const FAVOR_TEXT = {
+    clean: {
+      ask: { es: 'Me pasaron una base hecha un desastre: espacios, duplicados, vacíos… Si la limpio yo, tardo una semana. ¿Me das una mano?', en: "They sent me a total mess of a dataset: spaces, duplicates, blanks… If I clean it myself it'll take a week. Can you help?" },
+      mail: { es: '<p>Che, {name}, ¡gracias por aceptar! Te reenvío lo que me pidieron. Yo empecé a limpiarlo pero me perdí. ¿Lo podés dejar prolijo?</p>', en: "<p>Hey {name}, thanks for saying yes! I'm forwarding what they asked me for. I started cleaning it but got lost. Can you tidy it up?</p>" },
+    },
+    report: {
+      ask: { es: 'Marta me pidió un informe con conclusiones y yo solo sé hacer tablas… ¿Me ayudás a encontrar qué pasó y a escribirlo?', en: 'Marta asked me for a report with conclusions and I only know how to make tables… Will you help me find what happened and write it up?' },
+      mail: { es: '<p>{name}, te reenvío el pedido. Lo que más me cuesta es la parte de <b>contar qué pasó y qué hacer</b>. ¡Te debo una!</p>', en: "<p>{name}, I'm forwarding the request. What I struggle with most is <b>explaining what happened and what to do</b>. I owe you one!</p>" },
+    },
+    review: {
+      ask: { es: 'Terminé una planilla pero algo no me cierra y no encuentro qué. ¿La revisás antes de que la vea Marta? 🙏', en: "I finished a spreadsheet but something doesn't add up and I can't find it. Will you review it before Marta sees it? 🙏" },
+      mail: { es: '<p>{name}, acá va mi planilla. Marcá lo que esté mal y arreglalo así aprendo. Prometo no ofenderme… mucho. 😅</p>', en: "<p>{name}, here's my spreadsheet. Flag what's wrong and fix it so I learn. I promise not to get offended… much. 😅</p>" },
+    },
+  };
+
   const ST = () => AA.State;
   const moduleById = (id) => MODULES.find((m) => m.id === id) || null;
   const storyId = (mod, k) => `${mod.id}-${k + 1}`;
@@ -472,6 +512,8 @@
       if (m) return { kind: 'story', mod: m[1], k: Number(m[2]) - 1 };
       m = /^p:(mod\d+):([a-z0-9_]+):(medium|large):(\d+)$/.exec(id);
       if (m) return { kind: 'practice', mod: m[1], template: m[2], size: m[3], seed: Number(m[4]) };
+      m = /^f:(mod\d+):([a-z0-9_]+):(\d+)$/.exec(id);
+      if (m) return { kind: 'favor', mod: m[1], template: m[2], size: 'medium', seed: Number(m[3]) };
       return null;
     },
     practiceId(mod, template, size, seed) {
@@ -482,6 +524,29 @@
       const seed = Math.floor(Math.random() * 1e9);
       return this.practiceId(mod, template, size, seed);
     },
+    // --- Favores de Nico
+    FAVOR_XP,
+    favorPool() {
+      return FAVORS.filter((f) => this.lessonDone(moduleById(f.mod)));
+    },
+    favorKind(id) {
+      const p = this.parseId(id);
+      const f = p && FAVORS.find((x) => x.template === p.template);
+      return f ? f.kind : 'clean';
+    },
+    favorText(kind) {
+      return FAVOR_TEXT[kind] || FAVOR_TEXT.clean;
+    },
+    // Un favor nuevo: preferí un tipo distinto al del último.
+    newFavor(lastKind) {
+      const pool = this.favorPool();
+      if (!pool.length) return null;
+      const fresh = pool.filter((f) => f.kind !== lastKind);
+      const list = fresh.length ? fresh : pool;
+      const f = list[Math.floor(Math.random() * list.length)];
+      return `f:${f.mod}:${f.template}:${Math.floor(Math.random() * 1e9)}`;
+    },
+
     // XP base de un caso de práctica según el tamaño de la tabla.
     practiceXp(mod, size) {
       return size === 'large' ? Math.round(mod.xp * 1.6) : mod.xp;
@@ -521,6 +586,18 @@
         m = AA.Content.build(mod.templates[p.k], { seed: mod.seeds[p.k], size: 'small', story: true, first: mod.id === 'mod1' && p.k === 0, lang });
         m.xp = mod.xp;
         m.order = p.k + 1;
+      } else if (p.kind === 'favor') {
+        m = AA.Content.build(p.template, { seed: p.seed, size: 'medium', lang });
+        const kind = this.favorKind(id);
+        const txt = this.favorText(kind);
+        const L = (o) => (lang === 'en' ? o.en : o.es);
+        m.xp = FAVOR_XP;
+        m.from = 'nico';
+        m.dept = 'data';
+        m.subject = (lang === 'en' ? '🤝 Favor for Nico · ' : '🤝 Favor para Nico · ') + m.subject;
+        m.email = `${L(txt.mail)}<blockquote class="fwd"><div class="muted">${lang === 'en' ? '— Forwarded message —' : '— Mensaje reenviado —'}</div>${m.email}</blockquote>`;
+        m.feedback = lang === 'en' ? 'You saved me! I owe you a coffee. Or two.' : '¡Me salvaste! Te debo un café. O dos.';
+        m.favorKind = kind;
       } else {
         m = AA.Content.build(p.template, { seed: p.seed, size: p.size, lang });
         m.xp = this.practiceXp(mod, p.size);

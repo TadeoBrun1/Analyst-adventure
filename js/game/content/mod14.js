@@ -369,7 +369,7 @@
     const last = n + 1;
     const money = (x) => C.money(Math.round(x * 100) / 100);
     const cpaTable = C.table([T('Canal', 'Channel'), T('Costo por conversión', 'Cost per conversion'), T('Inversión', 'Spend'), T('Conversiones', 'Conversions')], chans.map((c, i) => [c, Math.round(cpa[i] * 100) / 100, spend[i], conv[i]]));
-    const st = story(T('Informe para Tomás · Rendimiento por canal', 'Report for Tomás · Channel performance'), {
+    const st = story(T('Informe para Tadeo · Rendimiento por canal', 'Report for Tadeo · Channel performance'), {
       titles: [
         { id: 't1', ok: true, text: T(`${chans[best]} consigue clientes a ${money(cpa[best])} cada uno: ${(cpa[worst] / cpa[best]).toFixed(1)} veces más barato que ${chans[worst]}`, `${chans[best]} gets customers at ${money(cpa[best])} each: ${(cpa[worst] / cpa[best]).toFixed(1)} times cheaper than ${chans[worst]}`) },
         { id: 't2', text: T(`Invertimos ${money(sum(spend))} en ${n} campañas`, `We spent ${money(sum(spend))} on ${n} campaigns`), why: why.descriptive() },
@@ -393,7 +393,7 @@
       ],
     });
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¿En qué canal conviene invertir?', 'Which channel should we invest in?'),
       file: T('campanas_trimestre.xlsx', 'quarter_campaigns.xlsx'),

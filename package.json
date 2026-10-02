@@ -1,7 +1,7 @@
 {
   "name": "analyst-adventure",
   "productName": "Analyst Adventure",
-  "version": "0.4.2",
+  "version": "0.6.0",
   "private": true,
   "description": "Juego 2D para aprender planillas de cálculo: de pasante a analista de datos senior.",
   "author": "TadeoBrun1",

@@ -218,7 +218,7 @@
     // La respuesta se acepta como 45 o como 0.45.
     const pctAnswer = (a) => V.answerNumber(closedPct * 100, 0.1)(a) || V.answerNumber(closedPct, 0.001)(a);
     return {
-      from: 'sofi',
+      from: 'camila',
       dept: 'data',
       subject: T('Estado de los tickets de soporte', 'Support ticket status'),
       file: T('tickets_soporte.xlsx', 'support_tickets.xlsx'),

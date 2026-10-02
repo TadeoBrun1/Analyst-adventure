@@ -93,7 +93,7 @@
     const unique = new Set(rows.map((x) => x.email)).size;
     const YES = T('Sí', 'Yes');
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('La base de suscriptores tiene repetidos', 'The subscriber list has duplicates'),
       file: T('suscriptores.xlsx', 'subscribers.xlsx'),

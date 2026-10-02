@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.4.2';
+  AA.VERSION = '0.6.0';
 
   const Game = {
     screen: 'title',
@@ -23,7 +23,7 @@
       AA.Office.init(document.getElementById('office-canvas'), {
         onInteract: (id) => this.interact(id),
         getMarkers: () => this.markers(),
-        paused: () => this.screen !== 'office' || AA.Dialog.isOpen() || AA.UI.isModalOpen(),
+        paused: () => this.screen !== 'office' || AA.Dialog.isOpen() || AA.UI.isModalOpen() || AA.Tour.isOpen(),
       });
       AA.Menu.init();
       this.bindHud();
@@ -34,8 +34,12 @@
     show(name) {
       if (name !== this.screen) document.getElementById('toast').innerHTML = '';
       this.screen = name;
-      document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + name));
-      if (name === 'office') AA.Office.start();
+      // La presentación usa la misma pantalla (y lienzo) que la oficina.
+      const section = name === 'present' ? 'office' : name;
+      document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + section));
+      document.getElementById('screen-office').classList.toggle('presenting', name === 'present');
+      if (name !== 'present') AA.Office.stopPresentation();
+      if (name === 'office' || name === 'present') AA.Office.start();
       else AA.Office.stop();
       if (name !== 'title') AA.Menu.close();
       AA.Audio.setDuck(name === 'mission' ? 0.45 : 1);
@@ -55,6 +59,7 @@
       AA.Office.player.x = AA.Office.START.x;
       AA.Office.player.y = AA.Office.START.y;
       AA.Office.player.dir = 'up';
+      AA.Office.standUp();
       this.enterOffice();
     },
 
@@ -75,11 +80,11 @@
         b.classList.add('bump');
       }
       this.hudXp = st.data.xp;
-      document.getElementById('hud-notebook').innerHTML = `📒 ${T('Libreta', 'Notebook')}`;
+      document.getElementById('hud-notebook').innerHTML = `📒 ${T('Libreta', 'Notebook')} <kbd>F</kbd>`;
       document.getElementById('hud-career').innerHTML = `📈 ${T('Carrera', 'Career')}`;
       document.getElementById('hud-help').innerHTML = T(
-        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · <kbd>Esc</kbd>: menú',
-        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows: walk · <kbd>E</kbd> or <kbd>Space</kbd>: interact · <kbd>Esc</kbd>: menu'
+        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · <kbd>F</kbd>: libreta · <kbd>Esc</kbd>: menú',
+        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows: walk · <kbd>E</kbd> or <kbd>Space</kbd>: interact · <kbd>F</kbd>: notebook · <kbd>Esc</kbd>: menu'
       );
     },
 
@@ -89,6 +94,7 @@
       const m = {};
       if (!st.data.flags.intro || st.data.flags.rankSeen < st.rankIndex()) m.marta = true;
       if (st.data.flags.intro && Cu().pendingLesson()) m.leo = true;
+      if (st.rankIndex() >= 2 && (!st.data.flags.metNico || st.favorReady())) m.nico = true;
       else if (st.data.flags.intro && Cu().nextMission()) m.computer = true;
       return m;
     },
@@ -98,6 +104,7 @@
       const desk = AA.Storage.desktop();
       const buttons = [
         { label: `⚙ ${T('Opciones', 'Options')}`, action: () => this.openOptions() },
+        { label: `👕 ${T('Cambiar aspecto', 'Change look')}`, action: () => AA.Creator.openModal() },
         {
           label: `⌂ ${T('Menú principal', 'Main menu')}`,
           action: () => {
@@ -144,14 +151,23 @@
       this.show('office');
       this.updateHud();
       const st = AA.State;
-      if (!st.data.flags.intro) setTimeout(() => AA.Story.intro(), 400);
+      // Primera vez: bienvenida (cómo se juega) → guía de la oficina → Marta.
+      if (!st.data.flags.intro) setTimeout(() => AA.Guides.welcome(() => AA.Guides.office(() => AA.Story.intro())), 400);
       else if (st.data.flags.rankSeen < st.rankIndex()) AA.UI.toast(T('📣 <b>Marta</b> quiere hablar con vos en su oficina.', '📣 <b>Marta</b> wants to talk to you in her office.'), 'info');
       else if (Cu().pendingLesson()) AA.UI.toast(T('☕ <b>Leo</b> tiene algo nuevo para enseñarte (junto al café).', '☕ <b>Leo</b> has something new to teach you (by the coffee machine).'), 'info');
     },
     openComputer() {
       this.show('computer');
       AA.Screens.Inbox.render();
+      setTimeout(() => this.screen === 'computer' && AA.Guides.inbox(), 250);
     },
+    // Evento especial: presentar los resultados frente al equipo.
+    presentResults(ev, done) {
+      AA.UI.closeModal(true);
+      this.show('present');
+      AA.Present.run(ev, done);
+    },
+
     openMission(id) {
       const p = Cu().parseId(id);
       if (!p) return;
@@ -200,7 +216,8 @@
             return;
           }
           AA.Audio.play('select');
-          this.openComputer();
+          // Primero te sentás en tu silla; después se abre la computadora.
+          AA.Office.sitAtDesk(() => this.openComputer());
           return;
         case 'whiteboard':
           AA.Screens.openCareer();
@@ -211,11 +228,14 @@
         case 'leo':
           AA.Story.leo();
           return;
-        case 'sofi':
-          AA.Story.sofi();
+        case 'nico':
+          AA.Story.nico();
           return;
-        case 'tomas':
-          AA.Story.tomas();
+        case 'camila':
+        case 'tadeo':
+        case 'jean':
+        case 'juanroberto':
+          AA.Story[id]();
           return;
         default:
           AA.Story.flavor(id);
@@ -224,6 +244,21 @@
 
     handleKey(e) {
       if (e.defaultPrevented) return;
+      // F abre y cierra la libreta en la oficina (en la computadora se usa el botón: la F hace falta para escribir).
+      const isF = (e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat;
+      if (isF && this.screen === 'office' && !AA.Dialog.isOpen()) {
+        if (!AA.UI.isModalOpen()) {
+          e.preventDefault();
+          AA.Screens.openNotebook();
+          return;
+        }
+        if (document.querySelector('#modal .modal-card.notebook')) {
+          e.preventDefault();
+          AA.Audio.play('page');
+          AA.UI.closeModal();
+          return;
+        }
+      }
       if (AA.UI.isModalOpen()) {
         if (e.key === 'Escape' && AA.UI.modalClosable) {
           e.preventDefault();
@@ -237,7 +272,17 @@
         return;
       }
       if (e.key !== 'Escape') return;
-      if (this.screen === 'computer') {
+      if (this.screen === 'mission') {
+        // Primer Esc: salir del campo de texto en el que estés. Siguiente: volver a la bandeja de entrada.
+        e.preventDefault();
+        const a = document.activeElement;
+        if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && a.type !== 'range' && a.type !== 'checkbox'))) {
+          a.blur();
+          return;
+        }
+        AA.Audio.play('back');
+        AA.Screens.MissionScreen.leave(() => this.openComputer());
+      } else if (this.screen === 'computer') {
         e.preventDefault();
         this.enterOffice();
       } else if (this.screen === 'office') {

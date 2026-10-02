@@ -178,7 +178,7 @@
       ],
     };
     return {
-      from: 'sofi',
+      from: 'camila',
       dept: 'data',
       subject: T('Dashboard para el equipo de soporte', 'Dashboard for the support team'),
       file: T('dashboard_soporte.bi', 'support_dashboard.bi'),
@@ -287,7 +287,7 @@
       ],
     };
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('Dashboard de campañas', 'Campaign dashboard'),
       file: T('dashboard_campanas.bi', 'campaign_dashboard.bi'),

@@ -152,7 +152,7 @@
     const top = C.uniqueExtreme(counts);
     const base = Pv.expect({ rows: H.cat, columns: null, aggs: ['COUNT'] });
     return {
-      from: 'sofi',
+      from: 'camila',
       dept: 'data',
       subject: T('¿De qué se quejan los clientes?', 'What are customers complaining about?'),
       file: T('tickets_soporte.xlsx', 'support_tickets.xlsx'),
@@ -346,7 +346,7 @@
     const H = { ch: T('Canal', 'Channel'), prod: T('Producto', 'Product'), rev: T('Facturación', 'Revenue') };
     const base = Pv.expect({ rows: H.ch, columns: null, value: H.rev, aggs: ['SUM'] });
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¿Qué parte de la facturación viene de cada canal?', 'What share of revenue comes from each channel?'),
       file: T('facturacion_canales.xlsx', 'channel_revenue.xlsx'),

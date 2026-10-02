@@ -61,7 +61,7 @@
     const last = n + 1;
     const fn = AA.fnName;
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('La base de clientes es un desastre 😩', 'The customer list is a mess 😩'),
       file: T('clientes_newsletter.xlsx', 'newsletter_customers.xlsx'),
@@ -150,7 +150,7 @@
     const last = n + 1;
     const fn = AA.fnName;
     return {
-      from: 'sofi',
+      from: 'camila',
       dept: 'data',
       subject: T('Códigos de producto rotos', 'Broken product codes'),
       file: T('catalogo_codigos.xlsx', 'catalog_codes.xlsx'),
@@ -273,7 +273,7 @@
     const last = n + 1;
     const fn = AA.fnName;
     return {
-      from: 'sofi',
+      from: 'camila',
       dept: 'data',
       subject: T('Altas de emails corporativos', 'New corporate email accounts'),
       file: T('altas_emails.xlsx', 'email_accounts.xlsx'),

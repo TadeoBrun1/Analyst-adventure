@@ -94,7 +94,7 @@
     const status = conv.map((c) => (c >= target ? OK : c >= target * 0.8 ? NEAR : LOW));
     const best = C.uniqueExtreme(conv);
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¿Qué canal funciona mejor?', 'Which channel works best?'),
       file: T('embudo_canales.xlsx', 'channel_funnel.xlsx'),
@@ -295,7 +295,7 @@
     } while (avg < 6.5 || nps > 25);
     const last = n + 1;
     return {
-      from: 'sofi',
+      from: 'camila',
       dept: 'data',
       subject: T('¿Nos recomiendan los clientes?', 'Do customers recommend us?'),
       file: T('encuesta_nps.xlsx', 'nps_survey.xlsx'),

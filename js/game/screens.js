@@ -38,9 +38,9 @@
       const st = AA.State;
       const root = document.getElementById('screen-computer');
       if (!this.selected || !this.isSelectable(this.selected)) this.selected = this.defaultSelection();
-      const groups = Cu()
-        .MODULES.map((mod, i) => (i === 0 || Cu().MODULES[i - 1].tier !== mod.tier ? this.renderStageHead(mod.tier) : '') + this.renderGroup(mod))
-        .join('');
+      // Una sección plegable por etapa (rango); lo que el jugador abre o cierra queda guardado.
+      const tiers = [...new Set(Cu().MODULES.map((m) => m.tier))];
+      const groups = tiers.map((tier) => this.renderStage(tier)).join('');
       root.innerHTML = `
         <div class="monitor">
           <div class="os-bar">
@@ -48,8 +48,8 @@
             <button class="btn btn-ghost" data-act="back">← ${T('Volver a la oficina', 'Back to the office')} <kbd>Esc</kbd></button>
           </div>
           <div class="mail">
-            <aside class="mail-list">${groups}
-              <div class="stage-head">🔒 ${T('Etapa Lead · próximamente', 'Lead stage · coming soon')}</div>
+            <aside class="mail-list">${this.renderFavor()}${groups}
+              <div class="stage-head future"><span class="chev">🔒</span>${T('Etapa Lead · próximamente', 'Lead stage · coming soon')}</div>
               <div class="mail-group future">
                 <div class="mail-item locked"><div class="mail-subject">${T('Estrategia de datos, priorizar pedidos, acordar métricas con las áreas y gobierno de datos', 'Data strategy, prioritizing requests, agreeing on metrics with other teams and data governance')}</div></div>
               </div>
@@ -58,6 +58,18 @@
           </div>
         </div>`;
       root.querySelector('[data-act="back"]').addEventListener('click', () => AA.Game.enterOffice());
+      root.querySelectorAll('[data-stage]').forEach((b) =>
+        b.addEventListener('click', () => {
+          const sec = b.closest('.stage');
+          const open = !sec.classList.contains('open');
+          sec.classList.toggle('open', open);
+          b.setAttribute('aria-expanded', open);
+          const flags = st.data.flags;
+          flags.stages = Object.assign({}, flags.stages, { [b.dataset.stage]: open });
+          st.save();
+          AA.Audio.play(open ? 'page' : 'move');
+        })
+      );
       root.querySelectorAll('[data-sel]').forEach((b) =>
         b.addEventListener('click', () => {
           AA.Audio.play('move');
@@ -97,13 +109,57 @@
     },
 
     isSelectable(sel) {
+      if (sel.startsWith('f:')) return AA.State.data.favor === sel;
       if (sel.startsWith('lesson:') || sel.startsWith('practice:') || sel.startsWith('locked:')) return true;
       return Cu().missionAvailable(sel);
     },
 
-    renderStageHead(tier) {
+    // Pedido de Nico en curso (desde Semi-Senior): siempre arriba de todo, en verde agua.
+    renderFavor() {
+      const st = AA.State;
+      const id = st.data.favor;
+      if (!id) return '';
+      const m = getMission(id, (st.data.progress[id] && st.data.progress[id].lang) || AA.lang);
+      const status = st.data.progress[id] ? `<span class="chip prog">✎ ${T('En progreso', 'In progress')}</span>` : `<span class="chip favor">🤝 ${T('Favor', 'Favor')}</span>`;
+      return `
+        <div class="mail-group favor-group">
+          <div class="mail-group-head">🤝 ${T('Favores de Nico', 'Favors for Nico')}<span>+${m.xp} XP</span></div>
+          <button class="mail-item favor ${this.selected === id ? 'active' : ''}" data-sel="${id}">
+            <div class="mail-from">Nico Ferreyra ${AA.UI.deptBadge('data')}</div>
+            <div class="mail-subject">${esc(m.subject)}</div>
+            <div class="mail-meta">${status}<span class="xp">+${m.xp} XP</span></div>
+          </button>
+        </div>`;
+    },
+
+    // ¿La etapa está desplegada? Lo que eligió el jugador manda; si no eligió, se abre la etapa actual.
+    stageOpen(tier) {
+      const saved = AA.State.data.flags.stages;
+      if (saved && saved[tier] !== undefined) return !!saved[tier];
+      const cur = Cu().currentModule();
+      const curTier = cur ? cur.tier : AA.State.rankIndex();
+      return tier === curTier;
+    },
+    isNew(id) {
+      const st = AA.State;
+      return Cu().missionAvailable(id) && !st.isCompleted(id) && !st.data.progress[id];
+    },
+    renderStage(tier) {
       const rank = AA.State.RANKS[tier];
-      return `<div class="stage-head">🎓 ${T('Etapa', 'Stage')} ${esc(AA.L(rank.name))}</div>`;
+      const mods = Cu().MODULES.filter((m) => m.tier === tier);
+      const done = mods.reduce((a, m) => a + Cu().doneCount(m), 0);
+      const total = mods.length * Cu().REQUIRED;
+      const locked = mods.every((m) => Cu().lockReason(m));
+      const fresh = mods.reduce((a, m) => a + (Cu().lessonDone(m) && !Cu().lockReason(m) ? Cu().requiredIds(m).filter((id) => this.isNew(id)).length : 0), 0);
+      const open = this.stageOpen(tier);
+      return `
+        <section class="stage ${open ? 'open' : ''} ${locked ? 'locked' : ''}">
+          <button class="stage-head" data-stage="${tier}" aria-expanded="${open}">
+            <span class="chev">▸</span>${locked ? '🔒' : '🎓'} ${T('Etapa', 'Stage')} ${esc(AA.L(rank.name))}
+            <span class="stage-meta">${fresh ? `<span class="stage-new">${fresh} ${T(fresh > 1 ? 'nuevas' : 'nueva', 'new')}</span>` : ''}<span class="${done >= total ? 'ok' : ''}">${done}/${total}</span></span>
+          </button>
+          <div class="stage-body">${mods.map((m) => this.renderGroup(m)).join('')}</div>
+        </section>`;
     },
 
     renderGroup(mod) {
@@ -117,7 +173,7 @@
         return `<div class="mail-group locked">${head}${item('locked:' + mod.id, `<div class="mail-subject">${esc(reason)}</div>`, 'locked')}</div>`;
       }
       if (!Cu().lessonDone(mod)) {
-        return `<div class="mail-group">${head}${item('lesson:' + mod.id, `<div class="mail-from">☕ Leo</div><div class="mail-subject">${T('Primero hablá con Leo', 'Talk to Leo first')}</div><div class="mail-meta"><span class="chip new">${T('Lección pendiente', 'Lesson pending')}</span></div>`)}</div>`;
+        return `<div class="mail-group">${head}${item('lesson:' + mod.id, `<div class="mail-from">☕ Leo</div><div class="mail-subject">${T('Primero hablá con Leo', 'Talk to Leo first')}</div><div class="mail-meta"><span class="chip new">${T('Lección pendiente', 'Lesson pending')}</span></div>`, 'new')}</div>`;
       }
       const items = Cu()
         .requiredIds(mod)
@@ -126,20 +182,21 @@
             return `<div class="mail-item locked"><div class="mail-subject">🔒 ${T('Completá la tarea anterior', 'Complete the previous task')}</div></div>`;
           }
           const m = getMission(id, (st.data.progress[id] && st.data.progress[id].lang) || AA.lang);
-          const status = st.isCompleted(id)
-            ? `<span class="chip ok">✔ ${T('Entregado', 'Delivered')}</span>`
-            : st.data.progress[id]
-              ? `<span class="chip warn">${T('En progreso', 'In progress')}</span>`
-              : `<span class="chip new">${T('Nuevo', 'New')}</span>`;
+          const state = st.isCompleted(id) ? 'read' : st.data.progress[id] ? 'progress' : 'new';
+          const status = {
+            read: `<span class="chip ok">✔ ${T('Entregado', 'Delivered')}</span>`,
+            progress: `<span class="chip prog">✎ ${T('En progreso', 'In progress')}</span>`,
+            new: `<span class="chip new">★ ${T('Nuevo', 'New')}</span>`,
+          }[state];
           const ch = st.CHARACTERS[m.from];
-          return item(id, `<div class="mail-from">${esc(AA.L(ch.name))} ${AA.UI.deptBadge(m.dept)}</div><div class="mail-subject">${esc(m.subject)}</div><div class="mail-meta">${status}<span class="xp">+${m.xp} XP</span></div>`, st.isCompleted(id) ? 'read' : '');
+          return item(id, `<div class="mail-from">${esc(AA.L(ch.name))} ${AA.UI.deptBadge(m.dept)}</div><div class="mail-subject">${esc(m.subject)}</div><div class="mail-meta">${status}<span class="xp">+${m.xp} XP</span></div>`, state);
         })
         .join('');
       const reward = Cu().practiceReward(mod, 'medium');
       const practice = Cu().isModuleComplete(mod)
         ? item(
             'practice:' + mod.id,
-            `<div class="mail-subject">🎲 ${T('Práctica libre', 'Free practice')}</div><div class="mail-meta"><span class="chip">${T('Casos aleatorios', 'Random cases')}</span><span class="xp">${
+            `<div class="mail-subject">🎲 ${T('Práctica libre', 'Free practice')}</div><div class="mail-meta"><span class="chip extra">${T('Extra · casos aleatorios', 'Extra · random cases')}</span><span class="xp">${
               reward.xp ? `+${mod.xp}–${Cu().practiceXp(mod, 'large')} XP · ${reward.left}/${Cu().PRACTICE_XP_LIMIT}` : T('sin XP', 'no XP')
             }</span></div>`,
             'practice'
@@ -316,12 +373,13 @@
       root.innerHTML = `
         <header class="ms-top">
           <button class="btn btn-ghost" data-act="office">← ${T('Oficina', 'Office')}</button>
-          <button class="btn btn-ghost" data-act="inbox">📨 ${T('Bandeja', 'Inbox')}</button>
+          <button class="btn btn-ghost" data-act="inbox">📨 ${T('Bandeja', 'Inbox')} <kbd>Esc</kbd></button>
           <div class="ms-title">
             <span class="file-icon sm">${icon}</span>
             <div><b>${esc(mission.file)}</b><span class="muted">${T('Nivel', 'Level')} ${levelNum(mod)} · ${esc(mission.subject)} · ${esc(AA.L(ch.name))}</span></div>
           </div>
           <div class="spacer"></div>
+          <button class="btn" data-act="help" title="${T('Cómo usar la planilla', 'How to use the spreadsheet')}">❓ ${T('Ayuda', 'Help')}</button>
           <button class="btn" data-act="notebook">📒 ${T('Libreta', 'Notebook')}</button>
           <button class="btn" data-act="email">📧 ${T('Ver pedido', 'View request')}</button>
           <button class="btn" data-act="hint">💡 ${T('Pista', 'Hint')}</button>
@@ -370,6 +428,7 @@
       root.querySelector('[data-act="inbox"]').addEventListener('click', () => this.leave(() => AA.Game.openComputer()));
       root.querySelector('[data-act="notebook"]').addEventListener('click', () => openNotebook(mission.module));
       root.querySelector('[data-act="email"]').addEventListener('click', () => this.showEmail());
+      root.querySelector('[data-act="help"]').addEventListener('click', () => AA.Guides.mission(this, true));
       root.querySelector('[data-act="hint"]').addEventListener('click', () => this.useHint());
       this.submitBtn.addEventListener('click', () => this.submit());
       root.querySelectorAll('[data-view]').forEach((b) =>
@@ -392,7 +451,9 @@
       if (this.defs.length) this.showSheet(0, true);
       this.showView(startView, true);
       this.evaluate(true);
-      if (!prog && !st.isCompleted(id) && id === 'mod1-1') setTimeout(() => this.showTutorial(), 250);
+      // Guía de la planilla (o de la herramienta) la primera vez.
+      setTimeout(() => this.mission && AA.Guides.mission(this), 300);
+      this.scheduleHeadersTip();
     },
 
     // --- Herramientas
@@ -474,7 +535,10 @@
       else if (id === 'dashboard' && v) v.drawCharts();
       else if (id === 'report' && v) v.build();
       else if (id === 'sql' && v) setTimeout(() => v.focus(), 30);
-      if (!initial) this.scheduleSave();
+      if (!initial) {
+        this.scheduleSave();
+        setTimeout(() => this.mission && this.activeView === id && AA.Guides.mission(this), 250);
+      }
     },
 
     // Hoja visible (las grillas se crean al mostrarlas por primera vez).
@@ -530,14 +594,62 @@
           );
         },
         onToast: (msg) => AA.UI.toast(msg, 'info'),
-        onEdit: () => {
+        onEdit: (changes) => {
           AA.Audio.play('type');
+          this.maybeFillTip(i, changes);
           // Otras hojas pueden depender de esta: se redibujan las que ya existen.
           this.grids.forEach((g, k) => g && k !== i && g.refresh());
           this.evaluate();
           this.scheduleSave();
         },
       });
+    },
+
+    // --- Ayudas que aparecen una sola vez por partida, en el momento justo.
+    // Después de la primera fórmula: cómo copiarla a las filas de abajo arrastrando.
+    maybeFillTip(i, changes) {
+      const st = AA.State;
+      const g = this.grids[i];
+      if (!g) return;
+      if (changes && changes.length > 1) g.hideCoach(); // ya rellenó: la burbuja cumplió su función
+      if (st.data.flags.tipFill || !changes || changes.length !== 1 || !/^=/.test(String(changes[0].after || ''))) return;
+      const { c, r } = changes[0];
+      st.data.flags.tipFill = true;
+      st.save();
+      setTimeout(
+        () =>
+          g.coach(
+            T(
+              '💡 <b>¿La misma cuenta en las filas de abajo?</b> No la escribas de nuevo: seleccioná esta celda y <b>arrastrá hacia abajo el cuadradito azul</b> de su esquina. La fórmula de arriba se copia en cada fila y las referencias se ajustan solas (B2 → B3 → B4…). <span class="muted">Atajo: seleccioná el rango y apretá Ctrl+D.</span>',
+              '💡 <b>Same calculation in the rows below?</b> Don\'t type it again: select this cell and <b>drag the little blue square</b> in its corner down. The formula above is copied into each row and the references adjust by themselves (B2 → B3 → B4…). <span class="muted">Shortcut: select the range and press Ctrl+D.</span>'
+            ),
+            { c, r, dx: 10 }
+          ),
+        120
+      );
+    },
+    // Al abrir la primera tarea con planilla: marcar una columna o fila entera con su encabezado.
+    scheduleHeadersTip() {
+      const st = AA.State;
+      if (st.data.flags.tipHeaders || !this.defs.length) return;
+      const mission = this.mission;
+      const tryShow = () => {
+        if (this.mission !== mission) return;
+        if (st.data.flags.tipHeaders) return; // ya lo explicó la guía
+        if (AA.UI.isModalOpen() || AA.Dialog.isOpen() || AA.Tour.isOpen() || this.activeView !== 'sheets') return setTimeout(tryShow, 600);
+        const g = this.grids[this.activeSheet];
+        if (!g) return;
+        st.data.flags.tipHeaders = true;
+        st.save();
+        g.coach(
+          T(
+            '💡 <b>Hacé clic en la letra de una columna</b> (A, B, C…) para marcarla entera, o en el <b>número de una fila</b> para marcar toda la fila. Así encontrás fácil los datos de esa columna o fila.',
+            '💡 <b>Click a column letter</b> (A, B, C…) to select the whole column, or a <b>row number</b> to select the whole row. It makes it easy to follow that column\'s or row\'s data.'
+          ),
+          { col: 1, dx: -8, ms: 14000 }
+        );
+      };
+      setTimeout(tryShow, 900);
     },
 
     focusActive() {
@@ -645,7 +757,10 @@
         .join('');
       this.objList.querySelectorAll('form[data-answer]').forEach((form) => {
         const input = form.querySelector('input');
-        input.addEventListener('keydown', (e) => e.stopPropagation());
+        input.addEventListener('keydown', (e) => {
+          e.stopPropagation();
+          if (e.key === 'Escape') input.blur();
+        });
         form.addEventListener('submit', (e) => {
           e.preventDefault();
           const i = +form.dataset.answer;
@@ -720,17 +835,37 @@
     },
 
     showTutorial() {
+      // Mini planillas ilustradas (animadas con CSS) para lo que más cuesta descubrir solo.
+      const mini = (cells, extra) => `<table class="tut-sheet ${extra || ''}"><tr><th></th><th>A</th><th>B</th><th>C</th></tr>${cells}</table>`;
+      const fillDemo = mini(
+        `<tr><th>1</th><td>${T('Cant.', 'Qty')}</td><td>${T('Precio', 'Price')}</td><td>Total</td></tr>
+         <tr><th>2</th><td>2</td><td>500</td><td class="sel">=A2*B2<i class="tut-handle"></i></td></tr>
+         <tr><th>3</th><td>4</td><td>250</td><td class="ghost">=A3*B3</td></tr>
+         <tr><th>4</th><td>1</td><td>900</td><td class="ghost">=A4*B4</td></tr>`,
+        'tut-fill'
+      );
+      const headDemo = mini(
+        `<tr><th>1</th><td>${T('Mes', 'Month')}</td><td class="col">${T('Ventas', 'Sales')}</td><td>${T('Meta', 'Goal')}</td></tr>
+         <tr><th>2</th><td>${T('Ene', 'Jan')}</td><td class="col">120</td><td>100</td></tr>
+         <tr><th>3</th><td>${T('Feb', 'Feb')}</td><td class="col">95</td><td>100</td></tr>
+         <tr><th>4</th><td>${T('Mar', 'Mar')}</td><td class="col">130</td><td>110</td></tr>`,
+        'tut-head'
+      );
       AA.UI.modal({
         title: T('🧭 Cómo usar la planilla', '🧭 How to use the spreadsheet'),
         wide: true,
         html: `
+          <div class="tut-demos">
+            <figure>${fillDemo}<figcaption>${T('<b>Copiar una fórmula hacia abajo:</b> seleccioná la celda y arrastrá el <b>cuadradito azul</b> de la esquina. Cada fila recibe la fórmula de arriba, ajustada a su fila.', '<b>Copy a formula down:</b> select the cell and drag the <b>little blue square</b> in its corner. Each row gets the formula from above, adjusted to its row.')}</figcaption></figure>
+            <figure>${headDemo}<figcaption>${T('<b>Marcar una columna o fila entera:</b> clic en su <b>letra</b> (arriba) o en su <b>número</b> (a la izquierda). Ideal para seguir los datos de una columna.', '<b>Select a whole column or row:</b> click its <b>letter</b> (top) or its <b>number</b> (left). Great for following a column\'s data.')}</figcaption></figure>
+          </div>
           <div class="tutorial">
             <div>${T('<b>1. Seleccioná</b> una celda con un clic (o con las flechas).', '<b>1. Select</b> a cell with a click (or the arrow keys).')}</div>
             <div>${T('<b>2. Escribí</b> directamente. Si empieza con <code>=</code> es una fórmula: <code>=C2*D2</code>.', '<b>2. Type</b> directly. If it starts with <code>=</code> it is a formula: <code>=C2*D2</code>.')}</div>
             <div>${T('<b>3. Enter</b> confirma. <b>Esc</b> cancela. <b>Doble clic</b> o <b>F2</b> para editar.', '<b>3. Enter</b> confirms. <b>Esc</b> cancels. <b>Double-click</b> or <b>F2</b> to edit.')}</div>
             <div>${T('<b>4. Mientras escribís una fórmula</b>, hacé clic en otra celda para insertar su referencia.', '<b>4. While typing a formula</b>, click another cell to insert its reference.')}</div>
-            <div>${T('<b>5. Rellenar:</b> arrastrá el cuadradito azul de la esquina de la selección para copiar la fórmula.', '<b>5. Fill:</b> drag the little blue square at the corner of the selection to copy the formula.')}</div>
-            <div>${T('<b>6. Objetivos:</b> se tildan solos a la izquierda. Las preguntas ❓ se responden escribiendo.', '<b>6. Objectives:</b> they tick themselves on the left. Questions ❓ are answered by typing.')}</div>
+            <div>${T('<b>5. Objetivos:</b> están en el panel de la izquierda y se tildan solos. Las preguntas ❓ se responden escribiendo.', '<b>5. Objectives:</b> they are in the left panel and tick themselves. Questions ❓ are answered by typing.')}</div>
+            <div>${T('<b>6. ¿Te olvidaste algo?</b> Esta guía está siempre en el botón <b>❓ Ayuda</b>.', '<b>6. Forgot something?</b> This guide is always under the <b>❓ Help</b> button.')}</div>
           </div>`,
         buttons: [{ label: T('¡Entendido!', 'Got it!'), primary: true }],
         onClose: () => this.focusActive(),
@@ -831,18 +966,62 @@
       const m = this.mission;
       const st = AA.State;
       const free = m.kind === 'story' && st.isCompleted(m.id);
+      const before = st.rankProgress();
       const res = st.completeMission(m, free ? 0 : this.hints.length);
       Object.values(this.views).forEach((v) => v && v.destroy && v.destroy());
       this.views = {};
       this.mission = null;
+      const hintsUsed = this.hints.length;
+      // Evento especial: a veces, al entregar, te toca presentar los resultados frente al equipo.
+      const ev = this.maybeEvent(m, res);
+      if (ev) {
+        AA.Game.presentResults(ev, (out) => this.showResult(m, res, before, hintsUsed, out));
+        return;
+      }
+      this.showResult(m, res, before, hintsUsed, null);
+    },
+
+    // ¿Sale un evento de presentación? Solo en tareas donde armaste resultados en una tabla,
+    // desde el Nivel 2. El primero llega pronto (para que lo conozcas); después, al azar.
+    maybeEvent(m, res) {
+      const st = AA.State;
+      const f = st.data.flags;
+      if (m.kind === 'favor' || Cu().MODULES.indexOf(Cu().moduleById(m.module)) < 1) return null;
+      const qs = AA.Present.questions(m, this.book, this.defs);
+      if (qs.length < 2) return null;
+      const go = f.events ? Math.random() < 0.3 || f.eventMiss >= 5 : f.eventMiss >= 1;
+      if (!go) {
+        f.eventMiss = (f.eventMiss || 0) + 1;
+        st.save();
+        return null;
+      }
+      f.events = (f.events || 0) + 1;
+      f.eventMiss = 0;
+      st.save();
+      return { mission: m, questions: qs, xpEach: res.gained ? Math.max(5, Math.round(m.xp * 0.05)) : 0 };
+    },
+
+    showResult(m, res, before, hintsUsed, ev) {
+      const st = AA.State;
+      let bonus = 0;
+      if (ev && ev.bonus) {
+        bonus = ev.bonus;
+        if (st.addXp(bonus)) {
+          res.promoted = true;
+          res.rank = st.rank();
+        }
+      }
       const ch = st.CHARACTERS[m.from];
       const prog = st.rankProgress();
       const mod = Cu().moduleById(m.module);
       const nextMod = Cu().MODULES[Cu().MODULES.indexOf(mod) + 1];
       const party = res.moduleCompleted || res.promoted;
       AA.Audio.play(party ? 'fanfare' : 'complete');
-      const penalty = res.gained && this.hints.length ? ` <span class="muted">(${this.hints.length} ${T(this.hints.length > 1 ? 'pistas' : 'pista', this.hints.length > 1 ? 'hints' : 'hint')})</span>` : '';
+      const penalty = res.gained && hintsUsed ? ` <span class="muted">(${hintsUsed} ${T(hintsUsed > 1 ? 'pistas' : 'pista', hintsUsed > 1 ? 'hints' : 'hint')})</span>` : '';
       let extra = '';
+      if (ev) {
+        extra += `<div class="promo event-promo">📣 ${T(`Presentación: <b>${ev.correct} de ${ev.total}</b> respuestas correctas`, `Presentation: <b>${ev.correct} of ${ev.total}</b> correct answers`)}${bonus ? ` · <b>+${bonus} XP</b> ${T('extra', 'bonus')}` : ''}</div>`;
+      }
       if (res.moduleCompleted) {
         extra += `<div class="promo">🎉 ${T(`¡<b>Nivel ${levelNum(mod)}</b> completado! Se desbloqueó la <b>práctica libre</b> de este nivel.`, `<b>Level ${levelNum(mod)}</b> complete! <b>Free practice</b> for this level is unlocked.`)}`;
         if (nextMod) {
@@ -866,23 +1045,68 @@
         buttons.push({ label: T('🎲 Otro caso', '🎲 Another case'), action: () => AA.Game.startPractice(mod, p.size) });
       }
       buttons.push({ label: T('Volver a la oficina', 'Back to the office'), primary: true, action: () => AA.Game.enterOffice() });
+      // La barra arranca donde estaba antes de entregar y se llena con animación.
+      const fromPct = res.promoted ? 0 : before.pct;
+      const reveal = (i) => `class="reveal" style="--d:${(party ? 900 : 250) + i * 140}ms"`;
+      const burst = party
+        ? `<div class="lvl-burst">
+             <div class="lvl-rays"></div>
+             <div class="lvl-badge">${res.promoted ? `<span>${T('RANGO', 'RANK')}</span><b>🏅</b>` : `<span>${T('NIVEL', 'LEVEL')}</span><b>${levelNum(mod)}</b>`}</div>
+             <div class="lvl-title">${res.promoted ? T('¡ASCENSO!', 'PROMOTED!') : T('¡COMPLETADO!', 'COMPLETE!')}</div>
+           </div>`
+        : '';
       AA.UI.modal({
         title: party ? T('🎉 ¡Nivel completado!', '🎉 Level complete!') : T('📤 ¡Informe entregado!', '📤 Report submitted!'),
         closable: false,
         className: 'complete' + (party ? ' party' : ''),
         html: `
-          <div class="complete-row">
+          ${burst}
+          <div class="complete-row" ${reveal(0)}>
             <div data-el="portrait"></div>
             <div><b>${esc(AA.L(ch.name))}</b><p>“${esc(m.feedback)}”</p></div>
           </div>
-          <div class="xp-gain">${res.gained ? `+${res.gained} XP${penalty}` : T('Práctica completada (sin XP extra)', 'Practice completed (no extra XP)')}</div>
-          <div class="rank-line"><b>${esc(AA.L(prog.cur.name))}</b><span class="muted">${st.data.xp} XP${prog.next ? ` / ${prog.next.xp} → ${esc(AA.L(prog.next.name))}` : ''}</span></div>
-          ${AA.UI.xpBar(prog.pct)}
-          ${extra}`,
+          <div class="xp-gain" ${reveal(1)}>${res.gained + bonus ? `<span data-el="xp">+0</span> XP${penalty}` : T('Práctica completada (sin XP extra)', 'Practice completed (no extra XP)')}</div>
+          <div ${reveal(2)}>
+            <div class="rank-line"><b>${esc(AA.L(prog.cur.name))}</b><span class="muted">${st.data.xp} XP${prog.next ? ` / ${prog.next.xp} → ${esc(AA.L(prog.next.name))}` : ''}</span></div>
+            ${AA.UI.xpBar(fromPct)}
+          </div>
+          <div ${reveal(3)}>${extra}</div>`,
         buttons,
-        onOpen: (card) => card.querySelector('[data-el="portrait"]').appendChild(AA.UI.portraitCanvas(m.from, 72)),
+        onOpen: (card) => {
+          card.querySelector('[data-el="portrait"]').appendChild(AA.UI.portraitCanvas(m.from, 72));
+          const start = (party ? 900 : 250) + 140;
+          // Contador de XP que sube y barra que se llena.
+          const xpEl = card.querySelector('[data-el="xp"]');
+          if (xpEl) {
+            setTimeout(() => {
+              const t0 = performance.now();
+              const total = res.gained + bonus;
+              const dur = Math.min(1200, 400 + total * 4);
+              let ticks = 0;
+              const step = (now) => {
+                if (!xpEl.isConnected) return;
+                const k = Math.min(1, (now - t0) / dur);
+                const eased = 1 - Math.pow(1 - k, 3);
+                xpEl.textContent = '+' + Math.round(total * eased);
+                if (k * 8 > ticks && ticks < 8) {
+                  ticks++;
+                  AA.Audio.seq([72 + ticks * 2], 0.03, { type: 'square', vol: 0.035 });
+                }
+                if (k < 1) requestAnimationFrame(step);
+                else xpEl.parentElement.classList.add('pop');
+              };
+              requestAnimationFrame(step);
+            }, start);
+          }
+          const fill = card.querySelector('.xpbar-fill');
+          if (fill) setTimeout(() => (fill.style.width = Math.round(Math.max(0, Math.min(1, prog.pct)) * 100) + '%'), start + 380);
+        },
       });
-      if (party) AA.UI.confetti(res.promoted ? 260 : 170);
+      // Siempre hay festejo: chico al entregar, grande al completar un nivel o ascender.
+      if (party) {
+        AA.UI.confetti(res.promoted ? 260 : 170);
+        setTimeout(() => AA.UI.confetti(res.promoted ? 160 : 110), 750);
+      } else AA.UI.confetti(80);
     },
   };
 
@@ -952,6 +1176,8 @@
           current = b.dataset.tab;
           AA.Audio.play('page');
           render(card);
+          const on = card.querySelector('.nb-tab.on');
+          if (on) on.focus({ preventScroll: true });
         })
       );
       const slot = card.querySelector('[data-portrait]');

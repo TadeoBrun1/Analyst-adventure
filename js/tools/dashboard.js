@@ -187,7 +187,10 @@
         this.spec.title = this.titleInput.value;
         this.emit();
       });
-      this.titleInput.addEventListener('keydown', (e) => e.stopPropagation());
+      this.titleInput.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Escape') this.titleInput.blur();
+      });
       this.root.querySelector('[data-el="ffield"]').addEventListener('change', (e) => {
         const name = e.target.value;
         if (!name) this.spec.filter = null;
@@ -315,7 +318,10 @@
       if (ed) {
         const t = s.tiles.find((x) => x.id === ed.dataset.tile);
         ed.querySelectorAll('[data-k]').forEach((inp) => {
-          inp.addEventListener('keydown', (e) => e.stopPropagation());
+          inp.addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'Escape') inp.blur();
+          });
           inp.addEventListener(inp.tagName === 'INPUT' ? 'input' : 'change', () => {
             t[inp.dataset.k] = inp.value;
             if (inp.dataset.k === 'field' && (this.opts.money || []).includes(inp.value)) t.format = 'money';

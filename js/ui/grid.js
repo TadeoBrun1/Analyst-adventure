@@ -233,6 +233,34 @@
       const b = this.tds[r2][c2].getBoundingClientRect();
       return { left: a.left - wr.left, top: a.top - wr.top, width: b.right - a.left, height: b.bottom - a.top };
     }
+    // Burbuja de ayuda ("coach") anclada a una celda {c, r} o a un encabezado de columna {col}.
+    coach(html, at) {
+      this.hideCoach();
+      const wr = this.wrap.getBoundingClientRect();
+      const anchor = at.col !== undefined ? this.table.querySelector(`th.ss-colhead[data-c="${at.col}"]`) : this.tds[at.r] && this.tds[at.r][at.c];
+      if (!anchor) return;
+      const a = anchor.getBoundingClientRect();
+      const el = document.createElement('div');
+      el.className = 'ss-coach';
+      el.innerHTML = `<button type="button" class="ss-coach-x" aria-label="${AA.T('Cerrar', 'Close')}">✕</button>${html}`;
+      el.style.left = Math.max(4, a.left - wr.left + (at.dx || 0)) + 'px';
+      el.style.top = a.bottom - wr.top + 10 + 'px';
+      el.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        if (e.target.closest('.ss-coach-x')) {
+          e.preventDefault();
+          this.hideCoach();
+        }
+      });
+      this.wrap.appendChild(el);
+      this.coachEl = el;
+      this.coachTimer = setTimeout(() => this.hideCoach(), at.ms || 16000);
+    }
+    hideCoach() {
+      clearTimeout(this.coachTimer);
+      if (this.coachEl) this.coachEl.remove();
+      this.coachEl = null;
+    }
     placeBox(node, box, inset) {
       const i = inset || 0;
       node.style.left = box.left - i + 'px';
@@ -742,6 +770,7 @@
           return;
         case 'Escape':
           if (this.clipboard) {
+            e.preventDefault(); // solo cancela el copiado: no salir de la tarea
             this.clipboard = null;
             this.renderSelection();
           }

@@ -313,7 +313,7 @@
     } while (simple - weighted < 0.25 || resp.some((x) => x < 5));
     const rate = resp.map((x, i) => x / clients[i]);
     return {
-      from: 'tomas',
+      from: 'tadeo',
       dept: 'marketing',
       subject: T('¡La satisfacción subió a 4!', 'Satisfaction went up to 4!'),
       file: T('satisfaccion_regiones.xlsx', 'regional_satisfaction.xlsx'),
@@ -326,7 +326,7 @@
         rows: 10,
         colWidths: [110, 100, 110, 120, 130, 30, 300, 90],
         data: { at: 'A1', rows: [[T('Región', 'Region'), T('Clientes', 'Customers'), T('Respuestas', 'Responses'), T('Satisfacción', 'Satisfaction'), T('Tasa de respuesta', 'Response rate')], ...regs.map((g, i) => [g, clients[i], resp[i], score[i]])] },
-        cells: { G2: T('Promedio de todas las respuestas (el de Tomás)', 'Average of all responses (Tomás\'s)'), G3: T('Promedio ponderado por clientes', 'Average weighted by customers') },
+        cells: { G2: T('Promedio de todas las respuestas (el de Tadeo)', 'Average of all responses (Tadeo\'s)'), G3: T('Promedio ponderado por clientes', 'Average weighted by customers') },
         locked: ['A1:D6', 'E1', 'G2:G3'],
         header: ['A1:E1'],
         labels: ['G2:G3'],
@@ -339,7 +339,7 @@
         { text: T('H2: promedio de <b>todas las respuestas</b> (ponderado por respuestas).', 'H2: average of <b>all responses</b> (weighted by responses).'), hint: `=${fn('SUMAPRODUCTO')}(C2:C6; D2:D6)/${fn('SUMA')}(C2:C6)`, check: V.cell('H2', simple, { uses: ['SUMAPRODUCTO'], tol: 0.001 }) },
         { text: T('H3: promedio <b>ponderado por clientes</b> (lo que opinaría toda la base).', 'H3: average <b>weighted by customers</b> (what the whole base would say).'), hint: `=${fn('SUMAPRODUCTO')}(B2:B6; D2:D6)/${fn('SUMA')}(B2:B6)`, check: V.cell('H3', weighted, { uses: ['SUMAPRODUCTO'], tol: 0.001 }) },
         {
-          text: T('❓ ¿Qué le decís a Tomás?', '❓ What do you tell Tomás?'),
+          text: T('❓ ¿Qué le decís a Tadeo?', '❓ What do you tell Tadeo?'),
           choices: [
             T(`Que anuncie ${simple.toFixed(2)}: es el promedio de las respuestas.`, `Announce ${simple.toFixed(2)}: it's the average of the responses.`),
             T(`Que las regiones más conformes respondieron mucho más: ponderando por clientes da ${weighted.toFixed(2)}. Conviene informar ese número y aclarar la tasa de respuesta.`, `The happiest regions answered much more: weighting by customers gives ${weighted.toFixed(2)}. Better to report that number and note the response rate.`),

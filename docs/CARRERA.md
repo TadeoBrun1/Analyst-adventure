@@ -136,6 +136,16 @@ el salto a Excel, Google Sheets, Tableau, Power BI o una base de datos sea direc
 
 **Presentación del Senior:** resumen ejecutivo para Gerencia General.
 
+### Presentar y ayudar a otros (v0.6)
+
+- **Eventos especiales (todas las etapas, desde el Nivel 2):** al entregar un informe con resultados en una tabla,
+  a veces el equipo pide presentarlos. Las preguntas salen de los datos reales de esa planilla (mayor, menor,
+  total, cuántos quedaron en cada categoría). Practica lo que se pide en cualquier rango: **poder explicar lo que
+  entregás**. Cada respuesta correcta suma un 5 % de la XP de la tarea (como máximo 15 %): no cambia cuánto hay
+  que practicar para ascender.
+- **Favores de Nico (desde Semi-Senior):** limpieza de datos, informes y revisión del trabajo de un junior, con
+  plantillas de niveles cuya lección ya diste. Un favor cada 2 tareas entregadas, 90 XP cada uno.
+
 ### Próximo: Lead
 
 Priorizar una bandeja de pedidos, encuadrar el problema con el área, definir métricas únicas (gobierno de
