@@ -7,14 +7,17 @@
 
   const VERSION = 2;
 
-  // Rangos: la experiencia de las 5 tareas de cada nivel no alcanza sola para subir;
-  // la práctica libre es la que te termina de llevar al siguiente.
+  // Rangos. Para ascender hacen falta DOS cosas: la XP del rango y haber completado los niveles
+  // de la etapa actual (ver curriculum.js, campo `tier`). Así no se puede llegar a Senior
+  // repitiendo casos de Pasante. Cada umbral ≈ XP de las tareas obligatorias de la etapa
+  // + unos 3 casos de práctica (ver docs/CARRERA.md). El de Lead es provisorio hasta que
+  // exista esa etapa.
   const RANKS = [
     { name: { es: 'Pasante de Datos', en: 'Data Intern' }, xp: 0 },
-    { name: { es: 'Analista Junior', en: 'Junior Analyst' }, xp: 800 },
-    { name: { es: 'Analista Semi-Senior', en: 'Mid-level Analyst' }, xp: 2500 },
-    { name: { es: 'Analista Senior', en: 'Senior Analyst' }, xp: 6000 },
-    { name: { es: 'Lead de Datos', en: 'Data Lead' }, xp: 12000 },
+    { name: { es: 'Analista Junior', en: 'Junior Analyst' }, xp: 2200 },
+    { name: { es: 'Analista Semi-Senior', en: 'Mid-level Analyst' }, xp: 5600 },
+    { name: { es: 'Analista Senior', en: 'Senior Analyst' }, xp: 9450 },
+    { name: { es: 'Lead de Datos', en: 'Data Lead' }, xp: 14200 },
   ];
 
   // voice: tono del "bip" de cada personaje al hablar.
@@ -27,6 +30,8 @@
     paula: { name: 'Paula Herrera', role: { es: 'Recursos Humanos', en: 'Human Resources' }, skin: '#e0ac69', hair: '#2e1a12', shirt: '#9b59b6', pants: '#2c3e50', longHair: true, voice: 400 },
     ramiro: { name: 'Ramiro Ortiz', role: { es: 'Logística', en: 'Logistics' }, skin: '#c68642', hair: '#555555', shirt: '#e67e22', pants: '#2c3e50', voice: 240 },
     bruno: { name: 'Bruno Salas', role: { es: 'Ventas', en: 'Sales' }, skin: '#f1c27d', hair: '#6b4423', shirt: '#2e86de', pants: '#2c3e50', voice: 270 },
+    nico: { name: 'Nico Ferreyra', role: { es: 'Analista Junior', en: 'Junior Analyst' }, skin: '#f1c27d', hair: '#8a4b20', shirt: '#0ea5b7', pants: '#2c3e50', glasses: true, voice: 350 },
+    graciela: { name: 'Graciela Campos', role: { es: 'Gerente General', en: 'General Manager' }, skin: '#e0ac69', hair: '#9e9e9e', shirt: '#34495e', pants: '#1f2a36', longHair: true, voice: 300 },
     julia: { name: 'Julia Paz', role: { es: 'Finanzas', en: 'Finance' }, skin: '#ffdbac', hair: '#222222', shirt: '#2fbf71', pants: '#2c3e50', longHair: true, voice: 420 },
     narrator: { name: '', role: '', voice: 0 },
   };
@@ -39,6 +44,7 @@
     finanzas: { name: { es: 'Finanzas', en: 'Finance' }, color: '#2fbf71' },
     data: { name: { es: 'Datos', en: 'Data' }, color: '#0ea5b7' },
     analytics: { name: { es: 'Analytics', en: 'Analytics' }, color: '#e5484d' },
+    gerencia: { name: { es: 'Gerencia', en: 'Management' }, color: '#8b95a7' },
   };
 
   function freshSave(name) {
@@ -52,6 +58,7 @@
       activePractice: {}, // mod -> id de la práctica en curso
       progress: {}, // id -> { cells, answers, hints, lang }
       flags: { intro: false, rankSeen: 0, metLeo: false },
+      rankReached: 0,
       createdAt: Date.now(),
       lastPlayed: Date.now(),
     };
@@ -89,7 +96,7 @@
     slotSummary(i) {
       const d = this.readSlot(i);
       if (!d) return null;
-      const rank = RANKS[this.rankIndex(d.xp)];
+      const rank = RANKS[this.rankIndex(d)];
       const mods = AA.Curriculum.MODULES;
       const done = Object.keys(d.completed).filter((id) => /^mod\d+-\d+$/.test(id)).length;
       return {
@@ -129,13 +136,19 @@
     },
 
     // --- Carrera
-    rankIndex(xp) {
-      const x = xp === undefined ? this.data.xp : xp;
-      let idx = 0;
+    // Rango de una partida: el mayor que alcanza su XP sin saltear etapas incompletas.
+    // Nunca baja (rankReached guarda el máximo alcanzado).
+    rankIndex(data) {
+      const d = data || this.data;
+      let byXp = 0;
       RANKS.forEach((r, i) => {
-        if (x >= r.xp) idx = i;
+        if (d.xp >= r.xp) byXp = i;
       });
-      return idx;
+      // Para ascender al rango siguiente hay que completar la etapa actual, y esa etapa nueva
+      // tiene que existir en el juego (Lead llega en una próxima actualización).
+      let idx = 0;
+      while (idx < byXp && AA.Curriculum.tierComplete(idx, d) && AA.Curriculum.tierModules(idx + 1).length > 0) idx++;
+      return Math.max(idx, d.rankReached || 0);
     },
     rank() {
       return RANKS[this.rankIndex()];
@@ -160,31 +173,40 @@
       this.save();
     },
 
-    // Registra una misión entregada. Las prácticas suman XP cada vez.
+    // Registra una misión entregada. Las prácticas suman XP solo en los primeros casos de cada
+    // nivel y solo mientras ese nivel corresponda a tu rango.
     completeMission(mission, hintsUsed) {
       const before = this.rankIndex();
       const mod = AA.Curriculum.moduleById(mission.module);
       const wasComplete = mod ? AA.Curriculum.isModuleComplete(mod) : false;
       const factor = Math.max(0.4, 1 - 0.15 * hintsUsed);
-      const gained = Math.round(mission.xp * factor);
+      let gained = 0;
       let firstTime = true;
+      let noXpReason = null;
       if (mission.kind === 'practice') {
+        const p = AA.Curriculum.parseId(mission.id);
+        const reward = AA.Curriculum.practiceReward(mod, p.size);
+        noXpReason = reward.reason;
+        gained = Math.round(reward.xp * factor);
         this.data.xp += gained;
         this.data.practice[mission.module] = (this.data.practice[mission.module] || 0) + 1;
         if (this.data.activePractice[mission.module] === mission.id) delete this.data.activePractice[mission.module];
       } else {
         firstTime = !this.data.completed[mission.id];
         if (firstTime) {
+          gained = Math.round(mission.xp * factor);
           this.data.xp += gained;
           this.data.completed[mission.id] = { xp: gained, hints: hintsUsed, at: Date.now() };
         }
       }
       delete this.data.progress[mission.id];
-      this.save();
       const after = this.rankIndex();
+      this.data.rankReached = after;
+      this.save();
       return {
-        gained: firstTime ? gained : 0,
+        gained,
         firstTime,
+        noXpReason,
         promoted: after > before,
         rank: RANKS[after],
         moduleCompleted: !!mod && !wasComplete && AA.Curriculum.isModuleComplete(mod),

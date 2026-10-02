@@ -2,9 +2,9 @@
 
 Juego 2D para aprender a usar planillas de cálculo (Excel / Google Sheets) haciendo el trabajo de un
 **analista de datos**: empezás como pasante en *Grupo Cóndor* y, resolviendo pedidos reales de distintas
-áreas (Ventas, RR.HH., Marketing, Logística…), vas subiendo hasta Senior.
+áreas (Ventas, RR.HH., Marketing, Logística…), vas subiendo de Pasante a Lead.
 
-Inspirado en *Database Detective: Minor Crimes Division*, pero con planillas en lugar de SQL.
+Inspirado en *Database Detective: Minor Crimes Division*: planillas, tablas dinámicas, SQL, dashboards e informes, como en el trabajo real.
 
 ## Cómo jugar
 
@@ -35,15 +35,37 @@ se guarda en el navegador (`localStorage`).
 
 ### Cómo se juega
 
-- **Menú principal**: *Jugar* (3 ranuras de partida), *Opciones* (volumen de música, efectos y voces;
+- **Menú principal**: *Jugar* (3 ranuras de partida), *Opciones* (música de fondo activada/desactivada y
+  volumen de música, efectos y voces;
   ventana o pantalla completa; tamaño de ventana; idioma **español / inglés**) y *Salir*.
 - **Oficina**: caminá con `WASD` / flechas e interactuá con `E` / `Espacio` (o con clic). `Esc` abre la pausa.
-  - **Leo** (junto al café) explica cada nivel antes de empezarlo; lo que enseña queda en tu **📒 libreta**.
+  Tiene un **comedor** a la izquierda (cafetera, heladera, mesas), el área de escritorios con sala de reuniones,
+  la oficina de vidrio de Marta y un living con sofá; casi todo tiene algo para descubrir.
+  - **Leo** (en el comedor, junto al café) explica cada nivel antes de empezarlo; lo que enseña queda en tu **📒 libreta**.
+  - La **📒 libreta** también muestra tu ficha: rango, XP, cuánto falta para el próximo ascenso y el nivel actual.
+  - Música: un tema lo-fi tranquilo en el menú y uno alegre con swing en la oficina (todo sintetizado, sin archivos).
   - Tu **computadora** → bandeja de entrada con las tareas de cada nivel y la **práctica libre**.
   - **Marta** (jefa) → historia y ascensos. **Pizarra** → plan de carrera.
-- **Progresión**: 5 niveles por etapa. Cada nivel tiene 5 tareas obligatorias; al terminarlas se abre la
-  práctica libre (casos generados al azar con tablas medianas o grandes) para sumar experiencia. Algunos
-  niveles piden un rango mínimo, así que la práctica es parte del camino.
+- **Progresión**: los niveles se agrupan en **etapas**, una por rango (Pasante → Junior → Semi-Senior →
+  Senior → Lead). Cada nivel tiene 5 tareas obligatorias; al terminarlas se abre la práctica libre (casos
+  generados al azar con tablas medianas o grandes).
+  - Para ascender hacen falta **las dos cosas**: completar todos los niveles de la etapa y llegar a la XP del rango.
+  - Solo los **primeros 4 casos de práctica de cada nivel** suman XP (alcanzan para el ascenso con 3 o 4);
+    después se puede seguir practicando sin límite, pero sin XP. Los niveles de una etapa ya superada no dan XP.
+  - El **📈 plan de carrera** muestra qué hace cada rango en la vida real, qué te falta para ascender y la hoja de ruta.
+- **Herramientas** (versiones simples de las reales, para que después sea fácil pasar a Excel, Tableau, Power BI o una base de datos):
+  - **Planilla con varias hojas**: referencias como `Productos!A:D` o `'Lista de precios'!B2`, BUSCARV/BUSCARX entre hojas.
+  - **Tabla dinámica**: Filas, Columnas, Valores (Suma, Recuento, Promedio, Máx, Mín), Filtros y "% del total".
+  - **Consola SQL**: SELECT, WHERE, ORDER BY, LIMIT, COUNT/SUM/AVG, GROUP BY, HAVING, JOIN, CASE; esquema de tablas,
+    colores de sintaxis y errores explicados en criollo ("¿falta una coma?", "los textos van entre comillas simples").
+  - **Dashboards**: KPIs, varios gráficos y un filtro global; arreglar dashboards ajenos o armarlos desde cero.
+  - **Informes y resúmenes ejecutivos**: elegir titular, evidencia, gráfico y recomendación; cada opción incorrecta
+    explica por qué no sirve, y a la derecha se ve la diapositiva final.
+  - **Revisión**: marcar con 🚩 las celdas con errores del trabajo de Nico (el junior) y arreglarlas.
+- **Celebración**: al completar un nivel o ascender, confeti y fanfarria.
+- **Gráficos (Nivel 6)**: constructor estilo Tableau / Power BI. Arrastrás *dimensiones* y *medidas* a
+  **Columnas**, **Filas**, **Color** y **Filtros**, elegís el tipo con **Mostrarme** (barras, líneas, torta,
+  dispersión), la agregación (Suma, Promedio, Recuento, Mín, Máx), el orden y un título que cuente la conclusión.
 - **Planilla**: funciona como Excel/Sheets.
   - Fórmulas con `=`, funciones en **español o inglés** (`SUMA`/`SUM`), argumentos separados con `;` o `,`.
   - Clic en celdas mientras escribís una fórmula para insertar referencias; `F4` agrega `$`.
@@ -53,12 +75,19 @@ se guarda en el navegador (`localStorage`).
 
 ## Etapas de desarrollo
 
-| Etapa | Contenido | Estado |
+El contenido de cada rango se basa en un análisis de ofertas laborales y escaleras de carrera reales:
+ver [`docs/CARRERA.md`](docs/CARRERA.md).
+
+| Versión | Contenido | Estado |
 |------|-----------|--------|
-| **1** | Motor de planilla, oficina 2D, menú con 3 ranuras, opciones (sonido, pantalla, idioma), audio, libreta. 5 niveles: fórmulas básicas · funciones de resumen · SI/Y/O · limpieza de texto · CONTAR.SI/SUMAR.SI y `$`. 25 tareas + práctica aleatoria infinita. | ✅ |
-| **2** | Limpieza avanzada: números guardados como texto, duplicados, ordenar y filtrar, buscar y reemplazar. Cruce de tablas con `BUSCARV` / `BUSCARX` / `INDICE`+`COINCIDIR`. Varias hojas por libro. | ⏳ |
-| **3** | Tablas dinámicas y **constructor de dashboards** (gráficos de barras/líneas/torta, KPIs). | ⏳ |
-| **4** | Casos Senior estilo detective (fraude en viáticos, anomalías), evaluación de dashboards, final de carrera. | ⏳ |
+| **0.1–0.2** | Motor de planilla, oficina 2D, menú con 3 ranuras, opciones (sonido, pantalla, idioma), audio, libreta. Niveles 1–5: fórmulas básicas · funciones de resumen · SI/Y/O · limpieza de texto · CONTAR.SI/SUMAR.SI y `$`. | ✅ |
+| **0.3** | Etapa **Pasante** completa: Nivel 6 de **gráficos** (constructor estilo Tableau). Ascensos por etapa + XP, límite de XP en prácticas, plan de carrera con lo que hace cada rango en la vida real. | ✅ |
+| **0.4 · Junior** | Niveles 7–11: **BUSCARV/BUSCARX** con varias hojas · **calidad de datos** (duplicados, vacíos, números como texto, reglas de validez) · **tablas dinámicas** · **SQL básico** · **reportes, pedidos puntuales y mantenimiento de dashboards**. | ✅ |
+| **0.4 · Semi-Senior** | Niveles 12–15: **estadística** (mediana, desvío, atípicos, correlación ≠ causalidad, descomponer una caída) · **dashboards desde cero** · **análisis de punta a punta + storytelling** · **revisar el trabajo de un junior** (planilla, SQL y dashboard). | ✅ |
+| **0.4 · Senior** | Niveles 16–19: **definir KPIs** (conversión, churn, OTIF, NPS, metas, indicadores adelantados) · **pruebas A/B** (lift, significancia, resguardo, segmentos, diseño) · **datos incompletos** (escenarios, sesgo, estimaciones) · **resúmenes ejecutivos**. | ✅ |
+| **0.4.1** | Oficina rediseñada: más grande y luminosa, con comedor, plantas, sala de reuniones y living. | ✅ |
+| **0.4.2** | Ficha del jugador (rango, XP y nivel) dentro de la libreta; música nueva para la oficina y opción para apagar la música. | ✅ |
+| **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
 
@@ -69,6 +98,7 @@ assets/               ícono y fuentes incluidas (licencia OFL)
 electron/main.js      proceso principal de escritorio: ventana, guardado en archivo, pantalla completa
 electron/preload.js   puente seguro entre el juego y el sistema
 docs/STEAM.md         guía para publicar en Steam
+docs/CARRERA.md       análisis: qué hace cada rango en la vida real vs. los niveles del juego
 .github/workflows/    compilación automática de ejecutables (Windows, Linux, macOS)
 js/
   engine/formula.js       tokenizer, parser, evaluador y ~60 funciones (ES/EN)
@@ -83,8 +113,16 @@ js/
   game/state.js           carrera, XP, personajes y partida
   game/validators.js      validadores de objetivos (celdas, columnas, $, respuestas)
   game/content/lib.js     generador aleatorio con semilla, datos bilingües, armado de misiones
-  game/content/mod1-5.js  plantillas de misión de cada nivel (25 en total)
-  game/content/curriculum.js  niveles, lecciones de Leo y páginas de la libreta
+  charts/chart-model.js   modelo de gráficos: campos, agregaciones, "Mostrarme" y validación
+  charts/chart-builder.js constructor visual estilo Tableau (estantes, arrastrar y soltar, SVG)
+  tools/pivot.js          tabla dinámica (modelo, validador y editor)
+  tools/sql.js            motor SQL en memoria con errores explicados
+  tools/sql-console.js    consola SQL (esquema, editor con colores, resultados)
+  tools/dashboard.js      dashboards (KPIs, gráficos, filtro global) y sus validadores
+  tools/report.js         armado de informes y resúmenes ejecutivos
+  game/workspace.js       arma el "espacio de trabajo" de cada misión (hojas + herramientas) y el estado que validan los objetivos
+  game/content/mod1-19.js plantillas de misión de cada nivel (95 en total); del 7 en adelante cada archivo trae también su lección
+  game/content/curriculum.js  niveles, etapas, reglas de XP, lecciones de Leo y páginas de la libreta
   game/office.js          oficina 2D en canvas (mapa, colisiones, interacción)
   game/sprites.js         personajes pixel-art dibujados por código
   game/dialog.js          diálogos palabra por palabra con sonido y opciones
@@ -93,7 +131,10 @@ js/
   main.js                 arranque y navegación entre pantallas
 tests/
   engine.test.js        tests del motor de fórmulas
-  missions.test.js      resuelve las 25 plantillas (tamaños, semillas, idiomas) y prueba errores típicos
+  missions.test.js      resuelve las 95 plantillas (tamaños, semillas, idiomas) y prueba errores típicos
+  tools.test.js         tabla dinámica, SQL (resultados y mensajes de error), dashboards e informes
+  chart.test.js         modelo de gráficos (agregaciones, color, filtros, Mostrarme)
+  progression.test.js   economía de XP: cada ascenso pide la etapa completa + 3 o 4 prácticas; repetir no permite saltear rangos
 ```
 
 ## Tests

@@ -43,7 +43,7 @@
 
     renderChrome() {
       document.getElementById('menu-tagline').textContent = T('De pasante a Senior, una celda a la vez.', 'From intern to Senior, one cell at a time.');
-      document.getElementById('menu-foot').innerHTML = `v${AA.VERSION} · ${T('Etapa 1: planillas desde cero', 'Stage 1: spreadsheets from scratch')} · <kbd>↑</kbd><kbd>↓</kbd> ${T('mover', 'move')} · <kbd>Enter</kbd> ${T('elegir', 'select')} · <kbd>Esc</kbd> ${T('volver', 'back')}`;
+      document.getElementById('menu-foot').innerHTML = `v${AA.VERSION} · ${T('De Pasante a Senior: 19 niveles', 'From Intern to Senior: 19 levels')} · <kbd>↑</kbd><kbd>↓</kbd> ${T('mover', 'move')} · <kbd>Enter</kbd> ${T('elegir', 'select')} · <kbd>Esc</kbd> ${T('volver', 'back')}`;
     },
 
     show(view) {
@@ -215,7 +215,8 @@
           <section>
             <h3>🔊 ${T('Sonido', 'Sound')}</h3>
             ${slider('master', T('General', 'Master'))}
-            ${slider('music', T('Música', 'Music'))}
+            <div class="opt-row"><span>${T('Música de fondo', 'Background music')}</span>${seg('music', [['on', `🎵 ${T('Activada', 'On')}`], ['off', `🔇 ${T('Desactivada', 'Off')}`]], S.data.musicOn === false ? 'off' : 'on')}</div>
+            ${slider('music', T('Volumen de la música', 'Music volume'))}
             ${slider('sfx', T('Efectos', 'Effects'))}
             ${slider('voice', T('Voces (diálogos)', 'Voices (dialogue)'))}
           </section>
@@ -239,6 +240,12 @@
         const key = inp.dataset.vol;
         inp.addEventListener('input', () => {
           S.setVolume(key, Number(inp.value) / 100);
+          // Mover el volumen de la música con la música apagada la vuelve a encender.
+          if (key === 'music' && S.data.musicOn === false && Number(inp.value) > 0) {
+            S.setMusicOn(true);
+            host.querySelectorAll('[data-music]').forEach((x) => x.classList.toggle('on', x.dataset.music === 'on'));
+            inp.closest('.opt-row').classList.remove('dim');
+          }
           host.querySelector(`[data-vol-label="${key}"]`).textContent = inp.value + '%';
         });
         inp.addEventListener('change', () => {
@@ -248,6 +255,17 @@
           } else AA.Audio.play('select');
         });
       });
+      host.querySelectorAll('[data-music]').forEach((b) =>
+        b.addEventListener('click', () => {
+          AA.Audio.play('select');
+          S.setMusicOn(b.dataset.music === 'on');
+          host.querySelectorAll('[data-music]').forEach((x) => x.classList.toggle('on', x === b));
+          const range = host.querySelector('[data-vol="music"]');
+          if (range) range.closest('.opt-row').classList.toggle('dim', !S.data.musicOn);
+        })
+      );
+      const musicRange = host.querySelector('[data-vol="music"]');
+      if (musicRange) musicRange.closest('.opt-row').classList.toggle('dim', S.data.musicOn === false);
       host.querySelectorAll('[data-fs]').forEach((b) =>
         b.addEventListener('click', () => {
           AA.Audio.play('select');

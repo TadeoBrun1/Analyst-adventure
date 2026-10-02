@@ -33,6 +33,13 @@
      <b>Ctrl+Z / Ctrl+Y</b>: undo and redo · <b>Shift+arrows</b>: select a range`
   );
 
+  // Qué cambia en cada ascenso (lo que hace ese rango en la vida real).
+  const PROMO_LINES = {
+    1: { who: 'marta', text: T('Como Junior vas a cruzar tablas, usar tablas dinámicas y SQL, cuidar la calidad de los datos y mantener dashboards. Y vas a responder pedidos de todas las áreas.', "As a Junior you'll join tables, use pivot tables and SQL, look after data quality and maintain dashboards. And you'll answer requests from every team.") },
+    2: { who: 'marta', text: T('Como Semi-Senior ya no te voy a pedir números sueltos: vas a llevar análisis de punta a punta, armar dashboards desde cero, explicar <b>por qué</b> pasan las cosas… y revisar el trabajo de Nico.', "As a Mid-level analyst I won't ask you for loose numbers anymore: you'll run analyses end to end, build dashboards from scratch, explain <b>why</b> things happen… and review Nico's work.") },
+    3: { who: 'marta', text: T('Como Senior vas a trabajar con Gerencia: definir KPIs, diseñar experimentos, decidir con datos incompletos y escribir resúmenes ejecutivos. Te van a escuchar: usalo bien.', "As a Senior you'll work with Management: define KPIs, design experiments, decide with incomplete data and write executive summaries. They'll listen to you: use it well.") },
+  };
+
   const Story = {
     SHORTCUTS,
 
@@ -42,12 +49,12 @@
           { who: 'marta', text: T('¡Hola, <b>{name}</b>! Te damos la bienvenida a <b>Grupo Cóndor</b>. Soy Marta, jefa del equipo de Analytics.', 'Hi <b>{name}</b>! Welcome to <b>Grupo Cóndor</b>. I\'m Marta, head of the Analytics team.') },
           { who: 'marta', text: T('Acá todas las áreas nos piden lo mismo: Ventas, Recursos Humanos, Marketing, Logística, Finanzas… <b>respuestas a partir de datos</b>.', 'Here every department asks us for the same thing: Sales, HR, Marketing, Logistics, Finance… <b>answers from data</b>.') },
           { who: 'marta', text: T('Arrancás como <b>Pasante de Datos</b>. Si hacés bien tu trabajo vas a ir subiendo: Junior, Semi-Senior, Senior…', 'You start as a <b>Data Intern</b>. Do good work and you\'ll climb: Junior, Mid-level, Senior…') },
-          { who: 'marta', text: T('Pero antes de darte trabajo, andá a ver a <b>Leo</b>, que está junto a la máquina de café. Te va a explicar lo básico de las planillas.', 'But before I give you work, go see <b>Leo</b> by the coffee machine. He\'ll explain spreadsheet basics.') },
+          { who: 'marta', text: T('Pero antes de darte trabajo, andá a ver a <b>Leo</b>, que está en el comedor, junto a la máquina de café (a la izquierda). Te va a explicar lo básico de las planillas.', 'But before I give you work, go see <b>Leo</b> by the coffee machine, in the kitchen on the left. He\'ll explain spreadsheet basics.') },
         ],
         () => {
           S().data.flags.intro = true;
           S().save();
-          AA.UI.toast(AA.T('☕ Caminá hasta <b>Leo</b>, junto a la máquina de café (WASD / flechas) y presioná <b>E</b>.', '☕ Walk to <b>Leo</b>, by the coffee machine (WASD / arrows), and press <b>E</b>.'), 'info');
+          AA.UI.toast(AA.T('☕ Caminá hasta <b>Leo</b>, en el comedor de la izquierda (WASD / flechas) y presioná <b>E</b>.', '☕ Walk to <b>Leo</b>, in the kitchen on the left (WASD / arrows), and press <b>E</b>.'), 'info');
           if (onDone) onDone();
         }
       );
@@ -61,13 +68,15 @@
         const rank = st.RANKS[rankIdx];
         st.data.flags.rankSeen = rankIdx;
         st.save();
-        AA.Audio.play('levelup');
+        AA.Audio.play('fanfare');
+        AA.UI.confetti(280);
         AA.Dialog.open(
           [
             { who: 'marta', text: T('{name}, pasá, sentate. Tengo que hablar con vos.', '{name}, come in, have a seat. We need to talk.') },
             { who: 'marta', text: T('Estuve mirando tu trabajo. Fórmulas prolijas, datos que cierran, y las otras áreas están contentas.', "I've been looking at your work. Tidy formulas, numbers that add up, and the other teams are happy.") },
             { who: 'marta', text: T(`Así que es oficial: a partir de hoy sos <b>${rank.name.es}</b>. ¡Felicitaciones! 🎉`, `So it's official: starting today you're a <b>${rank.name.en}</b>. Congratulations! 🎉`) },
-            { who: 'marta', text: T('Más responsabilidad, pedidos más difíciles… y Leo seguro tiene algo nuevo para enseñarte.', "More responsibility, harder requests… and I'm sure Leo has something new to teach you.") },
+            PROMO_LINES[rankIdx] || { who: 'marta', text: T('Más responsabilidad, pedidos más difíciles… y Leo seguro tiene algo nuevo para enseñarte.', "More responsibility, harder requests… and I'm sure Leo has something new to teach you.") },
+            { who: 'marta', text: T('Pasá por donde está Leo: tiene la primera lección de tu nueva etapa.', 'Stop by Leo: he has the first lesson of your new stage.') },
           ],
           () => AA.Game.updateHud()
         );
@@ -82,13 +91,19 @@
         lines.push({ who: 'marta', text: pick([T('Buen trabajo hasta ahora. Seguí así.', 'Good work so far. Keep it up.'), T('Me llegan buenos comentarios de las otras áreas. 👌', "I'm hearing good things from the other teams. 👌"), T('Recordá: un dato sin contexto es solo un número.', 'Remember: data without context is just a number.')]) });
         lines.push({ who: 'marta', text: T('Tenés tareas nuevas en tu computadora.', 'You have new tasks on your computer.') });
       } else {
-        const blocked = Cu().MODULES.find((m) => !Cu().isUnlocked(m) && Cu().isModuleComplete(Cu().MODULES[Cu().MODULES.indexOf(m) - 1] || m));
-        if (blocked && st.rankIndex() < blocked.minRank) {
-          const need = st.RANKS[blocked.minRank];
-          lines.push({ who: 'marta', text: T(`El Nivel ${levelNum(blocked)} es trabajo de <b>${need.name.es}</b>. Te faltan ${need.xp - st.data.xp} XP: hacé casos de <b>práctica</b> en tu computadora y volvé a hablar conmigo.`, `Level ${levelNum(blocked)} is work for a <b>${need.name.en}</b>. You need ${need.xp - st.data.xp} more XP: do some <b>practice</b> cases on your computer and come back.`) });
+        const ps = Cu().promotionStatus();
+        if (ps && ps.contentReady && !ps.modulesMissing.length && ps.xpMissing > 0) {
+          lines.push({
+            who: 'marta',
+            text: T(
+              `Terminaste todos los niveles de tu etapa. Para ascender a <b>${ps.next.name.es}</b> te faltan <b>${ps.xpMissing} XP</b>: hacé casos de <b>práctica libre</b> en tu computadora (los primeros ${Cu().PRACTICE_XP_LIMIT} de cada nivel suman experiencia).`,
+              `You finished every level of your stage. To be promoted to <b>${ps.next.name.en}</b> you need <b>${ps.xpMissing} more XP</b>: do some <b>free practice</b> cases on your computer (the first ${Cu().PRACTICE_XP_LIMIT} of each level earn experience).`
+            ),
+          });
         } else if (!cur) {
-          lines.push({ who: 'marta', text: T('Terminaste todos los niveles de esta etapa. Impresionante.', 'You finished every level of this stage. Impressive.') });
-          lines.push({ who: 'marta', text: T('Podés seguir practicando para sumar experiencia. Lo que viene (BUSCARV, tablas dinámicas, dashboards) llega en la <b>Etapa 2</b>.', 'You can keep practicing to earn experience. What comes next (VLOOKUP, pivot tables, dashboards) arrives in <b>Stage 2</b>.') });
+          lines.push({ who: 'marta', text: T('Ya dominás todo lo que tenemos para tu rango por ahora. Impresionante.', 'You have mastered everything we have for your rank for now. Impressive.') });
+          lines.push({ who: 'marta', text: T('El próximo paso es <b>Lead de Datos</b>: estrategia, priorizar los pedidos del equipo, acordar con las áreas qué medir y cuidar el gobierno de los datos. Esa etapa llega en una próxima actualización.', 'The next step is <b>Data Lead</b>: strategy, prioritizing the team\'s requests, agreeing with other teams on what to measure and looking after data governance. That stage arrives in a future update.') });
+          lines.push({ who: 'marta', text: T('Mientras tanto, la práctica libre de cualquier nivel sigue abierta para repasar.', 'Meanwhile, free practice for any level is still open for review.') });
         } else {
           lines.push({ who: 'marta', text: T('Seguí así. Si te sobra tiempo, la práctica libre te ayuda a afianzar lo aprendido.', 'Keep it up. If you have spare time, free practice helps you lock in what you learned.') });
         }
@@ -190,6 +205,25 @@
         ]),
         bossdesk: T('Un post-it: "Revisar KPIs de Q2". Al lado, una taza que dice: "En Dios confiamos; los demás, traigan datos".', 'A sticky note: "Review Q2 KPIs". Next to it, a mug that says: "In God we trust; all others bring data".'),
         sofa: T('Un sofá muy cómodo. Mejor no sentarse: hay planillas esperando.', 'A very comfy sofa. Better not sit down: spreadsheets are waiting.'),
+        fridge: pick([
+          T('Un cartel en la heladera: "Rotulá tu tupper. Un tupper sin nombre es un dato sin etiqueta: nadie sabe de quién es."', 'A sign on the fridge: "Label your lunchbox. A lunchbox with no name is data with no label: nobody knows whose it is."'),
+          T('Adentro hay un yogur vencido en 2019. Un caso claro de dato desactualizado.', 'There is a yogurt that expired in 2019. A clear case of stale data.'),
+        ]),
+        microwave: T('Hay una fila de 3 personas para el microondas. Leo dice que es el verdadero cuello de botella de la empresa.', 'There is a line of 3 people for the microwave. Leo says it is the real bottleneck of the company.'),
+        cooler: T('Te servís un vaso de agua. Hidratarse también es parte del análisis.', 'You drink a glass of water. Staying hydrated is part of the analysis too.'),
+        lunch: pick([
+          T('En la mesa alguien dejó una servilleta con un gráfico de torta dibujado. Tiene 11 porciones. Leo la miró y suspiró.', 'Someone left a napkin with a pie chart on the table. It has 11 slices. Leo looked at it and sighed.'),
+          T('Acá se almuerza a la una. Las mejores ideas del equipo salieron de esta mesa, no de las reuniones.', 'Lunch is at one o\'clock here. The team\'s best ideas came from this table, not from meetings.'),
+          T('Un sobre de azúcar dice: "Dato curioso: el promedio miente cuando hay atípicos".', 'A sugar packet says: "Fun fact: the average lies when there are outliers".'),
+        ]),
+        vending: T('La máquina de snacks tiene un cartel: "Se aceptan monedas, no excusas".', 'The snack machine has a sign: "Coins accepted, excuses are not".'),
+        meeting: T('La sala de reuniones. En la pantalla quedó una diapositiva: "¿Qué decisión querés tomar con este dato?"', 'The meeting area. A slide is still on the screen: "What decision do you want to make with this data?"'),
+        printer: T('La impresora está imprimiendo un dashboard de 40 páginas. Nadie lo va a leer.', 'The printer is printing a 40-page dashboard. Nobody will read it.'),
+        magazines: T('Revistas en la mesa ratona: «Datos Hoy», «El Analista Moderno» y un catálogo de plantas.', 'Magazines on the coffee table: "Data Today", "The Modern Analyst" and a plant catalog.'),
+        plant: pick([
+          T('Una planta muy bien cuidada. Tiene un cartelito: "Me riega Sofi los lunes".', 'A well-kept plant. It has a little tag: "Sofi waters me on Mondays".'),
+          T('La planta crece un poco cada semana. Como tu XP.', 'The plant grows a little each week. Like your XP.'),
+        ]),
         exit: T('¿Irte ya? Todavía hay datos que analizar. (Usá el menú ☰ para salir del juego.)', 'Leaving already? There is still data to analyze. (Use the ☰ menu to quit.)'),
       }[id];
       if (t) AA.Dialog.open([{ who: 'narrator', text: t }]);

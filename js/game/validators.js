@@ -154,6 +154,54 @@
       };
     },
 
+    // Valor lógico: acepta VERDADERO/FALSO o textos como Sí/No, OK/Revisar.
+    bool(expected) {
+      const YES = ['verdadero', 'true', 'si', 'sí', 'yes', 'ok', 'valido', 'válido', 'valid'];
+      const NO = ['falso', 'false', 'no', 'revisar', 'invalido', 'inválido', 'invalid', 'review'];
+      return (val) => {
+        if (typeof val === 'boolean') return val === expected;
+        const t = norm(val);
+        return expected ? YES.map(norm).includes(t) : NO.map(norm).includes(t);
+      };
+    },
+
+    // Resultado de una consulta SQL. expected = { rows, ordered }. opts.requires: cláusulas que
+    // tiene que usar (WHERE, GROUP BY, JOIN…) para practicar el concepto del pedido.
+    // Basta con que ALGUNA consulta ejecutada lo cumpla; las notas salen de la última.
+    sql(expected, opts) {
+      opts = opts || {};
+      const req = opts.requires || [];
+      const fn = (S) => {
+        const runs = (S.sql && S.sql.runs) || [];
+        const okRun = (r) => r.res && AA.SQL.sameResult(r.res, expected) === true && req.every((k) => AA.SQL.uses(r.q, k));
+        if (runs.some(okRun)) return true;
+        const last = runs[runs.length - 1];
+        if (!last || !last.res) return false;
+        const same = AA.SQL.sameResult(last.res, expected);
+        if (same !== true) return same;
+        const missing = req.filter((k) => !AA.SQL.uses(last.q, k));
+        return AA.T(`El resultado está bien, pero este pedido es para practicar ${missing.join(' y ')}: usalo en la consulta.`, `The result is right, but this request is to practice ${missing.join(' and ')}: use it in the query.`);
+      };
+      fn.sequential = true;
+      return fn;
+    },
+
+    // Celdas marcadas como error al revisar el trabajo de otra persona.
+    flags(expected) {
+      const want = new Set(expected);
+      return (S) => {
+        const got = S.flags || new Set();
+        if (!got.size) return false;
+        const found = [...want].filter((r) => got.has(r)).length;
+        const extra = [...got].filter((r) => !want.has(r)).length;
+        if (found === want.size && !extra) return true;
+        const parts = [];
+        parts.push(AA.T(`Encontraste ${found} de ${want.size} errores.`, `You found ${found} of ${want.size} errors.`));
+        if (extra) parts.push(AA.T(`${extra} de las celdas marcadas están bien: desmarcalas.`, `${extra} of the flagged cells are fine: unflag them.`));
+        return parts.join(' ');
+      };
+    },
+
     // Respuesta escrita por el jugador (preguntas de "detective").
     answerNumber(expected, tol) {
       const t = tol === undefined ? 0.01 : tol;

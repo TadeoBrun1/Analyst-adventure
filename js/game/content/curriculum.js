@@ -220,6 +220,54 @@
       },
       tip: { es: 'F4 varias veces: $A$1 → A$1 → $A1 → A1.', en: 'F4 several times: $A$1 → A$1 → $A1 → A1.' },
     },
+    chartChoice: {
+      title: { es: 'Elegir el gráfico correcto', en: 'Choosing the right chart' },
+      say: {
+        es: 'Cada gráfico responde una pregunta distinta: <b>barras</b> comparan categorías, <b>líneas</b> muestran evolución en el tiempo, la <b>torta</b> muestra partes de un todo (solo con pocas porciones) y la <b>dispersión</b> muestra la relación entre dos números.',
+        en: 'Each chart answers a different question: <b>bars</b> compare categories, <b>lines</b> show change over time, a <b>pie</b> shows parts of a whole (only with few slices) and a <b>scatter</b> shows the relationship between two numbers.',
+      },
+      tip: { es: 'Si dudás entre torta y barras, elegí barras: se comparan mejor.', en: 'If you hesitate between pie and bars, pick bars: they compare better.' },
+    },
+    dimsMeasures: {
+      title: { es: 'Dimensiones y medidas', en: 'Dimensions and measures' },
+      say: {
+        es: 'En Tableau y Power BI cada columna es un campo. Las <b>dimensiones</b> son categorías que agrupan (región, mes, canal) y las <b>medidas</b> son números que se agregan (ventas, unidades). "Cantidad de registros" cuenta filas.',
+        en: 'In Tableau and Power BI every column is a field. <b>Dimensions</b> are categories that group (region, month, channel) and <b>measures</b> are numbers that get aggregated (sales, units). "Number of records" counts rows.',
+      },
+      tip: { es: 'Pregunta clave: ¿esto se suma? Si sí, es medida; si no, dimensión.', en: 'Key question: does it add up? If yes, measure; if not, dimension.' },
+    },
+    shelves: {
+      title: { es: 'Columnas, Filas y Mostrarme', en: 'Columns, Rows and Show Me' },
+      say: {
+        es: 'Arrastrá una dimensión a <b>Columnas</b> y una medida a <b>Filas</b>: barras verticales. Al revés (⇅), barras horizontales. Dos medidas, una en cada estante: dispersión. <b>Mostrarme</b> resalta el gráfico recomendado para esos campos, igual que en Tableau.',
+        en: 'Drag a dimension to <b>Columns</b> and a measure to <b>Rows</b>: vertical bars. The other way around (⇅): horizontal bars. Two measures, one per shelf: scatter. <b>Show Me</b> highlights the recommended chart for those fields, just like in Tableau.',
+      },
+      tip: { es: 'Barras horizontales: ideales cuando los nombres de las categorías son largos.', en: 'Horizontal bars: ideal when category names are long.' },
+    },
+    aggregation: {
+      title: { es: 'Agregaciones: Suma, Promedio, Recuento', en: 'Aggregations: Sum, Average, Count' },
+      say: {
+        es: 'Cuando una medida va a un estante se <b>agrega</b> por cada categoría: <b>Suma</b> (total vendido), <b>Promedio</b> (ticket medio), <b>Recuento</b> (cuántas filas), <b>Mínimo</b> y <b>Máximo</b>. Es lo mismo que SUMA, PROMEDIO o CONTAR.SI en la planilla.',
+        en: 'When a measure goes onto a shelf it is <b>aggregated</b> per category: <b>Sum</b> (total sold), <b>Average</b> (average ticket), <b>Count</b> (how many rows), <b>Minimum</b> and <b>Maximum</b>. Same as SUM, AVERAGE or COUNTIF in the sheet.',
+      },
+      tip: { es: 'Sumar un promedio no tiene sentido: elegí la agregación según la pregunta.', en: "Adding up averages makes no sense: choose the aggregation based on the question." },
+    },
+    colorFilter: {
+      title: { es: 'Color y Filtros', en: 'Color and Filters' },
+      say: {
+        es: '<b>Color</b> agrega una segunda dimensión: por ejemplo, cada barra de región separada por estado. <b>Filtros</b> muestra solo una parte de los datos (un transportista, un año) sin borrar nada.',
+        en: '<b>Color</b> adds a second dimension: for example, each region bar split by status. <b>Filters</b> show only part of the data (one carrier, one year) without deleting anything.',
+      },
+      tip: { es: 'Más de 6-7 colores ya no se distinguen: agrupá o filtrá.', en: "More than 6-7 colors can't be told apart: group or filter." },
+    },
+    storyTitle: {
+      title: { es: 'Contar la conclusión: orden y título', en: 'Telling the conclusion: sort and title' },
+      say: {
+        es: 'Un gráfico es una <b>presentación</b>: ordená las barras de mayor a menor (pero nunca ordenes meses por valor), empezá los ejes en cero y escribí un <b>título que diga la conclusión</b>: "El Sur lidera las ventas" en vez de "Ventas por región".',
+        en: 'A chart is a <b>presentation</b>: sort bars from largest to smallest (but never sort months by value), start axes at zero and write a <b>title that states the conclusion</b>: "The South leads sales" instead of "Sales by region".',
+      },
+      tip: { es: 'Si alguien entiende tu gráfico en 5 segundos sin que lo expliques, está bien hecho.', en: 'If someone understands your chart in 5 seconds without you explaining it, it is well made.' },
+    },
   };
 
   // ---------------------------------------------------------------------------
@@ -230,7 +278,7 @@
       id: 'mod1',
       title: { es: 'Fórmulas básicas', en: 'Basic formulas' },
       xp: 40,
-      minRank: 0,
+      tier: 0,
       skills: ['formulas', 'refs', 'operators', 'fill', 'rawdata'],
       templates: ['m1_orders', 'm1_budget', 'm1_stock', 'm1_vat', 'm1_unit'],
       seeds: [101, 102, 103, 104, 105],
@@ -243,7 +291,7 @@
       id: 'mod2',
       title: { es: 'Funciones de resumen', en: 'Summary functions' },
       xp: 50,
-      minRank: 0,
+      tier: 0,
       skills: ['ranges', 'sum', 'average', 'maxmin', 'count'],
       templates: ['m2_quarter', 'm2_visits', 'm2_training', 'm2_expenses', 'm2_callcenter'],
       seeds: [201, 202, 203, 204, 205],
@@ -256,7 +304,7 @@
       id: 'mod3',
       title: { es: 'Lógica: SI', en: 'Logic: IF' },
       xp: 60,
-      minRank: 0,
+      tier: 0,
       skills: ['compare', 'if', 'quotes', 'andor'],
       templates: ['m3_bonus', 'm3_grades', 'm3_restock', 'm3_shipping', 'm3_vip'],
       seeds: [301, 302, 303, 304, 305],
@@ -269,7 +317,7 @@
       id: 'mod4',
       title: { es: 'Limpieza de texto', en: 'Text cleaning' },
       xp: 70,
-      minRank: 1,
+      tier: 0,
       skills: ['trim', 'case', 'nesting', 'concat', 'len'],
       templates: ['m4_clients', 'm4_codes', 'm4_fullname', 'm4_emails', 'm4_phones'],
       seeds: [401, 402, 403, 404, 405],
@@ -282,17 +330,65 @@
       id: 'mod5',
       title: { es: 'Conteos condicionales y $', en: 'Conditional counts and $' },
       xp: 80,
-      minRank: 1,
+      tier: 0,
       skills: ['countif', 'sumif', 'ifs', 'absolute', 'mixed'],
       templates: ['m5_shipments', 'm5_sales', 'm5_tickets', 'm5_commission', 'm5_matrix'],
       seeds: [501, 502, 503, 504, 505],
       intro: {
-        es: 'Último tema de esta etapa, y el que más vas a usar en tu vida: <b>contar y sumar con condiciones</b>. Y de yapa, el famoso <b>$</b>.',
-        en: 'The last topic of this stage, and the one you\'ll use the most in your life: <b>counting and adding with conditions</b>. Plus, the famous <b>$</b>.',
+        es: 'Este es el tema que más vas a usar en tu vida: <b>contar y sumar con condiciones</b>. Y de yapa, el famoso <b>$</b>.',
+        en: 'This is the topic you\'ll use the most in your life: <b>counting and adding with conditions</b>. Plus, the famous <b>$</b>.',
+      },
+    },
+    {
+      id: 'mod6',
+      title: { es: 'Gráficos', en: 'Charts' },
+      xp: 90,
+      tier: 0,
+      skills: ['chartChoice', 'dimsMeasures', 'shelves', 'aggregation', 'colorFilter', 'storyTitle'],
+      templates: ['m6_bar', 'm6_line', 'm6_pie', 'm6_scatter', 'm6_color'],
+      seeds: [601, 602, 603, 604, 605],
+      intro: {
+        es: 'Último tema antes de que puedas ser Junior: <b>gráficos</b>. En cualquier búsqueda laboral piden saber hacerlos, y en el día a día son tu forma de <b>presentar</b> lo que encontraste. Este editor funciona como Tableau o Power BI, en versión simple.',
+        en: 'The last topic before you can be a Junior: <b>charts</b>. Every job posting asks for them, and day to day they are how you <b>present</b> what you found. This editor works like Tableau or Power BI, in a simple version.',
       },
     },
   ];
+  // Niveles 7 en adelante: cada archivo modN.js registra su nivel (con lección y habilidades).
+  (AA.Content.modules || [])
+    .slice()
+    .sort((a, b) => parseInt(a.id.slice(3), 10) - parseInt(b.id.slice(3), 10))
+    .forEach((m) => {
+      for (const [k, sk] of Object.entries(m.skillDefs || {})) SKILLS[k] = sk;
+      MODULES.push(m);
+    });
+
+  // Qué hace cada rango en la vida real (ver docs/CARRERA.md para las fuentes).
+  const CAREER = [
+    {
+      es: ['Aprende las herramientas base: fórmulas, funciones, SI, limpieza y conteos.', 'Hace tareas acotadas y supervisadas: completar columnas, totales, listas limpias.', 'Arma gráficos simples para responder un pedido puntual.'],
+      en: ['Learns the core tools: formulas, functions, IF, cleaning and counts.', 'Does scoped, supervised tasks: filling columns, totals, clean lists.', 'Builds simple charts to answer a specific request.'],
+    },
+    {
+      es: ['Genera reportes y responde pedidos puntuales (ad-hoc) de otras áreas.', 'Cruza tablas (BUSCARV/BUSCARX) y resume con tablas dinámicas.', 'Limpia y valida datos antes de usarlos.', 'Mantiene dashboards que armaron otros y usa SQL básico.', 'Presenta sus resultados al equipo.'],
+      en: ['Produces reports and answers ad-hoc requests from other teams.', 'Joins tables (VLOOKUP/XLOOKUP) and summarizes with pivot tables.', 'Cleans and validates data before using it.', 'Maintains dashboards built by others and uses basic SQL.', 'Presents results to the team.'],
+    },
+    {
+      es: ['Se hace cargo de un análisis de punta a punta: de la pregunta a la recomendación.', 'Arma dashboards desde cero (varios gráficos, filtros, KPIs).', 'Usa estadística para explicar por qué pasó algo, no solo qué pasó.', 'Cuenta historias con datos a otras áreas y revisa el trabajo de juniors.'],
+      en: ['Owns an analysis end to end: from the question to the recommendation.', 'Builds dashboards from scratch (several charts, filters, KPIs).', 'Uses statistics to explain why something happened, not just what.', 'Tells data stories to other teams and reviews juniors\' work.'],
+    },
+    {
+      es: ['Define los KPIs del negocio y cómo se miden.', 'Diseña y analiza experimentos (A/B tests).', 'Presenta resúmenes ejecutivos: qué pasó, por qué y qué hacer.', 'Decide con datos incompletos y mentorea a otros analistas.'],
+      en: ['Defines business KPIs and how they are measured.', 'Designs and analyzes experiments (A/B tests).', 'Presents executive summaries: what happened, why, and what to do.', 'Makes calls with incomplete data and mentors other analysts.'],
+    },
+    {
+      es: ['Define la estrategia de datos junto con la dirección.', 'Prioriza pedidos y arma la hoja de ruta del equipo.', 'Traduce objetivos de negocio en preguntas medibles con los stakeholders.', 'Cuida la calidad y el gobierno de los datos, y hace crecer al equipo.'],
+      en: ['Sets the data strategy with leadership.', "Prioritizes requests and builds the team's roadmap.", 'Translates business goals into measurable questions with stakeholders.', 'Owns data quality and governance, and grows the team.'],
+    },
+  ];
+
   const REQUIRED = 5;
+  // Casos de práctica que suman XP en cada nivel. Después se puede seguir practicando, sin XP.
+  const PRACTICE_XP_LIMIT = 4;
 
   const ST = () => AA.State;
   const moduleById = (id) => MODULES.find((m) => m.id === id) || null;
@@ -301,18 +397,30 @@
   const Curriculum = {
     MODULES,
     SKILLS,
+    CAREER,
     REQUIRED,
+    PRACTICE_XP_LIMIT,
     moduleById,
 
     // --- Estado de cada nivel
     requiredIds(mod) {
       return mod.templates.slice(0, REQUIRED).map((_, k) => storyId(mod, k));
     },
-    doneCount(mod) {
-      return this.requiredIds(mod).filter((id) => ST().isCompleted(id)).length;
+    doneCount(mod, data) {
+      const d = data || ST().data;
+      return this.requiredIds(mod).filter((id) => !!d.completed[id]).length;
     },
-    isModuleComplete(mod) {
-      return this.doneCount(mod) >= REQUIRED;
+    isModuleComplete(mod, data) {
+      return this.doneCount(mod, data) >= REQUIRED;
+    },
+    // Niveles de una etapa (la etapa N corresponde al rango N).
+    tierModules(tier) {
+      return MODULES.filter((m) => m.tier === tier);
+    },
+    // Una etapa está completa si tiene niveles y están todos terminados.
+    tierComplete(tier, data) {
+      const mods = this.tierModules(tier);
+      return mods.length > 0 && mods.every((m) => this.isModuleComplete(m, data));
     },
     // Motivo por el que un nivel está bloqueado (o null si está abierto).
     lockReason(mod) {
@@ -320,8 +428,8 @@
       if (i > 0 && !this.isModuleComplete(MODULES[i - 1])) {
         return AA.T(`Completá las ${REQUIRED} tareas del Nivel ${i}`, `Complete the ${REQUIRED} tasks of Level ${i}`);
       }
-      if (ST().rankIndex() < mod.minRank) {
-        return AA.T(`Requiere ser ${AA.L(ST().RANKS[mod.minRank].name)} (practicá para sumar XP)`, `Requires ${AA.L(ST().RANKS[mod.minRank].name)} (practice to earn XP)`);
+      if (ST().rankIndex() < mod.tier) {
+        return AA.T(`Requiere ser ${AA.L(ST().RANKS[mod.tier].name)}`, `Requires ${AA.L(ST().RANKS[mod.tier].name)}`);
       }
       return null;
     },
@@ -374,8 +482,32 @@
       const seed = Math.floor(Math.random() * 1e9);
       return this.practiceId(mod, template, size, seed);
     },
+    // XP base de un caso de práctica según el tamaño de la tabla.
     practiceXp(mod, size) {
       return size === 'large' ? Math.round(mod.xp * 1.6) : mod.xp;
+    },
+    // XP que daría HOY un caso de práctica de este nivel, y por qué no da XP si es 0.
+    practiceReward(mod, size) {
+      const st = ST();
+      if (st.rankIndex() > mod.tier) return { xp: 0, reason: 'rank' };
+      const done = st.data.practice[mod.id] || 0;
+      if (done >= PRACTICE_XP_LIMIT) return { xp: 0, reason: 'limit' };
+      return { xp: this.practiceXp(mod, size), reason: null, left: PRACTICE_XP_LIMIT - done };
+    },
+    // Qué falta para el próximo rango: XP y niveles de la etapa actual.
+    promotionStatus() {
+      const st = ST();
+      const cur = st.rankIndex();
+      const next = st.RANKS[cur + 1];
+      if (!next) return null;
+      const mods = this.tierModules(cur);
+      return {
+        next,
+        xpMissing: Math.max(0, next.xp - st.data.xp),
+        modulesMissing: mods.filter((m) => !this.isModuleComplete(m)),
+        contentReady: mods.length > 0 && this.tierModules(cur + 1).length > 0,
+        nextStageReady: this.tierModules(cur + 1).length > 0,
+      };
     },
 
     // Arma la misión completa en el idioma pedido.

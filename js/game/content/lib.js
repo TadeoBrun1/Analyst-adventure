@@ -119,6 +119,14 @@
   function register(id, fn) {
     templates[id] = fn;
   }
+  // Niveles definidos junto con sus plantillas (Nivel 7 en adelante): { id, title, xp, tier,
+  // skills: { id: { title, say, tip, fns?, code? } }, templates, seeds, intro }.
+  const modules = [];
+  function module(def) {
+    modules.push(def);
+  }
+  // Tabla { headers, rows } a partir de objetos.
+  const table = (headers, rows, extra) => Object.assign({ headers, rows }, extra || {});
 
   // Ejecuta una plantilla en un idioma dado y completa los datos comunes.
   function build(templateId, opts) {
@@ -135,6 +143,7 @@
         lang: AA.lang,
       };
       const m = fn(ctx);
+      shuffleOptions(m, rng(((opts.seed || 0) * 7919 + 13) >>> 0));
       const ch = AA.State.CHARACTERS[m.from];
       m.email = AA.T('<p>Hola, {name}:</p>', '<p>Hi {name},</p>') + m.email + `<p class="sign">— ${esc(AA.L(ch.name))} · ${esc(AA.L(ch.role))}</p>`;
       m.lang = AA.lang;
@@ -145,14 +154,35 @@
     }
   }
 
+  // Mezcla las opciones de las preguntas y de los informes (con la misma semilla de la misión),
+  // para que la respuesta correcta no quede siempre en el mismo lugar.
+  function shuffleOptions(m, r) {
+    m.objectives.forEach((o, i) => {
+      if (!o.choices || o.fixedOrder) return;
+      const order = r.shuffle(o.choices.map((_, k) => k));
+      o.choices = order.map((k) => o.choices[k]);
+      if (o.why) o.why = order.map((k) => o.why[k]);
+      o.correct = order.indexOf(o.correct);
+      if (m.solution && m.solution.answers && m.solution.answers[i] !== undefined) m.solution.answers[i] = o.correct;
+    });
+    if (m.report) m.report.sections.forEach((sec) => !sec.fixedOrder && (sec.options = r.shuffle(sec.options)));
+  }
+
   // Hoja inicial de una misión (datos originales + celdas fijas).
   function buildSheet(def) {
     const sh = new AA.Sheet(def.cols, def.rows);
-    const at = F.parseRef(def.data.at);
-    def.data.rows.forEach((row, i) => row.forEach((v, j) => sh.setValue(at.col + j, at.row + i, v, true)));
+    for (const block of [].concat(def.data || [], def.blocks || [])) {
+      const at = F.parseRef(block.at);
+      block.rows.forEach((row, i) => row.forEach((v, j) => sh.setValue(at.col + j, at.row + i, v, true)));
+    }
     for (const [ref, v] of Object.entries(def.cells || {})) {
       const p = F.parseRef(ref);
       sh.setValue(p.col, p.row, v, true);
+    }
+    // Contenido escrito "como lo tipea una persona" (fórmulas incluidas): el trabajo de otro a revisar.
+    for (const [ref, input] of Object.entries(def.inputs || {})) {
+      const p = F.parseRef(ref);
+      sh.setInput(p.col, p.row, input, true);
     }
     return sh;
   }
@@ -170,6 +200,9 @@
     L2,
     register,
     templates,
+    module,
+    modules,
+    table,
     build,
     buildSheet,
     DATA: { FIRST, LAST, PRODUCTS, CONCEPTS, REGIONS, CITIES, CARRIERS, MONTHS, CATEGORIES, AREAS },

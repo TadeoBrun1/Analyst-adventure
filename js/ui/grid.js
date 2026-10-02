@@ -25,6 +25,8 @@
           return v.toLocaleString('en-US', { maximumFractionDigits: 0 });
         case 'dec2':
           return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        case 'dec5':
+          return v.toLocaleString('en-US', { minimumFractionDigits: 5, maximumFractionDigits: 5 });
         case 'plain':
           return F.fmtNumber(v);
         default: {
@@ -606,7 +608,10 @@
           }
         }
         this.suggestions.sort((a, b) => a.name.length - b.name.length);
-        this.suggestions = this.suggestions.slice(0, 6);
+        // Otras hojas del libro (para referencias como Productos!A:C).
+        const sheets = this.opts.sheetNames ? this.opts.sheetNames() : [];
+        const sheetHits = sheets.filter((nm) => F.normName(nm).startsWith(pref)).map((nm) => ({ name: nm, sheet: true }));
+        this.suggestions = sheetHits.concat(this.suggestions).slice(0, 6);
         if (this.suggestions.length) return this.setHint({ suggestions: this.suggestions });
       }
       // ¿Dentro de qué función está el cursor?
@@ -636,9 +641,13 @@
       }
       if (h.suggestions) {
         this.hint.innerHTML =
-          `<span class="ss-hint-muted">${AA.T('Funciones:', 'Functions:')}</span> ` +
+          `<span class="ss-hint-muted">${h.suggestions[0].sheet ? AA.T('Hojas y funciones:', 'Sheets and functions:') : AA.T('Funciones:', 'Functions:')}</span> ` +
           h.suggestions
-            .map((s, i) => `<button class="ss-chip${i === 0 ? ' first' : ''}" data-fn="${s.name}" title="${escapeHtml(AA.fnDoc(s.def.name).desc)}">${s.name}</button>`)
+            .map((s, i) =>
+              s.sheet
+                ? `<button class="ss-chip sheet${i === 0 ? ' first' : ''}" data-fn="${escapeHtml(s.name)}" data-sheet="1" title="${AA.T('Hoja del libro', 'Workbook sheet')}">📄 ${escapeHtml(s.name)}!</button>`
+                : `<button class="ss-chip${i === 0 ? ' first' : ''}" data-fn="${s.name}" title="${escapeHtml(AA.fnDoc(s.def.name).desc)}">${s.name}</button>`
+            )
             .join('') +
           `<span class="ss-hint-muted"> · <kbd>Tab</kbd> ${AA.T('completa la primera', 'completes the first one')}</span>`;
         return;
@@ -671,8 +680,9 @@
       const after = inp.value.slice(pos);
       const m = /([A-Za-zÀ-ſ][A-Za-z0-9.À-ſ]*)$/.exec(before);
       const start = m ? pos - m[1].length : pos;
-      const insert = name + '(';
-      const nv = inp.value.slice(0, start) + insert + after.replace(/^\(/, '');
+      const isSheet = this.suggestions.some((sg) => sg.sheet && sg.name === name);
+      const insert = isSheet ? F.sheetPrefix(name) : name + '(';
+      const nv = inp.value.slice(0, start) + insert + (isSheet ? after : after.replace(/^\(/, ''));
       this.editor.value = nv;
       this.bar.value = nv;
       inp.focus();

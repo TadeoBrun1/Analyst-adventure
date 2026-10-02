@@ -143,5 +143,54 @@ const info = F.analyze('=SUM(C2:E2)+promedio(A1)');
 eq(info.funcs.has('SUMA') && info.funcs.has('PROMEDIO'), true, 'analyze funciones canónicas');
 eq(info.refs.has('A1'), true, 'analyze refs');
 
+// --- Varias hojas (libro)
+const wb = new AA.Workbook();
+const hp = wb.add('Pedidos', new AA.Sheet(8, 20));
+const hq = wb.add('Productos', new AA.Sheet(4, 20));
+const hl = wb.add('Lista de precios', new AA.Sheet(4, 20));
+[['P1', 10], ['P2', 20], ['P3', 30]].forEach(([k, v], i) => {
+  hq.setInput(0, i, k, true);
+  hq.setInput(1, i, String(v), true);
+});
+hl.setInput(0, 0, '5', true);
+hp.setInput(0, 0, 'P2', true);
+const at = (ref, f) => {
+  const p = F.parseRef(ref);
+  hp.setInput(p.col, p.row, f, true);
+  return hp.getValue(p.col, p.row);
+};
+eq(at('B1', '=BUSCARV(A1;Productos!A:B;2;FALSO)'), 20, 'BUSCARV en otra hoja (columnas enteras)');
+eq(at('C1', '=VLOOKUP(A1,Productos!$A$1:$B$3,2,FALSE)'), 20, 'VLOOKUP con rango fijo de otra hoja');
+eq(at('D1', '=BUSCARX(A1;Productos!A1:A3;Productos!B1:B3)'), 20, 'BUSCARX entre hojas');
+eq(at('E1', "='Lista de precios'!A1*2"), 10, 'hoja con espacios entre comillas');
+eq(at('F1', '=SUMA(productos!B:B)'), 60, 'nombre de hoja sin distinguir mayúsculas');
+eq(at('G1', '=Nada!A1'), '#REF!', 'hoja inexistente');
+eq(at('H1', '=SUMA(Productos!A1:Pedidos!B2)'), '#ERROR!', 'un rango no abarca dos hojas');
+hq.setInput(1, 1, '99', true);
+eq(hp.val('B1'), 99, 'cambiar otra hoja recalcula');
+eq(F.shiftFormula('=BUSCARV(A1;Productos!$A$1:B5;2)', 0, 1), '=BUSCARV(A2;Productos!$A$1:B6;2)', 'copiar respeta el prefijo de hoja');
+eq(F.toggleAbsolute('=Productos!A1', 12).text, '=Productos!$A$1', 'F4 con prefijo de hoja');
+eq(F.formulaRefs('=Productos!A1:B3+C2').length, 1, 'solo se resaltan las referencias de la hoja actual');
+eq(F.analyze('=BUSCARX(A2;Productos!A:A;Productos!C:C)').sheets.has('PRODUCTOS'), true, 'analyze detecta hojas usadas');
+eq(F.sheetPrefix('Lista de precios'), "'Lista de precios'!", 'prefijo con comillas');
+eq(F.sheetPrefix('Ventas'), 'Ventas!', 'prefijo simple');
+// Ciclo entre hojas
+hq.setInput(3, 0, '=Pedidos!A10', true);
+hp.setInput(0, 9, '=Productos!D1', true);
+eq(hp.val('A10'), '#CIRC!', 'referencia circular entre hojas');
+
+// --- Estadística
+const st = sheetWith({ A1: '1', A2: '2', A3: '3', A4: '4', A5: '100', B1: '2', B2: '4', B3: '6', B4: '8', B5: '10' });
+eq(calc(st, '=MEDIANA(A1:A5)'), 3, 'mediana resiste valores extremos');
+eq(calc(st, '=PERCENTIL(A1:A4;0.5)'), 2.5, 'percentil interpolado');
+eq(calc(st, '=CUARTIL(A1:A5;1)'), 2, 'cuartil 1');
+eq(calc(st, '=COEF.DE.CORREL(A1:A4;B1:B4)'), 1, 'correlación perfecta');
+eq(calc(st, '=PENDIENTE(B1:B4;A1:A4)'), 2, 'pendiente');
+eq(calc(st, '=VAR(A1:A4)'), 1.6666666666666667, 'varianza');
+eq(Math.round(calc(st, '=DISTR.NORM.ESTAND.N(1.96;VERDADERO)') * 1000) / 1000, 0.975, 'normal estándar');
+eq(calc(st, '=PERCENTIL(A1:A4;2)'), '#NUM!', 'percentil fuera de rango');
+eq(calc(st, '=SUMAPRODUCTO(A1:A2;B1:B2)'), 10, 'SUMAPRODUCTO');
+eq(calc(st, '=SUMAPRODUCTO(A1:A2;B1:B3)'), '#VALUE!', 'SUMAPRODUCTO con rangos distintos');
+
 console.log(`\n${passed} OK, ${failed} fallidos`);
 process.exit(failed ? 1 : 0);

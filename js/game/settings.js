@@ -11,6 +11,7 @@
   const defaults = () => ({
     lang: null,
     volume: { master: 0.8, music: 0.45, sfx: 0.8, voice: 0.7 },
+    musicOn: true,
     fullscreen: false,
     windowSize: '1366x768',
   });
@@ -46,6 +47,12 @@
     setVolume(channel, value) {
       this.data.volume[channel] = Math.max(0, Math.min(1, value));
       if (AA.Audio) AA.Audio.applyVolumes();
+      this.save();
+    },
+
+    setMusicOn(on) {
+      this.data.musicOn = !!on;
+      if (AA.Audio) AA.Audio.setMusicEnabled(this.data.musicOn);
       this.save();
     },
 
