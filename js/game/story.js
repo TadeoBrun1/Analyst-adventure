@@ -49,12 +49,12 @@
           { who: 'marta', text: T('¡Hola, <b>{name}</b>! Te damos la bienvenida a <b>Grupo Cóndor</b>. Soy Marta, jefa del equipo de Analytics.', 'Hi <b>{name}</b>! Welcome to <b>Grupo Cóndor</b>. I\'m Marta, head of the Analytics team.') },
           { who: 'marta', text: T('Acá todas las áreas nos piden lo mismo: Ventas, Recursos Humanos, Marketing, Logística, Finanzas… <b>respuestas a partir de datos</b>.', 'Here every department asks us for the same thing: Sales, HR, Marketing, Logistics, Finance… <b>answers from data</b>.') },
           { who: 'marta', text: T('Arrancás como <b>Pasante de Datos</b>. Si hacés bien tu trabajo vas a ir subiendo: Junior, Semi-Senior, Senior…', 'You start as a <b>Data Intern</b>. Do good work and you\'ll climb: Junior, Mid-level, Senior…') },
-          { who: 'marta', text: T('Pero antes de darte trabajo, andá a ver a <b>Leo</b>, que está junto a la máquina de café. Te va a explicar lo básico de las planillas.', 'But before I give you work, go see <b>Leo</b> by the coffee machine. He\'ll explain spreadsheet basics.') },
+          { who: 'marta', text: T('Pero antes de darte trabajo, andá a ver a <b>Leo</b>, que está en el comedor, junto a la máquina de café (a la izquierda). Te va a explicar lo básico de las planillas.', 'But before I give you work, go see <b>Leo</b> by the coffee machine, in the kitchen on the left. He\'ll explain spreadsheet basics.') },
         ],
         () => {
           S().data.flags.intro = true;
           S().save();
-          AA.UI.toast(AA.T('☕ Caminá hasta <b>Leo</b>, junto a la máquina de café (WASD / flechas) y presioná <b>E</b>.', '☕ Walk to <b>Leo</b>, by the coffee machine (WASD / arrows), and press <b>E</b>.'), 'info');
+          AA.UI.toast(AA.T('☕ Caminá hasta <b>Leo</b>, en el comedor de la izquierda (WASD / flechas) y presioná <b>E</b>.', '☕ Walk to <b>Leo</b>, in the kitchen on the left (WASD / arrows), and press <b>E</b>.'), 'info');
           if (onDone) onDone();
         }
       );
@@ -205,6 +205,25 @@
         ]),
         bossdesk: T('Un post-it: "Revisar KPIs de Q2". Al lado, una taza que dice: "En Dios confiamos; los demás, traigan datos".', 'A sticky note: "Review Q2 KPIs". Next to it, a mug that says: "In God we trust; all others bring data".'),
         sofa: T('Un sofá muy cómodo. Mejor no sentarse: hay planillas esperando.', 'A very comfy sofa. Better not sit down: spreadsheets are waiting.'),
+        fridge: pick([
+          T('Un cartel en la heladera: "Rotulá tu tupper. Un tupper sin nombre es un dato sin etiqueta: nadie sabe de quién es."', 'A sign on the fridge: "Label your lunchbox. A lunchbox with no name is data with no label: nobody knows whose it is."'),
+          T('Adentro hay un yogur vencido en 2019. Un caso claro de dato desactualizado.', 'There is a yogurt that expired in 2019. A clear case of stale data.'),
+        ]),
+        microwave: T('Hay una fila de 3 personas para el microondas. Leo dice que es el verdadero cuello de botella de la empresa.', 'There is a line of 3 people for the microwave. Leo says it is the real bottleneck of the company.'),
+        cooler: T('Te servís un vaso de agua. Hidratarse también es parte del análisis.', 'You drink a glass of water. Staying hydrated is part of the analysis too.'),
+        lunch: pick([
+          T('En la mesa alguien dejó una servilleta con un gráfico de torta dibujado. Tiene 11 porciones. Leo la miró y suspiró.', 'Someone left a napkin with a pie chart on the table. It has 11 slices. Leo looked at it and sighed.'),
+          T('Acá se almuerza a la una. Las mejores ideas del equipo salieron de esta mesa, no de las reuniones.', 'Lunch is at one o\'clock here. The team\'s best ideas came from this table, not from meetings.'),
+          T('Un sobre de azúcar dice: "Dato curioso: el promedio miente cuando hay atípicos".', 'A sugar packet says: "Fun fact: the average lies when there are outliers".'),
+        ]),
+        vending: T('La máquina de snacks tiene un cartel: "Se aceptan monedas, no excusas".', 'The snack machine has a sign: "Coins accepted, excuses are not".'),
+        meeting: T('La sala de reuniones. En la pantalla quedó una diapositiva: "¿Qué decisión querés tomar con este dato?"', 'The meeting area. A slide is still on the screen: "What decision do you want to make with this data?"'),
+        printer: T('La impresora está imprimiendo un dashboard de 40 páginas. Nadie lo va a leer.', 'The printer is printing a 40-page dashboard. Nobody will read it.'),
+        magazines: T('Revistas en la mesa ratona: «Datos Hoy», «El Analista Moderno» y un catálogo de plantas.', 'Magazines on the coffee table: "Data Today", "The Modern Analyst" and a plant catalog.'),
+        plant: pick([
+          T('Una planta muy bien cuidada. Tiene un cartelito: "Me riega Sofi los lunes".', 'A well-kept plant. It has a little tag: "Sofi waters me on Mondays".'),
+          T('La planta crece un poco cada semana. Como tu XP.', 'The plant grows a little each week. Like your XP.'),
+        ]),
         exit: T('¿Irte ya? Todavía hay datos que analizar. (Usá el menú ☰ para salir del juego.)', 'Leaving already? There is still data to analyze. (Use the ☰ menu to quit.)'),
       }[id];
       if (t) AA.Dialog.open([{ who: 'narrator', text: t }]);

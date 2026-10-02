@@ -8,8 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.4.0';
-  const START = { x: 11 * 32 + 16, y: 9 * 32 + 26 };
+  AA.VERSION = '0.4.1';
 
   const Game = {
     screen: 'title',
@@ -50,8 +49,8 @@
     // Se llama cuando una ranura quedó cargada (nueva o existente).
     startGame() {
       AA.Screens.clearCache();
-      AA.Office.player.x = START.x;
-      AA.Office.player.y = START.y;
+      AA.Office.player.x = AA.Office.START.x;
+      AA.Office.player.y = AA.Office.START.y;
       AA.Office.player.dir = 'up';
       this.enterOffice();
     },

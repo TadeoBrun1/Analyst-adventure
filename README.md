@@ -38,7 +38,9 @@ se guarda en el navegador (`localStorage`).
 - **Menú principal**: *Jugar* (3 ranuras de partida), *Opciones* (volumen de música, efectos y voces;
   ventana o pantalla completa; tamaño de ventana; idioma **español / inglés**) y *Salir*.
 - **Oficina**: caminá con `WASD` / flechas e interactuá con `E` / `Espacio` (o con clic). `Esc` abre la pausa.
-  - **Leo** (junto al café) explica cada nivel antes de empezarlo; lo que enseña queda en tu **📒 libreta**.
+  Tiene un **comedor** a la izquierda (cafetera, heladera, mesas), el área de escritorios con sala de reuniones,
+  la oficina de vidrio de Marta y un living con sofá; casi todo tiene algo para descubrir.
+  - **Leo** (en el comedor, junto al café) explica cada nivel antes de empezarlo; lo que enseña queda en tu **📒 libreta**.
   - Tu **computadora** → bandeja de entrada con las tareas de cada nivel y la **práctica libre**.
   - **Marta** (jefa) → historia y ascensos. **Pizarra** → plan de carrera.
 - **Progresión**: los niveles se agrupan en **etapas**, una por rango (Pasante → Junior → Semi-Senior →
@@ -80,6 +82,7 @@ ver [`docs/CARRERA.md`](docs/CARRERA.md).
 | **0.4 · Junior** | Niveles 7–11: **BUSCARV/BUSCARX** con varias hojas · **calidad de datos** (duplicados, vacíos, números como texto, reglas de validez) · **tablas dinámicas** · **SQL básico** · **reportes, pedidos puntuales y mantenimiento de dashboards**. | ✅ |
 | **0.4 · Semi-Senior** | Niveles 12–15: **estadística** (mediana, desvío, atípicos, correlación ≠ causalidad, descomponer una caída) · **dashboards desde cero** · **análisis de punta a punta + storytelling** · **revisar el trabajo de un junior** (planilla, SQL y dashboard). | ✅ |
 | **0.4 · Senior** | Niveles 16–19: **definir KPIs** (conversión, churn, OTIF, NPS, metas, indicadores adelantados) · **pruebas A/B** (lift, significancia, resguardo, segmentos, diseño) · **datos incompletos** (escenarios, sesgo, estimaciones) · **resúmenes ejecutivos**. | ✅ |
+| **0.4.1** | Oficina rediseñada: más grande y luminosa, con comedor, plantas, sala de reuniones y living. | ✅ |
 | **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
