@@ -208,7 +208,7 @@
               target: '.card.brief',
               pad: 0,
               title: T('📧 Sin paso a paso', '📧 No step-by-step'),
-              text: T('Las prácticas libres y los favores no te dicen <b>cómo</b> hacerlo: solo el pedido, como en un trabajo real. Leé qué necesita la persona y decidí vos qué funciones o herramientas usar.', 'Free practice and favors don\'t tell you <b>how</b> to do it: just the request, like a real job. Read what the person needs and decide which functions or tools to use.'),
+              text: T('Las prácticas libres y los favores de cosas que ya hiciste no te dicen <b>cómo</b> hacerlo: solo el pedido, como en un trabajo real. Leé qué necesita la persona y decidí vos qué funciones o herramientas usar. Si te trabás, siempre tenés <b>💡 Pista</b>.', 'Free practice and favors about things you already did don\'t tell you <b>how</b> to do it: just the request, like a real job. Read what the person needs and decide which functions or tools to use. If you get stuck, <b>💡 Hint</b> is always there.'),
             },
             {
               target: () => document.querySelector('.ss-status'),

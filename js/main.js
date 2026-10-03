@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.7.1';
+  AA.VERSION = '0.7.2';
 
   const Game = {
     screen: 'title',

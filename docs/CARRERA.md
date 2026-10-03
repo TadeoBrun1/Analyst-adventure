@@ -144,7 +144,8 @@ el salto a Excel, Google Sheets, Tableau, Power BI o una base de datos sea direc
   entregás**. Cada respuesta correcta suma un 5 % de la XP de la tarea (como máximo 15 %): no cambia cuánto hay
   que practicar para ascender.
 - **Favores de Nico (desde Semi-Senior):** limpieza de datos, informes y revisión del trabajo de un junior, con
-  plantillas de niveles cuya lección ya diste. Un favor cada 2 tareas entregadas, 90 XP cada uno.
+  plantillas de niveles cuya lección ya diste. Un favor cada 2 tareas entregadas, 90 XP cada uno. Si el favor pide algo que
+  todavía no hiciste en el modo historia viene **con guía**; si ya lo hiciste, solo el pedido (como en un trabajo real).
 
 ### Guiado al aprender, sin guía al practicar (v0.7)
 

@@ -49,8 +49,9 @@ se guarda en el navegador (`localStorage`).
   informe o revisar su planilla. Aparecen arriba de todo en la bandeja, en verde agua.
 - Los diálogos cambian con tu rango: te tratan como pasante, junior, semi-senior o senior.
 - **Tareas guiadas y sin guía**: las 5 tareas obligatorias de cada nivel explican paso a paso qué hacer. La
-  **práctica libre**, los favores y el ARCADE muestran **solo el pedido** (qué entregar y dónde, sin decir qué
-  función usar), como en un trabajo real. Para responder rápido: seleccioná un rango y mirá **recuento, suma,
+  **práctica libre** y el ARCADE muestran **solo el pedido** (qué entregar y dónde, sin decir qué
+  función usar), como en un trabajo real. Los **favores de Nico** vienen **con guía** si piden algo que todavía no
+  hiciste en el modo historia (📘 Con guía) y sin guía si ya lo sabés (📧 Sin guía); la 💡 Pista está siempre. Para responder rápido: seleccioná un rango y mirá **recuento, suma,
   promedio, mín y máx** abajo de la planilla (como en Excel), y con **📍** pasás el valor de una celda a la respuesta.
 - **Explorar tablas grandes** (como en Excel), en todas las planillas:
   - **🔽 Filtro** (<kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd>): ▾ en cada columna con condiciones (igual, mayor,
@@ -63,11 +64,13 @@ se guarda en el navegador (`localStorage`).
   - Nada de esto cambia los datos ni la corrección: las celdas amarillas siguen necesitando fórmulas. Leo lo
     explica («¿Cómo encuentro datos en una tabla grande?») y está en la libreta, pestaña **🔍 Explorar tablas**.
 - **🕹️ ARCADE**: la máquina del living (averiada mientras sos pasante, se arregla al llegar a Junior). Misiones
-  aleatorias una tras otra contra un reloj único: resolver suma tiempo y puntos; responder mal, entregar
-  incompleto o saltear resta tiempo. Cada 3 misiones llega una **oleada**: el reloj corre más rápido, las
+  aleatorias una tras otra contra un reloj único: cada pedido llega con su **plazo**, proporcional a lo que
+  lleva resolverlo, y lo que sobra queda de reserva (hasta 2:00); responder mal, entregar incompleto o saltear
+  resta tiempo. Cada 3 misiones llega una **oleada**: los plazos se achican, el reloj corre más rápido, las
   penalizaciones crecen, las misiones se ponen más difíciles y la música se acelera. Se elige el rango
   (Junior, Semi-Senior, Senior) hasta el alcanzado en el modo historia, y se guardan las 5 mejores partidas de
-  cada rango (puntos, misiones, oleada y tiempo jugado).
+  cada rango: gana quien resuelve **más misiones** y, a igual cantidad, quien lo hizo en **menos tiempo total**.
+  El balance está simulado con jugadores de distinto nivel: ver [docs/ARCADE.md](docs/ARCADE.md).
 - **Partida nueva**: elegís tu nombre y armás tu personaje: hombre o mujer, tono de piel, peinado y color de
   pelo, barba y su color, anteojos y ropa (remera, camisa, buzo o saco; pantalón o pollera). Se puede cambiar
   después desde la pausa (*👕 Cambiar aspecto*).
@@ -132,6 +135,7 @@ ver [`docs/CARRERA.md`](docs/CARRERA.md).
 | **0.6** | Bienvenida y guías paso a paso animadas, eventos especiales de presentación con preguntas sobre tus datos, favores de Nico desde Semi-Senior y diálogos según el rango. | ✅ |
 | **0.7** | Práctica, favores y ARCADE sin paso a paso (solo el pedido), barra de estado de la planilla y 📍 para responder con una celda, y **modo ARCADE** por oleadas con música propia y récords por rango. | ✅ |
 | **0.7.1** | Herramientas para explorar tablas grandes: **filtro**, **buscar**, **pintar** filas/celdas con conteo por color y **resaltar celdas** (formato condicional). | ✅ |
+| **0.7.2** | ARCADE rebalanceado (plazo por pedido según su tamaño, reserva con tope, mismos resultados en los tres rangos), ranking por misiones y tiempo total, favores de Nico con guía cuando piden algo nuevo y simulador `npm run balance`. | ✅ |
 | **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
@@ -144,6 +148,7 @@ electron/main.js      proceso principal de escritorio: ventana, guardado en arch
 electron/preload.js   puente seguro entre el juego y el sistema
 docs/STEAM.md         guía para publicar en Steam
 docs/CARRERA.md       análisis: qué hace cada rango en la vida real vs. los niveles del juego
+docs/ARCADE.md        reglas y balance del modo ARCADE (con la simulación por rango y tipo de jugador)
 .github/workflows/    compilación automática de ejecutables (Windows, Linux, macOS)
 js/
   engine/formula.js       tokenizer, parser, evaluador y ~60 funciones (ES/EN)
@@ -186,6 +191,7 @@ tests/
   missions.test.js      resuelve las 95 plantillas (tamaños, semillas, idiomas) y prueba errores típicos
   tools.test.js         tabla dinámica, SQL (resultados y mensajes de error), dashboards e informes
   chart.test.js         modelo de gráficos (agregaciones, color, filtros, Mostrarme)
+  arcade-balance.js     simulador de balance del ARCADE (npm run balance), no es parte de npm test
   gridtools.test.js     condiciones del filtro y de «resaltar celdas» (números, texto, vacías, los N mayores)
   progression.test.js   economía de XP: cada ascenso pide la etapa completa + 3 o 4 prácticas; repetir no permite saltear rangos
 ```
@@ -194,6 +200,7 @@ tests/
 
 ```bash
 npm test
+npm run balance   # simula partidas de ARCADE por rango y tipo de jugador
 ```
 
 ## Agregar una misión

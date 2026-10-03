@@ -534,6 +534,16 @@
       const f = p && FAVORS.find((x) => x.template === p.template);
       return f ? f.kind : 'clean';
     },
+    // ¿El jugador ya sabe hacer lo que pide el favor? Sí, si ya entregó la tarea obligatoria que usa la
+    // misma plantilla (o completó el nivel, si la plantilla no es de una tarea obligatoria).
+    favorKnown(id) {
+      const p = this.parseId(id);
+      const mod = p && moduleById(p.mod);
+      if (!mod) return true;
+      const k = mod.templates.indexOf(p.template);
+      if (k >= 0 && k < REQUIRED) return ST().isCompleted(storyId(mod, k));
+      return this.isModuleComplete(mod);
+    },
     favorText(kind) {
       return FAVOR_TEXT[kind] || FAVOR_TEXT.clean;
     },

@@ -114,5 +114,36 @@ St.data.xp = St.RANKS[1].xp;
 St.data.rankReached = 1;
 ok(A.pool(1).every((m) => m.tier === 0), 'Junior sin lecciones nuevas: solo niveles ya aprendidos');
 
+// Plazos: cada pedido trae tiempo según su tamaño, y se achica con las oleadas.
+setRank(3);
+A.run = { rank: 3, wave: 1, recent: [] };
+for (let i = 0; i < 20; i++) {
+  const m = A.newMission();
+  ok(m.effort > 30 && m.effort < 1500, `esfuerzo razonable (${m.effort}s) en ${m.id}`);
+}
+for (const e of [120, 300, 600]) {
+  for (let w = 1; w < 10; w++) ok(A.budgetFor(e, w + 1) <= A.budgetFor(e, w), `el plazo no crece con la oleada (${e}s, oleada ${w})`);
+  ok(A.budgetFor(e, 1) > e, `en la oleada 1 el plazo alcanza para un jugador promedio (${e}s)`);
+  ok(A.budgetFor(e, 1) > A.budgetFor(e / 2, 1), 'un pedido más largo trae más plazo');
+}
+ok(A.speed(1) === 1 && A.speed(5) > A.speed(2), 'el reloj se acelera con las oleadas');
+
+// Ranking: más misiones primero; a igual cantidad, menos tiempo total.
+const runs = [
+  { missions: 8, secs: 900, score: 100 },
+  { missions: 10, secs: 1500, score: 50 },
+  { missions: 8, secs: 700, score: 10 },
+];
+const sorted = runs.slice().sort(A.byRank);
+ok(sorted[0] === runs[1] && sorted[1] === runs[2] && sorted[2] === runs[0], 'ranking por misiones y luego por tiempo total');
+
+// Favores de Nico: con guía si piden algo que todavía no hiciste en el modo historia.
+St.newGame(1, 'Favor');
+const fav = 'f:mod8:m8_duplicates:123';
+const k = Cu.moduleById('mod8').templates.indexOf('m8_duplicates');
+ok(!Cu.favorKnown(fav), 'favor de algo nunca hecho: con guía');
+St.data.completed[`mod8-${k + 1}`] = { xp: 1, hints: 0, at: Date.now() };
+ok(Cu.favorKnown(fav), 'favor de algo ya hecho: sin guía');
+
 console.log(`${passed} OK, ${failed} fallidos`);
 process.exit(failed ? 1 : 0);

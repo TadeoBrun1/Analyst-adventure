@@ -1,14 +1,16 @@
 /*
  * Analyst Adventure — Modo ARCADE: misiones una tras otra contra reloj.
  *
- * - Reloj único (supervivencia): resolver una misión suma segundos y puntos; responder mal,
- *   entregar incompleto o saltear una misión resta segundos.
- * - Cada 3 misiones empieza una oleada nueva: el reloj corre más rápido, las penalizaciones
- *   crecen, las misiones son más difíciles (y con tablas más grandes) y la música se acelera.
+ * - Reloj único (supervivencia): cada pedido llega con su plazo, proporcional a lo que lleva
+ *   resolverlo (un pedido de Senior trae más tiempo que uno de Junior). Lo que sobra queda de
+ *   reserva (con tope). Responder mal, entregar incompleto o saltear resta segundos.
+ * - Cada 3 misiones empieza una oleada nueva: los plazos se achican, el reloj corre más rápido,
+ *   las penalizaciones crecen, las misiones son más difíciles y la música se acelera.
+ * - Balance simulado con jugadores de distinto nivel: ver docs/ARCADE.md.
  * - Se elige el rango (Junior, Semi-Senior, Senior) según lo alcanzado en el modo historia.
  *   Cada rango usa las herramientas de su etapa (solo las que ya te enseñó Leo).
  * - Las misiones son aleatorias (plantilla, datos y orden) y no tienen guía: solo el pedido.
- * - Se guardan las mejores puntuaciones de cada rango en la partida.
+ * - Se guardan las 5 mejores partidas de cada rango: más misiones primero y, a igual cantidad, menos tiempo total.
  */
 (function () {
   'use strict';
@@ -18,18 +20,39 @@
   const Cu = () => AA.Curriculum;
   const ST = () => AA.State;
 
-  const START_TIME = 240; // segundos
+  const START_TIME = 60; // reserva inicial (segundos), además del plazo del primer pedido
+  const RESERVE_CAP = 120; // tope de la reserva que se arrastra al pedido siguiente
   const PER_WAVE = 3; // misiones por oleada
-  const gain = (w) => Math.max(40, 85 - (w - 1) * 9); // segundos que suma resolver una misión
-  const speed = (w) => 1 + 0.15 * (w - 1); // cuánto más rápido corre el reloj
+  const speed = (w) => 1 + 0.1 * (w - 1); // cuánto más rápido corre el reloj
   const PENALTY = { wrong: 12, incomplete: 20, skip: 45 };
   const penaltyOf = (kind, w) => Math.round(PENALTY[kind] * (1 + 0.25 * (w - 1)));
+  const TIER_WORK = [1, 1.15, 1.3, 1.45];
+
+  // Segundos que le lleva a un jugador promedio resolver el pedido (lectura + cada entregable + preguntas).
+  function effort(m) {
+    const W = AA.Workspace;
+    const tool = W.views(m).some((v) => v.id !== 'sheets');
+    let rows = 0;
+    for (const sh of W.buildBook(m).sheets) rows = Math.max(rows, sh.rows);
+    const mod = Cu().moduleById(m.module);
+    const tier = TIER_WORK[(mod && mod.tier) || 0] || 1;
+    const q = m.objectives.filter((o) => o.answer).length;
+    const ch = m.objectives.filter((o) => o.choices).length;
+    const work = m.objectives.length - q - ch;
+    return Math.round((tool ? 40 : 30) + work * (tool ? 55 : 40) * tier * (1 + rows / 400) + q * 25 * (1 + rows / 150) + ch * 20);
+  }
+  // Plazo que trae un pedido: generoso al principio y cada vez más justo.
+  const budgetFor = (eff, w) => Math.max(45, Math.round(eff * Math.max(0.35, 1.5 - 0.18 * (w - 1))));
 
   const RANK_INFO = {
     1: { es: 'Fórmulas, funciones, SI, limpieza y gráficos, más las herramientas de Junior que ya aprendiste: BUSCARV, calidad de datos, tablas dinámicas, SQL y dashboards.', en: 'Formulas, functions, IF, cleaning and charts, plus the Junior tools you already learned: VLOOKUP, data quality, pivot tables, SQL and dashboards.' },
     2: { es: 'Lo de Junior más estadística, dashboards desde cero, análisis de punta a punta y revisión de trabajo ajeno.', en: 'The Junior toolkit plus statistics, dashboards from scratch, end-to-end analyses and reviewing others\' work.' },
     3: { es: 'Lo de Semi-Senior más KPIs, pruebas A/B, datos incompletos y resúmenes ejecutivos.', en: 'The Mid-level toolkit plus KPIs, A/B tests, incomplete data and executive summaries.' },
   };
+
+  // Ranking: más misiones resueltas; a igual cantidad, el que las hizo en menos tiempo total.
+  const byRank = (a, b) => b.missions - a.missions || a.secs - b.secs || b.score - a.score;
+  const paceOf = (e) => (e.secs > 0 ? (e.missions / (e.secs / 60)).toFixed(2) : '0.00');
 
   const fmtTime = (secs) => {
     const s = Math.max(0, Math.ceil(secs));
@@ -45,7 +68,7 @@
     },
     scores(r) {
       const a = (ST().data && ST().data.arcade) || {};
-      return a[r] || [];
+      return (a[r] || []).slice().sort(byRank);
     },
 
     // Niveles que entran en un rango: la etapa anterior y la propia (solo lo que ya te enseñaron).
@@ -78,6 +101,7 @@
       mission.kind = 'arcade';
       mission.module = pick.m.id;
       mission.xp = 0;
+      mission.effort = effort(mission);
       return mission;
     },
 
@@ -94,7 +118,7 @@
           <button class="arc-rank ${ok ? '' : 'locked'}" data-rank="${r}" data-nav ${ok ? '' : 'disabled'}>
             <div class="arc-rank-name">${ok ? '🕹️' : '🔒'} ${esc(AA.L(rank.name))}</div>
             <div class="arc-rank-desc">${ok ? AA.L(RANK_INFO[r]) : T(`Llegá a <b>${esc(rank.name.es)}</b> en el modo historia para desbloquearlo.`, `Reach <b>${esc(rank.name.en)}</b> in story mode to unlock it.`)}</div>
-            <div class="arc-rank-best">${best ? `🏆 ${best.score.toLocaleString('en-US')} pts · ${best.missions} ${T('misiones', 'missions')} · ${fmtTime(best.secs)}` : ok ? T('Sin récord todavía', 'No record yet') : ''}</div>
+            <div class="arc-rank-best">${best ? `🏆 ${best.missions} ${T('misiones en', 'missions in')} ${fmtTime(best.secs)} · ${T('oleada', 'wave')} ${best.wave}` : ok ? T('Sin récord todavía', 'No record yet') : ''}</div>
           </button>`;
       };
       AA.Audio.play('unlock');
@@ -104,8 +128,9 @@
         className: 'arcade-menu',
         html: `
           <div class="arc-rules">
-            <div>⏱ ${T(`Arrancás con <b>${fmtTime(START_TIME)}</b>. Cada misión resuelta suma tiempo y puntos.`, `You start with <b>${fmtTime(START_TIME)}</b>. Every solved mission adds time and points.`)}</div>
-            <div>🌊 ${T(`Cada <b>${PER_WAVE} misiones</b> llega una oleada nueva: el reloj corre más rápido, las penalizaciones crecen y las misiones se ponen más difíciles.`, `Every <b>${PER_WAVE} missions</b> a new wave starts: the clock runs faster, penalties grow and missions get harder.`)}</div>
+            <div>⏱ ${T(`Cada pedido llega con su <b>plazo</b>: más tiempo para los pedidos más largos. Lo que te sobra queda de reserva (hasta <b>${fmtTime(RESERVE_CAP)}</b>).`, `Every request comes with its own <b>deadline</b>: longer requests bring more time. What you save stays in reserve (up to <b>${fmtTime(RESERVE_CAP)}</b>).`)}</div>
+            <div>🌊 ${T(`Cada <b>${PER_WAVE} misiones</b> llega una oleada nueva: los plazos se achican, el reloj corre más rápido, las penalizaciones crecen y las misiones se ponen más difíciles.`, `Every <b>${PER_WAVE} missions</b> a new wave starts: deadlines shrink, the clock runs faster, penalties grow and missions get harder.`)}</div>
+            <div>🏆 ${T('Gana quien resuelve <b>más misiones</b>; a igual cantidad, quien lo hizo en <b>menos tiempo total</b>.', 'Most <b>missions solved</b> wins; on a tie, the shorter <b>total time</b> wins.')}</div>
             <div>⚠️ ${T('Responder mal, entregar incompleto o saltear una misión <b>resta tiempo</b>.', 'Wrong answers, incomplete submissions or skipping a mission <b>cost time</b>.')}</div>
             <div>📧 ${T('Sin guía: solo el pedido, como en un trabajo real. Elegí vos qué funciones usar. Tip: seleccioná un rango y mirá la suma y el recuento abajo de la planilla; 📍 pasa el valor de una celda a la respuesta.', 'No guidance: just the request, like a real job. You choose which functions to use. Tip: select a range and check the sum and count below the sheet; 📍 copies a cell\'s value into the answer.')}</div>
           </div>
@@ -152,6 +177,11 @@
       const m = this.newMission();
       r.mission = m;
       r.missionStart = r.played;
+      // Llega el pedido con su plazo; de lo anterior se arrastra como mucho RESERVE_CAP.
+      r.budget = budgetFor(m.effort, r.wave);
+      r.clock = Math.min(r.clock, RESERVE_CAP) + r.budget;
+      r.clockAtLoad = r.clock;
+      setTimeout(() => this.float(`⏱ +${fmtTime(r.budget)}`, 'good'), 150);
       if (AA.Screens.MissionScreen.mission) AA.Screens.MissionScreen.leave(() => {});
       AA.Screens.MissionScreen.open(m.id, { mission: m, arcade: true });
       this.renderHud();
@@ -188,6 +218,7 @@
           <div class="arc-stat"><span>${T('Oleada', 'Wave')}</span><b data-h="wave"></b></div>
           <div class="arc-stat"><span>${T('Puntos', 'Points')}</span><b data-h="score"></b></div>
           <div class="arc-stat"><span>${T('Misiones', 'Missions')}</span><b data-h="missions"></b></div>
+          <div class="arc-stat"><span>${T('Plazo del pedido', 'Request deadline')}</span><b data-h="budget"></b></div>
           <div class="arc-stat arc-speed"><span>${T('Velocidad', 'Speed')}</span><b data-h="speed"></b></div>
           <div class="arc-mission" data-h="title"></div>`;
       }
@@ -200,6 +231,7 @@
       set('wave', r.wave);
       set('score', r.score.toLocaleString('en-US'));
       set('missions', r.missions);
+      set('budget', r.budget ? fmtTime(r.budget) : '—');
       set('speed', '×' + speed(r.wave).toFixed(2));
       set('title', r.mission ? r.mission.subject : '');
       const cost = document.querySelector('[data-el="skipcost"]');
@@ -245,15 +277,14 @@
         this.penalty('incomplete');
         return;
       }
-      const spent = r.played - r.missionStart;
-      const pts = 100 * r.wave + Math.max(0, Math.round((150 - spent) * 2));
-      const g = gain(r.wave);
+      // Puntos: base por oleada + bonus por el plazo que sobró.
+      const left = Math.max(0, r.budget - (r.clockAtLoad - r.clock));
+      const pts = 100 * r.wave + Math.round(left * 2);
       r.score += pts;
-      r.clock += g;
       r.missions++;
       AA.Audio.play('complete');
       AA.UI.confetti(50);
-      this.float(`+${pts} pts · +${g}s`, 'good');
+      this.float(`+${pts} pts`, 'good');
       if (r.missions % PER_WAVE === 0) {
         r.wave++;
         AA.Audio.setTempoFactor(1 + 0.08 * (r.wave - 1));
@@ -267,6 +298,8 @@
       const r = this.run;
       if (!r || r.banner) return;
       r.skipped++;
+      // Saltear devuelve lo que quedaba del plazo de este pedido (si no, saltear daría tiempo gratis).
+      r.clock -= Math.max(0, r.budget - (r.clockAtLoad - r.clock));
       this.penalty('skip');
       if (this.run) this.loadMission();
     },
@@ -323,16 +356,16 @@
       const st = ST();
       const entry = { score: r.score, missions: r.missions, wave: r.wave, secs: Math.round(r.played), at: Date.now() };
       st.data.arcade = st.data.arcade || {};
-      const list = (st.data.arcade[r.rank] || []).concat([entry]).sort((a, b) => b.score - a.score || b.missions - a.missions).slice(0, 5);
+      const list = (st.data.arcade[r.rank] || []).concat([entry]).sort(byRank).slice(0, 5);
       st.data.arcade[r.rank] = list;
       st.save();
-      const record = list[0] === entry && r.score > 0;
-      const pace = r.played > 0 ? (r.missions / (r.played / 60)).toFixed(2) : '0';
+      const record = list[0] === entry && r.missions > 0;
+      const pace = paceOf(entry);
       AA.Audio.setTempoFactor(1);
       AA.Audio.play(record ? 'fanfare' : 'back');
       if (record) AA.UI.confetti(220);
       const rows = list
-        .map((e, i) => `<tr class="${e === entry ? 'me' : ''}"><td>${i + 1}</td><td><b>${e.score.toLocaleString('en-US')}</b></td><td>${e.missions}</td><td>${e.wave}</td><td>${fmtTime(e.secs)}</td></tr>`)
+        .map((e, i) => `<tr class="${e === entry ? 'me' : ''}"><td>${i + 1}</td><td><b>${e.missions}</b></td><td>${fmtTime(e.secs)}</td><td>${paceOf(e)}</td><td>${e.wave}</td><td>${e.score.toLocaleString('en-US')}</td></tr>`)
         .join('');
       AA.UI.modal({
         title: reason === 'time' ? `⏰ ${T('¡Se acabó el tiempo!', "Time's up!")}` : `🏁 ${T('Partida terminada', 'Run over')}`,
@@ -341,14 +374,15 @@
         html: `
           ${record ? `<div class="arc-record">🏆 ${T('¡NUEVO RÉCORD!', 'NEW RECORD!')}</div>` : ''}
           <div class="arc-final">
-            <div><span>${T('Puntos', 'Points')}</span><b>${r.score.toLocaleString('en-US')}</b></div>
             <div><span>${T('Misiones', 'Missions')}</span><b>${r.missions}</b></div>
+            <div><span>${T('Tiempo total', 'Total time')}</span><b>${fmtTime(entry.secs)}</b></div>
             <div><span>${T('Oleada', 'Wave')}</span><b>${r.wave}</b></div>
-            <div><span>${T('Tiempo jugado', 'Time played')}</span><b>${fmtTime(entry.secs)}</b></div>
+            <div><span>${T('Puntos', 'Points')}</span><b>${r.score.toLocaleString('en-US')}</b></div>
           </div>
           <p class="muted">${T(`Ritmo: <b>${pace}</b> misiones por minuto · ${r.errors} penalizaciones · ${r.skipped} salteadas.`, `Pace: <b>${pace}</b> missions per minute · ${r.errors} penalties · ${r.skipped} skipped.`)}</p>
           <h3>${T('Mejores partidas', 'Best runs')} · ${esc(AA.L(st.RANKS[r.rank].name))}</h3>
-          <table class="arc-table"><tr><th>#</th><th>${T('Puntos', 'Points')}</th><th>${T('Misiones', 'Missions')}</th><th>${T('Oleada', 'Wave')}</th><th>${T('Tiempo', 'Time')}</th></tr>${rows}</table>`,
+          <p class="muted arc-rank-rule">${T('Gana quien resuelve más misiones; a igual cantidad, quien lo hizo en menos tiempo total.', 'Most missions solved wins; on a tie, the shorter total time wins.')}</p>
+          <table class="arc-table"><tr><th>#</th><th>${T('Misiones', 'Missions')}</th><th>${T('Tiempo total', 'Total time')}</th><th>${T('Ritmo', 'Pace')}</th><th>${T('Oleada', 'Wave')}</th><th>${T('Puntos', 'Points')}</th></tr>${rows}</table>`,
         buttons: [
           { label: T('Volver a la oficina', 'Back to the office'), action: () => this.exit() },
           { label: `🔁 ${T('Jugar de nuevo', 'Play again')}`, primary: true, action: () => this.start(r.rank) },
@@ -365,5 +399,6 @@
     },
   };
 
+  Object.assign(Arcade, { effort, budgetFor, byRank, speed, penaltyOf, START_TIME, RESERVE_CAP, PER_WAVE });
   AA.Arcade = Arcade;
 })();

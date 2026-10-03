@@ -121,13 +121,17 @@
       if (!id) return '';
       const m = getMission(id, (st.data.progress[id] && st.data.progress[id].lang) || AA.lang);
       const status = st.data.progress[id] ? `<span class="chip prog">✎ ${T('En progreso', 'In progress')}</span>` : `<span class="chip favor">🤝 ${T('Favor', 'Favor')}</span>`;
+      // Con guía si pide algo que todavía no hiciste; si ya lo sabés, solo el pedido (como en un trabajo real).
+      const guide = Cu().favorKnown(id)
+        ? `<span class="chip" title="${T('Ya hiciste este tipo de tarea: solo el pedido, sin paso a paso.', 'You already did this kind of task: just the request, no step-by-step.')}">📧 ${T('Sin guía', 'No guide')}</span>`
+        : `<span class="chip" title="${T('Es algo que todavía no hiciste: viene con los pasos explicados.', 'Something you have not done yet: it comes with the steps explained.')}">📘 ${T('Con guía', 'Guided')}</span>`;
       return `
         <div class="mail-group favor-group">
           <div class="mail-group-head">🤝 ${T('Favores de Nico', 'Favors for Nico')}<span>+${m.xp} XP</span></div>
           <button class="mail-item favor ${this.selected === id ? 'active' : ''}" data-sel="${id}">
             <div class="mail-from">Nico Ferreyra ${AA.UI.deptBadge('data')}</div>
             <div class="mail-subject">${esc(m.subject)}</div>
-            <div class="mail-meta">${status}<span class="xp">+${m.xp} XP</span></div>
+            <div class="mail-meta">${status}${guide}<span class="xp">+${m.xp} XP</span></div>
           </button>
         </div>`;
     },
@@ -338,7 +342,8 @@
       this.lang = lang;
       this.arcade = !!opts.arcade;
       // Las tareas obligatorias explican paso a paso; el resto muestra solo el pedido (como en un trabajo real).
-      this.guided = !this.arcade && mission.kind === 'story';
+      // Los favores de Nico son guiados solo si piden algo que todavía no hiciste en el modo historia.
+      this.guided = !this.arcade && (mission.kind === 'story' || (mission.kind === 'favor' && !Cu().favorKnown(mission.id)));
       this.defs = W().sheetDefs(mission);
       this.book = W().buildBook(mission);
       this.base = this.book.sheets.map((sh) => new Map(sh.serialize().map(([c, r, i]) => [c + ',' + r, i])));
@@ -379,7 +384,7 @@
       const topButtons = this.arcade
         ? `<div class="arc-hud" data-el="arc-hud"></div>
            <div class="spacer"></div>
-           <button class="btn" data-act="skip">⏭ ${T('Saltear', 'Skip')} <span class="muted" data-el="skipcost"></span></button>
+           <button class="btn" data-act="skip" title="${T('Perdés lo que queda del plazo de este pedido y una penalización', 'You lose what is left of this request\'s deadline plus a penalty')}">⏭ ${T('Saltear', 'Skip')} <span class="muted" data-el="skipcost"></span></button>
            <button class="btn btn-ghost" data-act="quit">✖ ${T('Abandonar', 'Quit')}</button>
            <button class="btn btn-primary" data-act="submit">📤 ${T('Entregar', 'Submit')}</button>`
         : `<button class="btn btn-ghost" data-act="office">← ${T('Oficina', 'Office')}</button>
