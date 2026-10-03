@@ -103,7 +103,21 @@
     h: 1,
     label: { es: '🎁 Cofre de recompensas', en: '🎁 Rewards chest' },
   });
+  SPOTS.push(
+    { id: 'turntable', x: 26, y: 7, w: 1, h: 1, label: { es: '🎵 Tocadiscos', en: '🎵 Record player' }, when: () => decorOn('turntable') },
+    { id: 'dancebtn', x: 19, y: 8, w: 1, h: 1, label: { es: '🕺 ¡A bailar! (B)', en: '🕺 Dance! (B)' }, when: () => decorOn('dancebtn') }
+  );
   const START = { x: 14 * T + 16, y: 8 * T + 26 };
+  const DANCE_SECS = 6.4;
+  // Comentarios de quienes te ven bailar (se elige uno al azar).
+  const DANCE_LINES = [
+    { es: '<b>Leo</b>: ¡Esos pasos no los enseñan en la facultad!', en: "<b>Leo</b>: They don't teach those moves in college!" },
+    { es: '<b>Camila</b>: ¡Trabajando y bailando se saca este país adelante!', en: '<b>Camila</b>: Working and dancing, that\'s how we move forward!' },
+    { es: '<b>Tadeo</b>: No tengo idea de qué estás haciendo, ¡pero algo estás haciendo!', en: "<b>Tadeo</b>: I have no idea what you're doing, but you're doing something!" },
+    { es: '<b>Jean</b>: Ese giro tiene la solidez del concreto. Respeto.', en: '<b>Jean</b>: That spin has the solidity of concrete. Respect.' },
+    { es: '<b>Juan Roberto</b>: «Bailad, bailad, que la vida es breve»… o algo así.', en: '<b>Juan Roberto</b>: "Dance, dance, for life is brief"… or something like that.' },
+    { es: '<b>Marta</b> (desde su oficina): Muy lindo, ¿y los informes? 😄', en: '<b>Marta</b> (from her office): Very nice, and the reports? 😄' },
+  ];
   const decorOn = (id) => !!(AA.Decor && AA.Decor.on(id));
   // Mascotas (recompensas del ARCADE): pasean por la oficina y se las puede acariciar.
   const PETS = {
@@ -305,6 +319,7 @@
         if (this.keys.has('arrowdown') || this.keys.has('s')) dy += 1;
       }
       p.moving = dx !== 0 || dy !== 0;
+      if (p.dance && (p.moving || this.t - p.dance.t0 > DANCE_SECS)) this.stopDance();
       if (p.moving && p.sitting) p.sitting = false; // te levantás al caminar
       if (p.moving) {
         const len = Math.hypot(dx, dy);
@@ -337,6 +352,98 @@
         }
       }
       this.near = best;
+    },
+
+    // --- Baile (recompensa «Botón de baile»): breakdance con luces de colores.
+    dance() {
+      const p = this.player;
+      if (!decorOn('dancebtn') || this.paused()) return;
+      if (p.dance) return;
+      p.sitting = false;
+      p.dance = { t0: this.t };
+      this.keys.clear();
+      AA.Audio.play('select');
+      AA.Audio.breakbeat(4);
+      this.prevDuck = AA.Audio.duck;
+      AA.Audio.setDuck(0.25);
+      // Si hay alguien cerca, comenta.
+      const near = this.activeNpcs().some((n) => Math.hypot(n.x - p.x, n.y - p.y) < 260);
+      if (near || Math.random() < 0.5) setTimeout(() => this.player.dance && AA.UI.toast('🕺 ' + AA.L(DANCE_LINES[Math.floor(Math.random() * DANCE_LINES.length)]), 'info'), 1800);
+      // los gatos y perros cercanos se acercan a mirar (y se ponen contentos)
+      for (const pet of this.pets || []) if (Math.hypot(pet.x - p.x, pet.y - p.y) < 160) {
+        pet.happy = 3;
+        pet.state = 'idle';
+        pet.path = [];
+        pet.face = p.x < pet.x ? 'left' : 'right';
+      }
+    },
+    stopDance() {
+      if (!this.player.dance) return;
+      this.player.dance = null;
+      AA.Audio.setDuck(this.prevDuck === undefined ? 1 : this.prevDuck);
+    },
+    drawDancer(p, ch) {
+      const ctx = this.ctx;
+      const dt = this.t - p.dance.t0;
+      // luces de discoteca en el piso
+      const cols = ['rgba(255,79,216,0.28)', 'rgba(79,209,255,0.28)', 'rgba(255,210,63,0.28)', 'rgba(124,242,154,0.28)'];
+      for (let k = 0; k < 6; k++) {
+        const a = dt * 2.2 + (k * Math.PI) / 3;
+        ctx.fillStyle = cols[k % cols.length];
+        ctx.beginPath();
+        ctx.ellipse(p.x + Math.cos(a) * 34, p.y + Math.sin(a) * 14 - 2, 9, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // bola disco que baja sobre la cabeza
+      const by = p.y - 70 + Math.min(1, dt * 2) * 8;
+      ctx.strokeStyle = '#9aa1b5';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(p.x, by - 30);
+      ctx.lineTo(p.x, by - 6);
+      ctx.stroke();
+      ctx.fillStyle = '#c9ced6';
+      ctx.beginPath();
+      ctx.arc(p.x, by, 6, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = (i + Math.floor(dt * 8)) % 2 ? '#ffffff' : '#8f96a3';
+        ctx.fillRect(p.x - 5 + (i % 3) * 3.5, by - 4 + Math.floor(i / 3) * 4, 2.5, 2.5);
+      }
+      // pasos: toprock → giros → headspin → molino con pose final
+      const phase = Math.floor(dt / 1.6) % 4;
+      const lt = dt % 1.6;
+      const turn = ['down', 'right', 'up', 'left'];
+      const cx = p.x;
+      const cy = p.y - 18;
+      ctx.save();
+      if (phase === 0) {
+        const step = Math.floor(lt / 0.2);
+        const bounce = Math.abs(Math.sin(lt * 15)) * 3;
+        ctx.translate(0, -bounce);
+        AA.Sprites.drawChar(ctx, p.x + (step % 2 ? 2 : -2), p.y, ch, step % 2 ? 'left' : 'right', 1 + (step % 2));
+      } else if (phase === 1) {
+        AA.Sprites.drawChar(ctx, p.x, p.y, ch, turn[Math.floor(lt / 0.08) % 4], 0);
+      } else if (phase === 2) {
+        ctx.translate(cx, cy);
+        ctx.rotate(Math.PI + Math.sin(lt * 6) * 0.08);
+        ctx.translate(-cx, -cy);
+        AA.Sprites.drawChar(ctx, p.x, p.y - 6, ch, turn[Math.floor(lt / 0.1) % 4], 0);
+      } else {
+        const ang = lt < 1.2 ? lt * 9 : -Math.PI / 2;
+        ctx.translate(cx, cy + 8);
+        ctx.rotate(ang);
+        ctx.translate(-cx, -(cy + 8));
+        AA.Sprites.drawChar(ctx, p.x, p.y, ch, lt < 1.2 ? turn[Math.floor(lt / 0.1) % 4] : 'right', lt < 1.2 ? 0 : 2);
+      }
+      ctx.restore();
+      // notas musicales
+      ctx.font = 'bold 9px "Inter", sans-serif';
+      for (let k = 0; k < 3; k++) {
+        const ph = (dt * 0.7 + k / 3) % 1;
+        ctx.fillStyle = `rgba(${['255,79,216', '79,209,255', '255,210,63'][k]},${1 - ph})`;
+        ctx.fillText(k % 2 ? '♫' : '♪', p.x - 16 + k * 14 + Math.sin(ph * 7) * 3, p.y - 40 - ph * 22);
+      }
     },
 
     // --- Mascotas (gato y perro): pasean, se duermen la siesta y se dejan acariciar.
@@ -661,10 +768,15 @@
       // Personajes ordenados por profundidad.
       const actors = this.activeNpcs().map((n) => ({ y: n.y, draw: () => this.drawNpc(n) }));
       if (D) {
-        for (const id of ['ficus', 'aquarium', 'turntable']) {
+        const vinyl = D.playingVinyl();
+        const opts = {
+          turntable: { playing: !!vinyl, color: vinyl ? AA.Audio.VINYLS[vinyl].color : null },
+          dancebtn: { pressed: !!(this.player.dance && this.t - this.player.dance.t0 < 0.3) },
+        };
+        for (const id of ['ficus', 'aquarium', 'turntable', 'dancebtn']) {
           if (!decorOn(id)) continue;
           const [tx, ty] = D.byId(id).tile;
-          actors.push({ y: ty * T + 27, draw: () => D.paintAt(ctx, id, tx * T, ty * T, this.t) });
+          actors.push({ y: ty * T + 27, draw: () => D.paintAt(ctx, id, tx * T, ty * T, this.t, opts[id]) });
         }
         for (const pet of this.pets || []) actors.push({ y: pet.y, draw: () => this.drawPet(pet) });
       }
@@ -681,6 +793,7 @@
         draw: () => {
           const ch = AA.State.CHARACTERS.player;
           if (p.sitting) this.drawChair(p.x, p.y, () => AA.Sprites.drawChar(ctx, p.x, p.y, ch, 'up', 0, { sitting: true }), true);
+          else if (p.dance) this.drawDancer(p, ch);
           else AA.Sprites.drawChar(ctx, p.x, p.y, ch, p.dir, p.frame);
         },
       });

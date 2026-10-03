@@ -74,10 +74,99 @@
     [83, -1, 86, -1, 83, 81, 79, 0],
   ];
 
+  // Vinilos del tocadiscos (recompensa del ARCADE): cambian la música de la oficina.
+  // prog: acordes por compás { n: notas, b: bajo } · mel: corcheas (nota MIDI, -1 sostener, 0 silencio).
+  const VINYLS = {
+    bossa: {
+      name: { es: 'Bossa de los datos', en: 'Data Bossa' },
+      style: 'bossa',
+      tempo: 128,
+      bright: 3800,
+      color: '#f4a261',
+      prog: [
+        { n: [62, 65, 69, 72], b: 38 },
+        { n: [59, 64, 65, 69], b: 43 },
+        { n: [60, 64, 67, 71], b: 36 },
+        { n: [60, 64, 67, 71], b: 36 },
+        { n: [62, 65, 69, 72], b: 38 },
+        { n: [59, 64, 65, 69], b: 43 },
+        { n: [60, 64, 67, 71], b: 36 },
+        { n: [61, 64, 67, 70], b: 45 },
+      ],
+      mel: [
+        [74, -1, 72, 69, -1, 0, 72, 74],
+        [76, -1, 74, -1, 71, -1, 0, 0],
+        [72, -1, 76, 79, -1, 76, 74, -1],
+        [72, -1, -1, -1, 0, 0, 67, 69],
+        [72, 74, 77, -1, 76, 74, 72, -1],
+        [74, -1, 71, 67, -1, 0, 71, 74],
+        [76, -1, 79, -1, 76, 74, 72, -1],
+        [73, -1, 76, -1, 79, -1, 0, 0],
+      ],
+    },
+    synth: {
+      name: { es: 'Synthwave de oficina', en: 'Office Synthwave' },
+      style: 'synth',
+      tempo: 104,
+      bright: 6500,
+      color: '#ff4fd8',
+      prog: [
+        { n: [57, 60, 64], b: 45 },
+        { n: [57, 60, 65], b: 41 },
+        { n: [55, 60, 64], b: 48 },
+        { n: [55, 59, 62], b: 43 },
+        { n: [57, 60, 64], b: 45 },
+        { n: [57, 60, 65], b: 41 },
+        { n: [55, 60, 64], b: 48 },
+        { n: [55, 59, 62], b: 43 },
+      ],
+      mel: [
+        [76, -1, -1, 72, 74, -1, 76, -1],
+        [77, -1, 76, 74, 72, -1, -1, 0],
+        [79, -1, -1, 76, 79, -1, 81, -1],
+        [79, -1, 74, -1, -1, 0, 0, 0],
+        [81, -1, 79, 76, 74, -1, 76, -1],
+        [77, -1, 81, -1, 84, -1, 81, 77],
+        [79, -1, 76, -1, 72, 74, 76, 79],
+        [74, -1, -1, -1, 71, -1, 0, 0],
+      ],
+    },
+    cumbia: {
+      name: { es: 'Cumbia del Excel', en: 'Spreadsheet Cumbia' },
+      style: 'cumbia',
+      tempo: 96,
+      bright: 5600,
+      color: '#7cf29a',
+      prog: [
+        { n: [57, 60, 64], b: 45 },
+        { n: [57, 60, 64], b: 45 },
+        { n: [57, 62, 65], b: 38 },
+        { n: [57, 62, 65], b: 38 },
+        { n: [55, 59, 62], b: 43 },
+        { n: [55, 60, 64], b: 48 },
+        { n: [56, 59, 62, 64], b: 40 },
+        { n: [57, 60, 64], b: 45 },
+      ],
+      mel: [
+        [69, 72, 76, -1, 74, 72, 71, 72],
+        [69, -1, 0, 64, 69, 72, 71, 69],
+        [74, 77, 81, -1, 79, 77, 76, 77],
+        [74, -1, 0, 69, 74, 77, 76, 74],
+        [71, 74, 79, -1, 77, 74, 72, 71],
+        [72, -1, 76, -1, 79, 76, 74, 72],
+        [71, 68, 71, 74, 76, -1, 74, 71],
+        [69, -1, -1, 0, 64, 68, 71, 0],
+      ],
+    },
+  };
+
   const TRACKS = {
     lofi: { tempo: 84, bright: 2600 },
     office: { tempo: 112, bright: 5200, swing: 0.3 },
     arcade: { tempo: 146, bright: 7000 },
+    vinyl_bossa: { tempo: VINYLS.bossa.tempo, bright: VINYLS.bossa.bright, vinyl: VINYLS.bossa },
+    vinyl_synth: { tempo: VINYLS.synth.tempo, bright: VINYLS.synth.bright, vinyl: VINYLS.synth },
+    vinyl_cumbia: { tempo: VINYLS.cumbia.tempo, bright: VINYLS.cumbia.bright, vinyl: VINYLS.cumbia },
   };
 
   const Audio = {
@@ -90,6 +179,8 @@
     positions: {},
     tempoFactor: 1,
     duck: 1,
+    VINYLS,
+    TRACKS,
 
     // Crea el contexto de audio (los navegadores exigen un gesto del usuario).
     ensure() {
@@ -307,6 +398,7 @@
           const sixteenth = 60 / (tr.tempo * (m.name === 'arcade' ? this.tempoFactor : 1)) / 4;
           if (m.name === 'office') this.officeStep(m.step, m.next, sixteenth, out, tr.swing);
           else if (m.name === 'arcade') this.arcadeStep(m.step, m.next, sixteenth, out);
+          else if (tr.vinyl) this.vinylStep(m.step, m.next, sixteenth, out, tr.vinyl);
           else this.scheduleStep(m.step, m.next, sixteenth, out);
           m.next += sixteenth;
           m.step++;
@@ -373,6 +465,87 @@
           this.tone(o({ freq: midi(n), dur, type: 'square', vol: 0.04 }));
           this.tone(o({ freq: midi(n + 12), dur: Math.min(dur, 0.12), type: 'triangle', vol: 0.015 }));
         }
+      }
+    },
+
+    // Vinilos del tocadiscos: bossa nova, synthwave y cumbia.
+    vinylStep(step, t, s16, out, v) {
+      const bar = Math.floor(step / 16) % v.prog.length;
+      const s = step % 16;
+      const ch = v.prog[bar];
+      const mel = v.mel[bar];
+      const o = (x) => Object.assign({ out, when: t }, x);
+      const eighth = s16 * 2;
+      const lead = (fn) => {
+        if (s % 2) return;
+        const e = s / 2;
+        const n = mel[e];
+        if (!(n > 0)) return;
+        let len = 1;
+        while (e + len < 8 && mel[e + len] === -1) len++;
+        fn(n, Math.min(eighth * len * 0.92, 1.2));
+      };
+      if (v.style === 'bossa') {
+        // bajo: fundamental y quinta con anticipación · guitarra en el patrón de la bossa · rim y shaker
+        const bassAt = { 0: 0, 6: 7, 8: 7, 14: 0 };
+        if (bassAt[s] !== undefined) this.tone(o({ freq: midi(ch.b + bassAt[s]), dur: s16 * (s === 0 ? 5 : 2), type: 'triangle', vol: 0.12 }));
+        if ([0, 3, 6, 10, 13].includes(s)) this.noise(o({ dur: 0.03, vol: 0.03, freq: 2600, filter: 'bandpass' }));
+        if ([2, 5, 8, 12].includes(s)) ch.n.forEach((n) => this.tone(o({ freq: midi(n), dur: s16 * 1.8, type: 'triangle', vol: 0.016 })));
+        if (s === 0 || s === 8) this.tone(o({ freq: 90, slide: 50, dur: 0.14, type: 'sine', vol: 0.09 }));
+        this.noise(o({ dur: 0.02, vol: s % 2 ? 0.004 : 0.007, freq: 8500 }));
+        lead((n, dur) => {
+          this.tone(o({ freq: midi(n), dur, type: 'sine', vol: 0.07, attack: 0.03 }));
+          this.tone(o({ freq: midi(n + 12), dur: Math.min(dur, 0.2), type: 'sine', vol: 0.008 }));
+        });
+      } else if (v.style === 'synth') {
+        // bombo en negras, palmada grande en 2 y 4, bajo en corcheas, arpegio y melodía sintetizada
+        if (s % 4 === 0) this.tone(o({ freq: 130, slide: 42, dur: 0.18, type: 'sine', vol: 0.2 }));
+        if (s === 4 || s === 12) {
+          this.noise(o({ dur: 0.24, vol: 0.08, freq: 1700, filter: 'bandpass' }));
+          this.tone(o({ freq: 210, slide: 120, dur: 0.1, type: 'triangle', vol: 0.06 }));
+        }
+        if (s % 4 === 2) this.noise(o({ dur: 0.06, vol: 0.018, freq: 9000 }));
+        if (s === 0) ch.n.forEach((n) => this.tone(o({ freq: midi(n), dur: s16 * 15, type: 'sine', vol: 0.016, attack: 0.25 })));
+        if (s % 2 === 0) this.tone(o({ freq: midi(ch.b - 12 + (s % 4 === 2 ? 12 : 0)), dur: eighth * 0.85, type: 'sawtooth', vol: 0.045 }));
+        this.tone(o({ freq: midi(ch.n[[0, 1, 2, 1][s % 4]] + 12), dur: s16 * 0.8, type: 'square', vol: 0.01 }));
+        lead((n, dur) => {
+          this.tone(o({ freq: midi(n), dur, type: 'sawtooth', vol: 0.026, attack: 0.01 }));
+          this.tone(o({ freq: midi(n) * 1.005, dur, type: 'square', vol: 0.012 }));
+        });
+      } else {
+        // cumbia: güira constante, bajo en 1 y 3, tambora, acordeón en contratiempo y melodía
+        this.noise(o({ dur: s % 4 === 2 ? 0.06 : 0.03, vol: s % 4 === 2 ? 0.03 : s % 2 ? 0.008 : 0.014, freq: 6500 }));
+        const bassAt = { 0: 0, 6: 12, 8: 7, 14: 7 };
+        if (bassAt[s] !== undefined) this.tone(o({ freq: midi(ch.b + bassAt[s]), dur: s16 * (s % 8 === 0 ? 3 : 1.5), type: 'triangle', vol: 0.13 }));
+        if (s === 4 || s === 12) this.tone(o({ freq: 150, slide: 90, dur: 0.12, type: 'sine', vol: 0.12 }));
+        if (s === 7 || s === 15) this.tone(o({ freq: 330, slide: 260, dur: 0.06, type: 'sine', vol: 0.06 }));
+        if (s % 4 === 2) ch.n.forEach((n) => this.tone(o({ freq: midi(n + 12), dur: s16 * 1.2, type: 'square', vol: 0.008 })));
+        lead((n, dur) => {
+          this.tone(o({ freq: midi(n), dur, type: 'square', vol: 0.022 }));
+          this.tone(o({ freq: midi(n) * 1.007, dur, type: 'square', vol: 0.016 }));
+          this.tone(o({ freq: midi(n - 12), dur, type: 'triangle', vol: 0.02 }));
+        });
+      }
+    },
+
+    // Ritmo de breakdance para el baile de la oficina (unos 6 segundos, por el canal de efectos).
+    breakbeat(bars) {
+      if (!this.ensure()) return;
+      const t0 = this.ctx.currentTime + 0.05;
+      const s16 = 60 / 100 / 4;
+      for (let i = 0; i < (bars || 4) * 16; i++) {
+        const t = t0 + i * s16;
+        const s = i % 16;
+        if ([0, 6, 10].includes(s)) this.tone({ freq: 120, slide: 40, dur: 0.18, type: 'sine', vol: 0.22, when: t });
+        if (s === 4 || s === 12) this.noise({ dur: 0.14, vol: 0.09, freq: 1800, filter: 'bandpass', when: t });
+        if (s % 2 === 0) this.noise({ dur: 0.03, vol: 0.02, freq: 8500, when: t });
+        // "scratch" del DJ en el último tiempo de cada compás
+        if (s === 14 && i % 32 === 30) {
+          this.noise({ dur: 0.08, vol: 0.05, freq: 900, filter: 'bandpass', when: t });
+          this.tone({ freq: 500, slide: 1500, dur: 0.08, type: 'sawtooth', vol: 0.03, when: t });
+          this.tone({ freq: 1400, slide: 400, dur: 0.08, type: 'sawtooth', vol: 0.03, when: t + 0.09 });
+        }
+        if (s === 0) this.tone({ freq: midi([45, 45, 48, 43][Math.floor(i / 16) % 4]), dur: s16 * 3, type: 'square', vol: 0.05, when: t });
       }
     },
 

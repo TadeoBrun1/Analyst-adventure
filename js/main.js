@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.8.0';
+  AA.VERSION = '0.8.1';
 
   const Game = {
     screen: 'title',
@@ -44,7 +44,16 @@
       if (name !== 'title') AA.Menu.close();
       AA.Audio.setDuck(name === 'mission' ? 0.45 : name === 'arcade' ? 0.75 : 1);
       // Menú: lo-fi tranquilo · oficina y tareas: el tema alegre de la oficina · ARCADE: chiptune que acelera.
-      AA.Audio.startMusic(name === 'title' ? 'lofi' : name === 'arcade' ? 'arcade' : 'office');
+      AA.Audio.startMusic(name === 'title' ? 'lofi' : name === 'arcade' ? 'arcade' : this.officeTrack());
+    },
+    // Tema de la oficina: el normal o el vinilo que pusiste en el tocadiscos.
+    officeTrack() {
+      const st = AA.State;
+      const v = st.data && st.data.flags.vinyl;
+      return v && AA.Decor && AA.Decor.on('turntable') && AA.Audio.TRACKS['vinyl_' + v] ? 'vinyl_' + v : 'office';
+    },
+    refreshMusic() {
+      if (this.screen && this.screen !== 'title' && this.screen !== 'arcade') AA.Audio.startMusic(this.officeTrack());
     },
 
     goToTitle() {
@@ -67,6 +76,10 @@
     bindHud() {
       document.getElementById('hud-notebook').addEventListener('click', () => AA.Screens.openNotebook());
       document.getElementById('hud-career').addEventListener('click', () => AA.Screens.openCareer());
+      document.getElementById('hud-dance').addEventListener('click', (e) => {
+        e.currentTarget.blur();
+        AA.Office.dance();
+      });
       document.getElementById('hud-menu').addEventListener('click', () => this.openGameMenu());
     },
     updateHud() {
@@ -82,9 +95,13 @@
       this.hudXp = st.data.xp;
       document.getElementById('hud-notebook').innerHTML = `📒 ${T('Libreta', 'Notebook')} <kbd>F</kbd>`;
       document.getElementById('hud-career').innerHTML = `📈 ${T('Carrera', 'Career')}`;
+      const dance = document.getElementById('hud-dance');
+      dance.innerHTML = `🕺 ${T('Bailar', 'Dance')} <kbd>B</kbd>`;
+      dance.classList.toggle('hidden', !(AA.Decor && AA.Decor.on('dancebtn')));
+      const canDance = AA.Decor && AA.Decor.on('dancebtn');
       document.getElementById('hud-help').innerHTML = T(
-        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · <kbd>F</kbd>: libreta · <kbd>Esc</kbd>: menú',
-        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows: walk · <kbd>E</kbd> or <kbd>Space</kbd>: interact · <kbd>F</kbd>: notebook · <kbd>Esc</kbd>: menu'
+        `<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · <kbd>F</kbd>: libreta${canDance ? ' · <kbd>B</kbd>: bailar' : ''} · <kbd>Esc</kbd>: menú`,
+        `<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows: walk · <kbd>E</kbd> or <kbd>Space</kbd>: interact · <kbd>F</kbd>: notebook${canDance ? ' · <kbd>B</kbd>: dance' : ''} · <kbd>Esc</kbd>: menu`
       );
     },
 
@@ -209,6 +226,12 @@
       const st = AA.State;
       if (id.startsWith('pet:')) return AA.Office.petAnimal(id);
       switch (id) {
+        case 'turntable':
+          AA.Decor.openTurntable();
+          return;
+        case 'dancebtn':
+          AA.Office.dance();
+          return;
         case 'chest':
           AA.Achievements.openChest();
           return;
@@ -267,6 +290,13 @@
           AA.UI.closeModal();
           return;
         }
+      }
+      // B: ¡a bailar! (recompensa del ARCADE)
+      const isB = (e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat;
+      if (isB && this.screen === 'office' && !AA.Dialog.isOpen() && !AA.UI.isModalOpen() && AA.Decor && AA.Decor.on('dancebtn')) {
+        e.preventDefault();
+        AA.Office.dance();
+        return;
       }
       if (AA.UI.isModalOpen()) {
         if (e.key === 'Escape' && AA.UI.modalClosable) {

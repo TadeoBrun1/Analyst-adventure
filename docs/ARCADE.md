@@ -46,13 +46,14 @@ previa animada de la recompensa.
 | 🌪️ Ojo de la tormenta | llegar a la oleada 5 | 🐱 Michi, el gato (pasea, duerme y se deja acariciar) |
 | 👑 Leyenda del ARCADE | llegar a la oleada 7 | 🖼️ Cuadro «Analista del mes» (oficina de Marta) |
 | ⏱️ Contrarreloj | 3 misiones en menos de 8:00 de partida | 🪑 Silla gamer (reemplaza tu silla) |
-| ⚡ Velocista | 6 misiones en menos de 18:00 de partida | 🎵 Tocadiscos (living) |
+| ⚡ Velocista | 6 misiones en menos de 18:00 de partida | 🎵 Tocadiscos con 3 vinilos: bossa nova, synthwave y cumbia (cambia la música de la oficina) |
 | 🎯 Mano firme | 5 misiones seguidas sin penalizaciones | 🐠 Pecera (living) |
 | 🧊 Sangre fría | entregar con menos de 15 s en el reloj | 🪴 Bonsái (mesa ratona) |
 | 🏃 Maratón | 25 misiones sumando partidas | 🐶 Firulais, el perro (pasea y se deja acariciar) |
 | 🪙 Cliente fiel | jugar 10 partidas | 🍩 Caja de donas (mesada de la cocina) |
 | 🧭 Todoterreno | 3 misiones en una partida de cada rango | 🟣 Neón «DATA» (pared de la oficina) |
 | 🏆 Senior bajo presión | 9 misiones en una partida de rango Senior | 🏆 Trofeo dorado (tu escritorio) |
+| 🕺 Coleccionista | conseguir 8 logros | 🕺 Botón de baile «B»: breakdance con luces de discoteca (también con la tecla B) |
 
 Según la simulación de abajo:
 

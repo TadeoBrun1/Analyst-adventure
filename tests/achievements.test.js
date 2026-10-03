@@ -13,6 +13,7 @@ require('../js/game/state.js');
 require('../js/game/decor.js');
 require('../js/game/achievements.js');
 require('../js/game/office.js');
+require('../js/game/audio.js');
 
 const AA = globalThis.AA;
 const mem = {};
@@ -76,7 +77,23 @@ A.finishRun(run({ rank: 2, missions: 3 }));
 A.finishRun(run({ rank: 3, missions: 9, wave: 4 }));
 ok(A.unlocked('allranks') && A.unlocked('senior9'), 'todoterreno y senior bajo presión');
 ok(!A.unlocked('wave7') && !A.unlocked('dozen'), 'oleada 7 y docena siguen bloqueados');
+ok(A.unlocked('collector') && D.unlocked('dancebtn'), 'coleccionista: con 8 logros se desbloquea el botón de baile');
 ok(A.progressText(A.byId('dozen')).includes('9/12'), `progreso de «Docena»: ${A.progressText(A.byId('dozen'))}`);
+St.newGame(2, 'Pocos');
+for (const id of ['first', 'warmup', 'six', 'wave3', 'fast3', 'fast6', 'steady']) St.data.achievements[id] = 1;
+ok(A.check(run({ missions: 0 })).length === 0 && !A.unlocked('collector'), 'con 7 logros todavía no hay coleccionista');
+St.data.achievements.cold = 1;
+ok(A.check(run({ missions: 0 })).map((a) => a.id).join() === 'collector', 'con el octavo logro llega coleccionista');
+
+// --- Tocadiscos: 3 vinilos con 8 compases de acordes y melodía
+const V = AA.Audio.VINYLS;
+ok(Object.keys(V).length === 3, 'el tocadiscos tiene 3 vinilos');
+for (const [id, v] of Object.entries(V)) {
+  ok(v.name.es && v.name.en && v.tempo > 60 && v.tempo < 180, `${id}: nombre y tempo`);
+  ok(v.prog.length === 8 && v.mel.length === 8 && v.mel.every((bar) => bar.length === 8), `${id}: 8 compases de corcheas`);
+  ok(v.prog.every((c) => c.n.length >= 3 && c.b > 20 && c.b < 60), `${id}: acordes con bajo`);
+  ok(!!AA.Audio.TRACKS['vinyl_' + id], `${id}: tema registrado`);
+}
 
 // --- Oficina: con toda la decoración puesta se llega a todos lados
 for (const a of A.LIST) St.data.achievements[a.id] = Date.now();

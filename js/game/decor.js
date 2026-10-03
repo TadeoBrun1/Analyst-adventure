@@ -460,12 +460,12 @@
       id: 'turntable',
       icon: '🎵',
       name: { es: 'Tocadiscos', en: 'Record player' },
-      desc: { es: 'Un tocadiscos con vinilos al lado de la máquina ARCADE. Suenan notitas.', en: 'A record player with vinyls next to the ARCADE machine. Little notes float out.' },
+      desc: { es: 'Al lado de la máquina ARCADE, con 3 vinilos: bossa nova, synthwave y cumbia. Acercate (E) y elegí qué suena en la oficina.', en: 'Next to the ARCADE machine, with 3 vinyls: bossa nova, synthwave and cumbia. Walk up (E) and pick what plays in the office.' },
       tile: [26, 7],
       solid: [[26, 7]],
       layer: 'actor',
       box: [-2, -30, 36, 60],
-      paint(ctx, t) {
+      paint(ctx, t, o) {
         const R = rect(ctx);
         shadow(ctx, 16, 29, 13, 3);
         R(3, 6, 26, 22, '#8b5e3c');
@@ -474,19 +474,23 @@
         for (let i = 0; i < 5; i++) R(7 + i * 4, 12, 3, 12, ['#e5484d', '#1b1d2b', '#ffd23f', '#3d5a80', '#7cf29a'][i]);
         R(3, -4, 26, 11, '#2b2e3a');
         R(3, -4, 26, 2, '#4a4f63');
+        const playing = !o || o.playing !== false;
+        const label = (o && o.color) || '#e5484d';
         circle(ctx, 14, 1, 5, '#111218');
-        circle(ctx, 14, 1, 1.8, '#e5484d');
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-        ctx.lineWidth = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(14, 1);
-        ctx.lineTo(14 + Math.cos(t * 6) * 4, 1 + Math.sin(t * 6) * 4);
-        ctx.stroke();
+        circle(ctx, 14, 1, 1.8, label);
+        if (playing) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+          ctx.lineWidth = 0.6;
+          ctx.beginPath();
+          ctx.moveTo(14, 1);
+          ctx.lineTo(14 + Math.cos(t * 6) * 4, 1 + Math.sin(t * 6) * 4);
+          ctx.stroke();
+        }
         R(23, -3, 2, 2, '#c9ced6');
         R(21, -1, 3, 1, '#c9ced6');
-        R(19, 0, 2, 1, '#c9ced6');
+        R(playing ? 19 : 21, playing ? 0 : -3, 2, 1, '#c9ced6');
         ctx.font = 'bold 8px "Inter", sans-serif';
-        for (let k = 0; k < 2; k++) {
+        for (let k = 0; k < (playing ? 2 : 0); k++) {
           const p = (t * 0.5 + k * 0.5) % 1;
           ctx.fillStyle = `rgba(${k ? '79,209,255' : '255,79,216'},${1 - p})`;
           ctx.fillText(k ? '♫' : '♪', 10 + k * 8 + Math.sin(p * 6) * 3, -8 - p * 18);
@@ -596,6 +600,56 @@
         circle(ctx, 25 + s, -13, 2, '#7cc47f');
       },
     },
+    {
+      id: 'dancebtn',
+      icon: '🕺',
+      name: { es: 'Botón de baile «B»', en: '"B" dance button' },
+      desc: { es: 'Un botón rojo gigante en el living. Apretalo (o la tecla B en cualquier parte de la oficina) y tu personaje se larga a bailar breakdance.', en: 'A giant red button in the lounge. Press it (or the B key anywhere in the office) and your character breaks into breakdance.' },
+      tile: [19, 8],
+      solid: [[19, 8]],
+      layer: 'actor',
+      box: [2, -14, 28, 44],
+      paint(ctx, t, o) {
+        const R = rect(ctx);
+        const pressed = o && o.pressed;
+        shadow(ctx, 16, 29, 11, 3);
+        // pedestal
+        R(8, 8, 16, 20, '#2b2e3a');
+        R(8, 8, 16, 2, '#4a4f63');
+        R(10, 14, 12, 8, '#1b1d2b');
+        ctx.fillStyle = '#ffd23f';
+        ctx.font = '800 6px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('DANCE', 16, 20);
+        ctx.textAlign = 'left';
+        // botón gigante con la B
+        const y = pressed ? 2 : 0;
+        R(5, 2, 22, 7, '#9aa1b5');
+        ctx.fillStyle = '#9b1c1c';
+        ctx.beginPath();
+        ctx.ellipse(16, 2 + y, 10, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = pressed ? '#c53030' : '#e5484d';
+        ctx.beginPath();
+        ctx.ellipse(16, -1 + y * 1.5, 10, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.beginPath();
+        ctx.ellipse(12, -3 + y * 1.5, 3, 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 7px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('B', 16, -0.5 + y * 1.5);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        if (!pressed && Math.sin(t * 3) > 0.5) {
+          R(25, -9, 1, 4, '#ffd23f');
+          R(23, -7, 5, 1, '#ffd23f');
+        }
+      },
+    },
   ];
 
   const byId = (id) => ITEMS.find((x) => x.id === id);
@@ -659,6 +713,51 @@
       ctx.imageSmoothingEnabled = false;
       it.paint(ctx, t || 0, { from: 0, to: 128 });
     },
+    // --- Tocadiscos: elegir qué suena en la oficina (3 vinilos o la música de siempre).
+    playingVinyl() {
+      const v = ST().data && ST().data.flags.vinyl;
+      return v && AA.Audio.VINYLS[v] && this.on('turntable') ? v : null;
+    },
+    openTurntable() {
+      const V = AA.Audio.VINYLS;
+      const L = (o) => AA.L(o);
+      const esc = (x) => AA.escapeHtml(String(x));
+      const styles = { bossa: AA.T('Bossa nova tranquila', 'Mellow bossa nova'), synth: AA.T('Synthwave ochentoso', '80s synthwave'), cumbia: AA.T('Cumbia para levantar el ánimo', 'Upbeat cumbia') };
+      const render = (el) => {
+        const cur = this.playingVinyl();
+        const card = (id, title, sub, color) => `
+          <button type="button" class="vinyl ${cur === id ? 'on' : ''}" data-vinyl="${id || ''}" data-nav>
+            <span class="vinyl-disc" style="--vc:${color}"></span>
+            <span class="vinyl-text"><b>${title}</b><span>${sub}</span></span>
+            <span class="vinyl-state">${cur === id ? AA.T('▶ Sonando', '▶ Playing') : ''}</span>
+          </button>`;
+        el.querySelector('.vinyls').innerHTML =
+          Object.keys(V).map((id) => card(id, esc(L(V[id].name)), styles[id], V[id].color)).join('') +
+          card(null, AA.T('Música de la oficina', 'Office music'), AA.T('Sacar el vinilo y volver al tema de siempre', 'Take the vinyl off and go back to the usual tune'), '#9aa1b5');
+        el.querySelectorAll('[data-vinyl]').forEach((b) =>
+          b.addEventListener('click', () => {
+            const id = b.dataset.vinyl || null;
+            const st = ST();
+            st.data.flags.vinyl = id;
+            st.save();
+            AA.Audio.play(id ? 'select' : 'back');
+            if (AA.Game && AA.Game.refreshMusic) AA.Game.refreshMusic();
+            if (id && AA.Settings && AA.Settings.data.musicOn === false) AA.UI.toast(AA.T('🔇 La música está apagada en las opciones.', '🔇 Music is turned off in the options.'), 'warn');
+            render(el);
+            const again = el.querySelector(`[data-vinyl="${id || ''}"]`);
+            if (again) again.focus({ preventScroll: true });
+          })
+        );
+      };
+      AA.UI.modal({
+        title: '🎵 ' + AA.T('Tocadiscos', 'Record player'),
+        className: 'turntable-modal',
+        html: `<p class="muted">${AA.T('Elegí un vinilo: suena en la oficina y mientras trabajás en la computadora (el ARCADE tiene su propia música).', 'Pick a vinyl: it plays in the office and while you work at the computer (the ARCADE has its own music).')}</p><div class="vinyls"></div>`,
+        buttons: [{ label: AA.T('Listo', 'Done'), primary: true }],
+        onOpen: render,
+      });
+    },
+
     // Anima todas las vistas previas de un contenedor mientras siga en pantalla.
     animatePreviews(root) {
       const cvs = [...root.querySelectorAll('canvas[data-prev]')];

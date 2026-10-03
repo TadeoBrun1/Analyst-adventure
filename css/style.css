@@ -1007,3 +1007,16 @@ th.filtered .ss-fbtn { background: var(--ss-sel); border-color: var(--ss-sel); c
 .ach-reward .muted { font-size: 11px; color: #8a7a5a; }
 .ach-rdesc { font-size: 11.5px; color: #6d5f45; }
 .ach-card:not(.done) .ach-reward canvas { filter: saturate(0.6); }
+
+/* --- Tocadiscos y botón de baile */
+.turntable-modal .modal-card { width: min(520px, 100%); }
+.vinyls { display: flex; flex-direction: column; gap: 8px; }
+.vinyl { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: #232738; color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+.vinyl:hover, .vinyl:focus-visible { border-color: var(--accent); transform: translateX(2px); }
+.vinyl.on { border-color: #2fbf71; background: linear-gradient(90deg, rgba(47, 191, 113, 0.18), #232738); }
+.vinyl-disc { width: 38px; height: 38px; flex: none; border-radius: 50%; background: radial-gradient(circle, var(--vc) 0 22%, #111218 23% 30%, #1d1f2a 31% 45%, #111218 46% 60%, #1d1f2a 61%); box-shadow: 0 0 0 2px #2b2e3a; }
+.vinyl.on .vinyl-disc { animation: spin 1.6s linear infinite; }
+.vinyl-text { display: flex; flex-direction: column; flex: 1; }
+.vinyl-text span { font-size: 12.5px; color: #aab2c8; }
+.vinyl-state { font-size: 12px; font-weight: 700; color: #7cf29a; white-space: nowrap; }
+.hud-dance { border-color: #ff4fd8 !important; box-shadow: 0 0 10px rgba(255, 79, 216, 0.35); }

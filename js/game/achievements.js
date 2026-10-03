@@ -70,6 +70,15 @@
       prog: (v) => [[1, 2, 3].filter((r) => (v.byRank[r] || 0) >= 3).length, 3],
     },
     { id: 'senior9', icon: '🏆', name: T('Senior bajo presión', 'Senior under pressure'), goal: T('Resolvé 9 misiones en una partida de rango Senior.', 'Solve 9 missions in a Senior run.'), reward: 'trophy', test: (v) => (v.byRank[3] || 0) >= 9, prog: (v) => [v.byRank[3] || 0, 9] },
+    {
+      id: 'collector',
+      icon: '🕺',
+      name: T('Coleccionista', 'Collector'),
+      goal: T('Conseguí 8 logros del ARCADE.', 'Earn 8 ARCADE achievements.'),
+      reward: 'dancebtn',
+      test: (v) => v.ach() >= 8,
+      prog: (v) => [v.ach(), 8],
+    },
   ];
 
   const freshStats = () => ({ runs: 0, missions: 0, bestMissions: 0, bestWave: 1, bestStreak: 0, best3: null, best6: null, minClock: null, byRank: {} });
@@ -113,6 +122,8 @@
         runs: s.runs,
         total: s.missions,
         byRank: Object.assign({}, s.byRank),
+        // logros conseguidos (sin contar el propio «Coleccionista»); se recalcula mientras se revisan
+        ach: () => LIST.filter((a) => a.id !== 'collector' && this.unlocked(a.id)).length,
       };
       if (run) {
         v.missions = Math.max(v.missions, run.missions);
@@ -218,6 +229,8 @@
             const on = !D.on(id);
             D.set(id, on);
             AA.Audio.play(on ? 'unlock' : 'back');
+            if (id === 'turntable' && AA.Game && AA.Game.refreshMusic) AA.Game.refreshMusic();
+            if (id === 'dancebtn' && AA.Game && AA.Game.updateHud) AA.Game.updateHud();
             const it = D.byId(id);
             AA.UI.toast(on ? AA.T(`✨ ${L(it.name)} ya está en la oficina.`, `✨ ${L(it.name)} is now in the office.`) : AA.T(`📦 ${L(it.name)} volvió al cofre.`, `📦 ${L(it.name)} went back into the chest.`), 'info');
             render(el);
