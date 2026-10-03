@@ -99,6 +99,9 @@
             { who: 'marta', text: T(`Así que es oficial: a partir de hoy sos <b>${rank.name.es}</b>. ¡Felicitaciones! 🎉`, `So it's official: starting today you're a <b>${rank.name.en}</b>. Congratulations! 🎉`) },
             PROMO_LINES[rankIdx] || { who: 'marta', text: T('Más responsabilidad, pedidos más difíciles… y Leo seguro tiene algo nuevo para enseñarte.', "More responsibility, harder requests… and I'm sure Leo has something new to teach you.") },
             { who: 'marta', text: T('Pasá por donde está Leo: tiene la primera lección de tu nueva etapa.', 'Stop by Leo: he has the first lesson of your new stage.') },
+            rankIdx === 1
+              ? { who: 'marta', text: T('Ah, y arreglaron la <b>máquina arcade</b> del living. Dicen que es para "entrenar bajo presión"… con reloj y todo. 🕹️', 'Oh, and they fixed the <b>arcade machine</b> in the lounge. They say it is for "training under pressure"… clock included. 🕹️') }
+              : null,
           ],
           () => AA.Game.updateHud()
         );
@@ -317,6 +320,18 @@
         ),
       });
       AA.Dialog.open(lines);
+    },
+
+    // Máquina arcade del living: averiada mientras sos pasante.
+    arcade() {
+      if (S().rankIndex() < 1) {
+        AA.Dialog.open([
+          { who: 'narrator', text: T('La máquina arcade del living está apagada. Tiene un cartel: «FUERA DE SERVICIO — se arregla cuando haya un <b>Junior</b> que la use para entrenar».', 'The arcade machine in the lounge is off. A sign says: "OUT OF ORDER — it gets fixed once there\'s a <b>Junior</b> who will use it to train".') },
+          { who: 'narrator', text: T('Abajo, con otra letra: «¡Ánimo, pasante! 💪 — Camila».', 'Below, in different handwriting: "You got this, intern! 💪 — Camila".') },
+        ]);
+        return;
+      }
+      AA.Arcade.openMenu();
     },
 
     jean() {

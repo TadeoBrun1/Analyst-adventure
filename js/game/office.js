@@ -11,7 +11,7 @@
   //          D escritorio · B escritorio de la jefa · K biblioteca · W pizarra · G/g vidrio (vertical/horizontal)
   //          F heladera · Q mesada · C cafetera · k pileta · M microondas · A dispenser de agua
   //          V máquina expendedora · T mesa · h silla · X mesa ratona · S sofá · Y impresora
-  //          P planta grande · p planta chica · = salida
+  //          P planta grande · p planta chica · R máquina arcade · = salida
   const MAP = [
     '############################',
     '#FQCQkMA#KP.WWW..PKGK.BB.PK#',
@@ -22,7 +22,7 @@
     '#,hh,hh,P..........gggggggg#',
     '#,,,,,,,,..................#',
     '#,,,,,,,,...........______.#',
-    '#,hh,hh,,.hhh.......__XXX_.#',
+    '#,hh,hh,,.hhh.......__XXX_R#',
     '#,TT,TT,P.TTT.....Y.__SSS_.#',
     '#,hh,hh,#.hhh.......______.#',
     '#p,,,,VP#P........P.P.....P#',
@@ -84,8 +84,19 @@
     { id: 'plant', x: 8, y: 6, w: 1, h: 1, label: { es: 'Planta', en: 'Plant' } },
     { id: 'plant', x: 8, y: 10, w: 1, h: 1, label: { es: 'Planta', en: 'Plant' } },
     { id: 'exit', x: 13, y: 13, w: 2, h: 1, label: { es: 'Salida', en: 'Exit' } },
+    {
+      id: 'arcade',
+      x: 26,
+      y: 9,
+      w: 1,
+      h: 1,
+      get label() {
+        return arcadeOn() ? { es: '🕹️ ARCADE', en: '🕹️ ARCADE' } : { es: 'Máquina arcade (averiada)', en: 'Arcade machine (broken)' };
+      },
+    },
   ];
   const START = { x: 14 * T + 16, y: 8 * T + 26 };
+  const arcadeOn = () => !!(AA.State && AA.State.data && AA.State.rankIndex() >= 1);
   const nicoBack = () => !!(AA.State && AA.State.data && AA.State.rankIndex() >= 2);
   // Sillas de oficina libres: la tuya (frente a tu computadora) y la de Nico, que está de vacaciones.
   // Las de Camila y Tadeo se dibujan junto con ellos.
@@ -525,6 +536,7 @@
       const pc = SPOTS.find((s) => s.id === 'computer');
       const wb = SPOTS.find((s) => s.id === 'whiteboard');
       if (markers.computer) this.drawMarker((pc.x + pc.w / 2) * T, pc.y * T - 14 + bounce, '#ffd23f');
+      if (markers.arcade) this.drawMarker(26 * T + 16, 9 * T - 22 + bounce, '#c084fc');
       for (const n of this.activeNpcs()) if (markers[n.id]) this.drawMarker(n.x, n.y - 46 + bounce, '#ffd23f');
       if (markers.whiteboard) this.drawMarker((wb.x + wb.w / 2) * T, wb.y * T - 8 + bounce, '#7cf29a');
 
@@ -1090,6 +1102,58 @@
           R(24, 2, 4, 2, '#e8c872');
           R(5, 22, 17, 4, '#1f2129');
           break;
+        case 'R': {
+          // Máquina arcade: apagada y con cartel si sos pasante; encendida desde Junior.
+          const on = arcadeOn();
+          R(4, -20, 24, 48, '#3b2a6b');
+          R(4, -20, 3, 48, '#2a1d4f');
+          R(25, -20, 3, 48, '#2a1d4f');
+          R(6, -18, 20, 7, on ? ['#ff4fd8', '#ffd23f', '#4fd1ff'][Math.floor(this.t * 3) % 3] : '#2b2e3a');
+          R(8, -16, 16, 3, on ? 'rgba(255,255,255,0.55)' : '#3a3d4a');
+          R(7, -9, 18, 14, '#111218');
+          if (on) {
+            const ph = Math.floor(this.t * 6);
+            R(9, -7, 14, 10, '#0f2a3a');
+            R(9 + (ph % 6) * 2, -6 + ((ph >> 1) % 3) * 3, 3, 3, '#7cf29a');
+            R(19 - (ph % 5) * 2, -2, 3, 2, '#ff6b6b');
+            R(9, 1, 14, 1, 'rgba(255,255,255,0.25)');
+          } else {
+            R(9, -7, 14, 10, '#1a1c24');
+            ctx.strokeStyle = '#4a4f63';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(px + 10, py - 6);
+            ctx.lineTo(px + 16, py - 1);
+            ctx.lineTo(px + 13, py + 2);
+            ctx.stroke();
+            // cartel de "fuera de servicio"
+            R(10, -4, 13, 9, '#f7f1e3');
+            R(11, -2, 11, 1, '#e5484d');
+            R(11, 0, 9, 1, '#9aa1b5');
+            R(11, 2, 10, 1, '#9aa1b5');
+            if (Math.sin(this.t * 7) > 0.97) {
+              R(22, -10, 2, 2, '#ffd23f');
+              R(24, -12, 1, 1, '#fff3c4');
+            }
+          }
+          R(6, 7, 20, 7, '#2b2e3a');
+          R(10, 3, 2, 5, '#1b1d2b');
+          ctx.fillStyle = on ? '#e5484d' : '#7a3a3a';
+          ctx.beginPath();
+          ctx.arc(px + 11, py + 3, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          R(16, 9, 3, 3, on ? '#ffd23f' : '#6b5f2a');
+          R(21, 9, 3, 3, on ? '#4fd1ff' : '#2a5560');
+          R(13, 17, 6, 4, '#1b1d2b');
+          R(15, 18, 2, 2, on ? '#ffd23f' : '#555');
+          if (on) {
+            ctx.fillStyle = 'rgba(192,132,252,0.18)';
+            ctx.beginPath();
+            ctx.ellipse(px + 16, py + 28, 18, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
         case 'Y':
           R(3, 8, 26, 18, '#dde1e8');
           R(3, 8, 26, 2, '#f4f6f8');

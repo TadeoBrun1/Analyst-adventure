@@ -143,7 +143,9 @@
       this.editor.spellcheck = false;
       this.wrap.append(this.table, this.refLayer, this.selBox, this.activeBox, this.copyBox, this.fillPreview, this.fillHandle, this.editor);
       this.scroll.appendChild(this.wrap);
-      root.append(bar, this.hint, this.scroll);
+      // Barra de estado (como en Excel): recuento, suma y promedio de lo seleccionado.
+      this.status = el('div', 'ss-status');
+      root.append(bar, this.hint, this.scroll, this.status);
 
       this.bindEvents();
       this.setHint(null);
@@ -261,6 +263,9 @@
       if (this.coachEl) this.coachEl.remove();
       this.coachEl = null;
     }
+    activeValue() {
+      return this.sheet.getValue(this.sel.ac, this.sel.ar);
+    }
     placeBox(node, box, inset) {
       const i = inset || 0;
       node.style.left = box.left - i + 'px';
@@ -308,6 +313,41 @@
       this.renderSelection();
     }
 
+    // Recuento / Suma / Promedio / Mín / Máx de la selección (sirve para responder sin contar a mano).
+    renderStatus(c1, r1, c2, r2) {
+      if (!this.status) return;
+      if (c1 === c2 && r1 === r2) {
+        this.status.innerHTML = `<span class="ss-st-muted">${AA.T('Seleccioná varias celdas para ver su recuento, suma y promedio.', 'Select several cells to see their count, sum and average.')}</span>`;
+        return;
+      }
+      let count = 0;
+      let nums = 0;
+      let sum = 0;
+      let min = Infinity;
+      let max = -Infinity;
+      let seen = 0;
+      for (let r = r1; r <= r2 && seen < 20000; r++) {
+        for (let c = c1; c <= c2; c++, seen++) {
+          const v = this.sheet.getValue(c, r);
+          if (v === null || v === undefined || v === '' || F.isErr(v)) continue;
+          count++;
+          if (typeof v === 'number') {
+            nums++;
+            sum += v;
+            if (v < min) min = v;
+            if (v > max) max = v;
+          }
+        }
+      }
+      const f = (x) => (Number.isInteger(x) ? x.toLocaleString('en-US') : (Math.round(x * 100) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 }));
+      const item = (label, val) => `<span class="ss-st-item">${label}: <b>${val}</b></span>`;
+      this.status.innerHTML =
+        item(AA.T('Recuento', 'Count'), count) +
+        (nums
+          ? item(AA.T('Suma', 'Sum'), f(sum)) + item(AA.T('Promedio', 'Average'), f(sum / nums)) + item(AA.T('Mín', 'Min'), f(min)) + item(AA.T('Máx', 'Max'), f(max))
+          : '');
+    }
+
     renderSelection(scrollIntoView) {
       const { c1, r1, c2, r2 } = this.rect();
       this.placeBox(this.selBox, this.boxFor(c1, r1, c2, r2));
@@ -321,6 +361,7 @@
 
       this.colHeads.forEach((th, c) => th.classList.toggle('sel', c >= c1 && c <= c2));
       this.rowHeads.forEach((th, r) => th.classList.toggle('sel', r >= r1 && r <= r2));
+      this.renderStatus(c1, r1, c2, r2);
       const ref = F.makeRef(this.sel.ac, this.sel.ar);
       this.nameBox.textContent =
         c1 !== c2 || r1 !== r2 ? `${ref}  (${r2 - r1 + 1}${AA.T('F', 'R')} × ${c2 - c1 + 1}C)` : ref;

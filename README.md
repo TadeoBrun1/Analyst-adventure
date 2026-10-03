@@ -48,6 +48,16 @@ se guarda en el navegador (`localStorage`).
 - **Nico** vuelve de vacaciones cuando llegás a Semi-Senior y te pide **favores**: limpiar datos, escribir un
   informe o revisar su planilla. Aparecen arriba de todo en la bandeja, en verde agua.
 - Los diálogos cambian con tu rango: te tratan como pasante, junior, semi-senior o senior.
+- **Tareas guiadas y sin guía**: las 5 tareas obligatorias de cada nivel explican paso a paso qué hacer. La
+  **práctica libre**, los favores y el ARCADE muestran **solo el pedido** (qué entregar y dónde, sin decir qué
+  función usar), como en un trabajo real. Para responder rápido: seleccioná un rango y mirá **recuento, suma,
+  promedio, mín y máx** abajo de la planilla (como en Excel), y con **📍** pasás el valor de una celda a la respuesta.
+- **🕹️ ARCADE**: la máquina del living (averiada mientras sos pasante, se arregla al llegar a Junior). Misiones
+  aleatorias una tras otra contra un reloj único: resolver suma tiempo y puntos; responder mal, entregar
+  incompleto o saltear resta tiempo. Cada 3 misiones llega una **oleada**: el reloj corre más rápido, las
+  penalizaciones crecen, las misiones se ponen más difíciles y la música se acelera. Se elige el rango
+  (Junior, Semi-Senior, Senior) hasta el alcanzado en el modo historia, y se guardan las 5 mejores partidas de
+  cada rango (puntos, misiones, oleada y tiempo jugado).
 - **Partida nueva**: elegís tu nombre y armás tu personaje: hombre o mujer, tono de piel, peinado y color de
   pelo, barba y su color, anteojos y ropa (remera, camisa, buzo o saco; pantalón o pollera). Se puede cambiar
   después desde la pausa (*👕 Cambiar aspecto*).
@@ -110,6 +120,7 @@ ver [`docs/CARRERA.md`](docs/CARRERA.md).
 | **0.5.1** | Sillas en los escritorios (te sentás antes de usar la computadora), guía ilustrada de la planilla con botón ❓ Ayuda, ayudas en el momento justo (copiar una fórmula arrastrando, marcar filas y columnas) y panel de objetivos con color propio. | ✅ |
 | **0.5.2** | Confeti en cada entrega y animación de "nivel completado" (medalla, rayos, contador de XP y barra que se llena); bandeja con colores por estado (nuevo, en progreso, entregado, práctica extra) y etapas plegables que recuerdan si las abriste o cerraste. | ✅ |
 | **0.6** | Bienvenida y guías paso a paso animadas, eventos especiales de presentación con preguntas sobre tus datos, favores de Nico desde Semi-Senior y diálogos según el rango. | ✅ |
+| **0.7** | Práctica, favores y ARCADE sin paso a paso (solo el pedido), barra de estado de la planilla y 📍 para responder con una celda, y **modo ARCADE** por oleadas con música propia y récords por rango. | ✅ |
 | **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
@@ -134,6 +145,8 @@ js/
   ui/tour.js              motor de guías paso a paso (resaltado + tarjetas)
   game/guides.js          bienvenida y guías de cada sección
   game/present.js         eventos especiales: presentación y preguntas sobre tus datos
+  game/brief.js           pedidos sin guía (qué entregar, sin el cómo)
+  game/arcade.js          modo ARCADE (reloj, oleadas, puntajes)
   game/storage.js         3 ranuras + configuración (archivos en escritorio, localStorage en web)
   game/settings.js        idioma, volúmenes y pantalla
   game/audio.js           música, efectos y voces sintetizados con Web Audio

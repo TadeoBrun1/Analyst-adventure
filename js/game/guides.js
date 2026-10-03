@@ -198,6 +198,32 @@
     // Guía de la planilla (primera tarea) o de la herramienta que se esté viendo.
     mission(ms, force) {
       const view = ms.activeView;
+      if (ms.arcade) return;
+      // Primera tarea sin guía (práctica libre o favor): qué cambia.
+      if (!ms.guided && (force || !AA.Tour.seen('unguided'))) {
+        return AA.Tour.run(
+          'unguided',
+          [
+            {
+              target: '.card.brief',
+              pad: 0,
+              title: T('📧 Sin paso a paso', '📧 No step-by-step'),
+              text: T('Las prácticas libres y los favores no te dicen <b>cómo</b> hacerlo: solo el pedido, como en un trabajo real. Leé qué necesita la persona y decidí vos qué funciones o herramientas usar.', 'Free practice and favors don\'t tell you <b>how</b> to do it: just the request, like a real job. Read what the person needs and decide which functions or tools to use.'),
+            },
+            {
+              target: () => document.querySelector('.ss-status'),
+              title: T('🧮 Recuento, suma y promedio', '🧮 Count, sum and average'),
+              text: T('Seleccioná un rango y mirá abajo de la planilla: aparecen el recuento, la suma, el promedio, el mínimo y el máximo, como en Excel. Sirve para chequear rápido sin contar a mano.', 'Select a range and look below the sheet: count, sum, average, min and max appear, just like Excel. Handy for quick checks without counting by hand.'),
+            },
+            {
+              target: () => document.querySelector('[data-pick]'),
+              title: T('📍 Responder con una celda', '📍 Answer with a cell'),
+              text: T('¿Calculaste la respuesta en una celda (por ejemplo con un CONTAR.SI)? Seleccionala y tocá 📍: el valor pasa solo a la respuesta.', 'Did you calculate the answer in a cell (for example with COUNTIF)? Select it and tap 📍: the value goes straight into the answer.'),
+            },
+          ],
+          { force, onDone: () => ms.focusActive() }
+        );
+      }
       if (view === 'sheets' && ms.defs.length) return this.sheet(ms, force);
       return this.tool(view, force);
     },

@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.6.0';
+  AA.VERSION = '0.7.0';
 
   const Game = {
     screen: 'title',
@@ -35,16 +35,16 @@
       if (name !== this.screen) document.getElementById('toast').innerHTML = '';
       this.screen = name;
       // La presentación usa la misma pantalla (y lienzo) que la oficina.
-      const section = name === 'present' ? 'office' : name;
+      const section = name === 'present' ? 'office' : name === 'arcade' ? 'mission' : name;
       document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + section));
       document.getElementById('screen-office').classList.toggle('presenting', name === 'present');
       if (name !== 'present') AA.Office.stopPresentation();
       if (name === 'office' || name === 'present') AA.Office.start();
       else AA.Office.stop();
       if (name !== 'title') AA.Menu.close();
-      AA.Audio.setDuck(name === 'mission' ? 0.45 : 1);
-      // Menú: lo-fi tranquilo · oficina y tareas: el tema alegre de la oficina.
-      AA.Audio.startMusic(name === 'title' ? 'lofi' : 'office');
+      AA.Audio.setDuck(name === 'mission' ? 0.45 : name === 'arcade' ? 0.75 : 1);
+      // Menú: lo-fi tranquilo · oficina y tareas: el tema alegre de la oficina · ARCADE: chiptune que acelera.
+      AA.Audio.startMusic(name === 'title' ? 'lofi' : name === 'arcade' ? 'arcade' : 'office');
     },
 
     goToTitle() {
@@ -95,6 +95,7 @@
       if (!st.data.flags.intro || st.data.flags.rankSeen < st.rankIndex()) m.marta = true;
       if (st.data.flags.intro && Cu().pendingLesson()) m.leo = true;
       if (st.rankIndex() >= 2 && (!st.data.flags.metNico || st.favorReady())) m.nico = true;
+      if (st.rankIndex() >= 1 && !st.data.flags.arcadeSeen) m.arcade = true;
       else if (st.data.flags.intro && Cu().nextMission()) m.computer = true;
       return m;
     },
@@ -231,6 +232,9 @@
         case 'nico':
           AA.Story.nico();
           return;
+        case 'arcade':
+          AA.Story.arcade();
+          return;
         case 'camila':
         case 'tadeo':
         case 'jean':
@@ -272,6 +276,17 @@
         return;
       }
       if (e.key !== 'Escape') return;
+      if (this.screen === 'arcade') {
+        // En el ARCADE: primero salir del campo de texto; después, pausa.
+        e.preventDefault();
+        const a = document.activeElement;
+        if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && a.type !== 'range' && a.type !== 'checkbox'))) {
+          a.blur();
+          return;
+        }
+        AA.Arcade.pause();
+        return;
+      }
       if (this.screen === 'mission') {
         // Primer Esc: salir del campo de texto en el que estés. Siguiente: volver a la bandeja de entrada.
         e.preventDefault();

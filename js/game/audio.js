@@ -55,9 +55,29 @@
     ['G7', null],
   ];
 
+  // Tema del ARCADE: chiptune movido en La menor (Am – F – C – G), con una melodía de 8 compases.
+  const ARC_CH = [
+    { root: 45, notes: [57, 60, 64] },
+    { root: 41, notes: [57, 60, 65] },
+    { root: 48, notes: [55, 60, 64] },
+    { root: 43, notes: [55, 59, 62] },
+  ];
+  // corcheas: nota MIDI, -1 sostener, 0 silencio
+  const ARC_MEL = [
+    [76, 0, 76, 79, 81, -1, 79, 76],
+    [77, -1, 76, 74, 72, -1, 74, 76],
+    [79, 0, 79, 81, 84, -1, 83, 79],
+    [83, -1, 81, 79, 74, -1, 0, 0],
+    [76, 79, 81, 79, 76, 74, 72, 74],
+    [77, 81, 84, 81, 77, -1, 76, 77],
+    [79, 84, 83, 79, 76, -1, 79, 81],
+    [83, -1, 86, -1, 83, 81, 79, 0],
+  ];
+
   const TRACKS = {
     lofi: { tempo: 84, bright: 2600 },
     office: { tempo: 112, bright: 5200, swing: 0.3 },
+    arcade: { tempo: 146, bright: 7000 },
   };
 
   const Audio = {
@@ -68,6 +88,7 @@
     music: null,
     track: 'lofi',
     positions: {},
+    tempoFactor: 1,
     duck: 1,
 
     // Crea el contexto de audio (los navegadores exigen un gesto del usuario).
@@ -254,7 +275,6 @@
       this.fadeOutMusic();
       const ctx = this.ctx;
       const tr = TRACKS[this.track];
-      const sixteenth = 60 / tr.tempo / 4;
       const out = ctx.createGain();
       out.gain.setValueAtTime(0.0001, ctx.currentTime);
       out.gain.setTargetAtTime(1, ctx.currentTime, 0.35);
@@ -266,7 +286,10 @@
       const tick = () => {
         if (this.music !== m) return;
         while (m.next < ctx.currentTime + 0.15) {
+          // El tempo se recalcula en cada paso: el ARCADE acelera la música en cada oleada.
+          const sixteenth = 60 / (tr.tempo * (m.name === 'arcade' ? this.tempoFactor : 1)) / 4;
           if (m.name === 'office') this.officeStep(m.step, m.next, sixteenth, out, tr.swing);
+          else if (m.name === 'arcade') this.arcadeStep(m.step, m.next, sixteenth, out);
           else this.scheduleStep(m.step, m.next, sixteenth, out);
           m.next += sixteenth;
           m.step++;
@@ -295,6 +318,45 @@
       this.applyVolumes();
       if (on && this.wantMusic) this.startMusic();
       else if (!on) this.fadeOutMusic();
+    },
+
+    // Velocidad de la música del ARCADE (1 = normal).
+    setTempoFactor(f) {
+      this.tempoFactor = Math.max(0.5, Math.min(2, f || 1));
+    },
+
+    // Tema del ARCADE: bajo en corcheas, arpegio cuadrado, melodía y batería con platillo en semicorcheas.
+    arcadeStep(step, t, s16, out) {
+      const barIdx = Math.floor(step / 16) % ARC_MEL.length;
+      const s = step % 16;
+      const ch = ARC_CH[barIdx % ARC_CH.length];
+      const mel = ARC_MEL[barIdx];
+      const o = (x) => Object.assign({ out, when: t }, x);
+      const intensity = Math.min(1, (this.tempoFactor - 1) * 2); // más capas cuanto más rápido
+      // batería
+      if (s % 4 === 0) this.tone(o({ freq: 140, slide: 40, dur: 0.12, type: 'sine', vol: 0.2 }));
+      if (s === 4 || s === 12) this.noise(o({ dur: 0.09, vol: 0.06, freq: 2200, filter: 'bandpass' }));
+      this.noise(o({ dur: 0.02, vol: s % 2 ? 0.008 : 0.014, freq: 9000 }));
+      if (intensity > 0.3 && s === 14) this.noise(o({ dur: 0.05, vol: 0.04, freq: 2600, filter: 'bandpass' }));
+      // bajo en corcheas (fundamental y octava)
+      if (s % 2 === 0) this.tone(o({ freq: midi(ch.root + (s % 4 === 2 ? 12 : 0)), dur: s16 * 1.6, type: 'triangle', vol: 0.13 }));
+      // arpegio
+      if (s % 2 === 1 || intensity > 0.5) {
+        const n = ch.notes[(s >> 1) % 3] + 12;
+        this.tone(o({ freq: midi(n), dur: s16 * 0.9, type: 'square', vol: 0.016 }));
+      }
+      // melodía (corcheas)
+      if (s % 2 === 0) {
+        const e = s / 2;
+        const n = mel[e];
+        if (n > 0) {
+          let len = 1;
+          while (e + len < 8 && mel[e + len] === -1) len++;
+          const dur = s16 * 2 * len * 0.9;
+          this.tone(o({ freq: midi(n), dur, type: 'square', vol: 0.04 }));
+          this.tone(o({ freq: midi(n + 12), dur: Math.min(dur, 0.12), type: 'triangle', vol: 0.015 }));
+        }
+      }
     },
 
     // Tema lo-fi tranquilo (menú principal).
