@@ -216,6 +216,11 @@
               text: T('Seleccioná un rango y mirá abajo de la planilla: aparecen el recuento, la suma, el promedio, el mínimo y el máximo, como en Excel. Sirve para chequear rápido sin contar a mano.', 'Select a range and look below the sheet: count, sum, average, min and max appear, just like Excel. Handy for quick checks without counting by hand.'),
             },
             {
+              target: () => document.querySelector('.ss-tools'),
+              title: T('🔽 Filtrar, buscar y pintar', '🔽 Filter, find and paint'),
+              text: T('¿Te preguntan cuántos productos vendieron menos de 10? Activá <b>🔽 Filtro</b>, tocá ▾ en esa columna y elegí «menor que 10»: abajo dice <b>«Se encontraron X de N registros»</b>. También podés <b>🔍 Buscar</b> (<kbd>Ctrl</kbd>+<kbd>B</kbd>), pintar filas con <kbd>Ctrl</kbd>+clic en su número o usar <b>✨ Resaltar celdas</b>.', 'Asked how many products sold fewer than 10? Turn on <b>🔽 Filter</b>, tap ▾ on that column and choose "less than 10": below it says <b>"Found X of N records"</b>. You can also <b>🔍 Find</b> (<kbd>Ctrl</kbd>+<kbd>F</kbd>), paint rows with <kbd>Ctrl</kbd>+click on their number or use <b>✨ Highlight cells</b>.'),
+            },
+            {
               target: () => document.querySelector('[data-pick]'),
               title: T('📍 Responder con una celda', '📍 Answer with a cell'),
               text: T('¿Calculaste la respuesta en una celda (por ejemplo con un CONTAR.SI)? Seleccionala y tocá 📍: el valor pasa solo a la respuesta.', 'Did you calculate the answer in a cell (for example with COUNTIF)? Select it and tap 📍: the value goes straight into the answer.'),
@@ -224,7 +229,10 @@
           { force, onDone: () => ms.focusActive() }
         );
       }
-      if (view === 'sheets' && ms.defs.length) return this.sheet(ms, force);
+      if (view === 'sheets' && ms.defs.length) {
+        if (!force && AA.Tour.seen('sheet') && !AA.Tour.seen('gridtools')) return this.gridTools(ms);
+        return this.sheet(ms, force);
+      }
       return this.tool(view, force);
     },
 
@@ -338,6 +346,12 @@
             onLeave: () => clear('tour-col'),
           },
           {
+            target: () => root.querySelector('.ss-tools'),
+            pad: 4,
+            title: T('🔍 Buscar, filtrar y marcar', '🔍 Find, filter and mark'),
+            text: T('Para tablas grandes: <b>🔍 Buscar</b> (<kbd>Ctrl</kbd>+<kbd>B</kbd>) resalta lo que escribas, <b>🔽 Filtro</b> deja solo las filas que cumplen una condición, <b>🖌</b> pinta celdas (o <kbd>Ctrl</kbd>+clic en el número de fila) y <b>✨ Resaltar celdas</b> marca solas las que cumplen algo. Abajo ves cuántas son.', 'For big tables: <b>🔍 Find</b> (<kbd>Ctrl</kbd>+<kbd>F</kbd>) highlights what you type, <b>🔽 Filter</b> keeps only the rows that meet a condition, <b>🖌</b> paints cells (or <kbd>Ctrl</kbd>+click a row number) and <b>✨ Highlight cells</b> marks the ones that meet a rule. The count shows below.'),
+          },
+          {
             target: '.ms-top [data-act="submit"]',
             title: T('📤 Entregar', '📤 Submit'),
             text: T('Con todos los objetivos tildados se habilita <b>Entregar informe</b>. Ojo: a veces, al entregar, el equipo te pide <b>presentar los resultados</b> y te pregunta por tus datos. ¡Miralos bien antes!', 'Once every objective is ticked, <b>Submit report</b> unlocks. Careful: sometimes the team asks you to <b>present the results</b> and asks about your data. Look at them closely first!'),
@@ -354,9 +368,41 @@
             const st = AA.State;
             st.data.flags.tipHeaders = true;
             st.save();
+            AA.Tour.markSeen('gridtools'); // esta guía ya mostró las herramientas
             ms.focusActive();
           },
         }
+      );
+    },
+
+    // Herramientas nuevas de la planilla (para quien ya había visto la guía de la planilla).
+    gridTools(ms) {
+      const grid = ms.grids[ms.activeSheet];
+      if (!grid) return;
+      const root = grid.root;
+      AA.Tour.run(
+        'gridtools',
+        [
+          {
+            target: () => root.querySelector('.ss-tools [data-tool="find"]'),
+            pad: 4,
+            title: T('🔍 ¡Nuevo! Buscar', '🔍 New! Find'),
+            text: T('Con <kbd>Ctrl</kbd>+<kbd>B</kbd> (o <kbd>Ctrl</kbd>+<kbd>F</kbd>) escribís un número o una palabra y se resaltan <b>todas</b> las celdas que lo tienen, con el total. <kbd>Enter</kbd> salta a la siguiente. Podés buscar en toda la hoja, en una columna o en una fila.', 'With <kbd>Ctrl</kbd>+<kbd>F</kbd> (or <kbd>Ctrl</kbd>+<kbd>B</kbd>) type a number or a word and <b>every</b> cell that has it lights up, with the total. <kbd>Enter</kbd> jumps to the next one. Search the whole sheet, one column or one row.'),
+          },
+          {
+            target: () => root.querySelector('.ss-tools [data-tool="filter"]'),
+            pad: 4,
+            title: T('🔽 Filtro', '🔽 Filter'),
+            text: T('Activalo (<kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd>) y tocá ▾ en la letra de una columna: «menor que 10», «contiene Norte», «los 5 mayores»… Se ocultan las filas que no cumplen y abajo dice <b>cuántos registros se encontraron</b>.', 'Turn it on (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>) and tap ▾ on a column letter: "less than 10", "contains North", "top 5"… Rows that don\'t match are hidden and the bar below says <b>how many records were found</b>.'),
+          },
+          {
+            target: () => root.querySelector('.ss-tools [data-paint="y"]'),
+            pad: 6,
+            title: T('🖌 Pintar y ✨ resaltar', '🖌 Paint and ✨ highlight'),
+            text: T('Pintá la selección con un color, o hacé <kbd>Ctrl</kbd>+clic en el número de una fila para pintarla entera. <b>✨ Resaltar celdas</b> pinta solas las que cumplen una condición. Abajo ves <b>cuántas hay de cada color</b>. Nada de esto cambia los datos: solo ayuda a mirar.', 'Paint the selection with a color, or <kbd>Ctrl</kbd>+click a row number to paint the whole row. <b>✨ Highlight cells</b> paints the ones that meet a condition automatically. Below you see <b>how many of each color</b>. None of this changes the data: it just helps you look.'),
+          },
+        ],
+        { onDone: () => ms.focusActive() }
       );
     },
 

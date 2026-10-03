@@ -52,6 +52,16 @@ se guarda en el navegador (`localStorage`).
   **práctica libre**, los favores y el ARCADE muestran **solo el pedido** (qué entregar y dónde, sin decir qué
   función usar), como en un trabajo real. Para responder rápido: seleccioná un rango y mirá **recuento, suma,
   promedio, mín y máx** abajo de la planilla (como en Excel), y con **📍** pasás el valor de una celda a la respuesta.
+- **Explorar tablas grandes** (como en Excel), en todas las planillas:
+  - **🔽 Filtro** (<kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd>): ▾ en cada columna con condiciones (igual, mayor,
+    menor, entre, contiene, empieza con, vacías, los N mayores/menores); oculta las filas que no cumplen y la barra
+    de estado dice **«Se encontraron X de N registros»**.
+  - **🔍 Buscar** (<kbd>Ctrl</kbd>+<kbd>B</kbd> o <kbd>Ctrl</kbd>+<kbd>F</kbd>): resalta todas las coincidencias con
+    contador, <kbd>Enter</kbd> salta a la siguiente; en toda la hoja, en la columna o en la fila, y «celda completa».
+  - **🖌 Pintar** celdas, o filas enteras con <kbd>Ctrl</kbd>+clic en su número; abajo, cuántas hay de cada color.
+  - **✨ Resaltar celdas**: formato condicional simple con el total de celdas resaltadas.
+  - Nada de esto cambia los datos ni la corrección: las celdas amarillas siguen necesitando fórmulas. Leo lo
+    explica («¿Cómo encuentro datos en una tabla grande?») y está en la libreta, pestaña **🔍 Explorar tablas**.
 - **🕹️ ARCADE**: la máquina del living (averiada mientras sos pasante, se arregla al llegar a Junior). Misiones
   aleatorias una tras otra contra un reloj único: resolver suma tiempo y puntos; responder mal, entregar
   incompleto o saltear resta tiempo. Cada 3 misiones llega una **oleada**: el reloj corre más rápido, las
@@ -121,6 +131,7 @@ ver [`docs/CARRERA.md`](docs/CARRERA.md).
 | **0.5.2** | Confeti en cada entrega y animación de "nivel completado" (medalla, rayos, contador de XP y barra que se llena); bandeja con colores por estado (nuevo, en progreso, entregado, práctica extra) y etapas plegables que recuerdan si las abriste o cerraste. | ✅ |
 | **0.6** | Bienvenida y guías paso a paso animadas, eventos especiales de presentación con preguntas sobre tus datos, favores de Nico desde Semi-Senior y diálogos según el rango. | ✅ |
 | **0.7** | Práctica, favores y ARCADE sin paso a paso (solo el pedido), barra de estado de la planilla y 📍 para responder con una celda, y **modo ARCADE** por oleadas con música propia y récords por rango. | ✅ |
+| **0.7.1** | Herramientas para explorar tablas grandes: **filtro**, **buscar**, **pintar** filas/celdas con conteo por color y **resaltar celdas** (formato condicional). | ✅ |
 | **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
@@ -139,6 +150,7 @@ js/
   engine/sheet.js         modelo de hoja: celdas, recálculo, referencias circulares
   i18n/i18n.js            idiomas: AA.T('es', 'en'), documentación de funciones en inglés
   ui/grid.js              componente visual de planilla (selección, edición, relleno, F4, deshacer…)
+  ui/grid-tools.js        buscar, filtro, pintar filas/celdas y resaltar celdas en la planilla
   ui/menu.js, menu-bg.js  menú principal (ranuras, opciones) y su fondo animado
   ui/common.js            modales (con navegación por flechas) y avisos
   ui/creator.js           creador de personaje (aspecto, pelo, barba, ropa)
@@ -174,6 +186,7 @@ tests/
   missions.test.js      resuelve las 95 plantillas (tamaños, semillas, idiomas) y prueba errores típicos
   tools.test.js         tabla dinámica, SQL (resultados y mensajes de error), dashboards e informes
   chart.test.js         modelo de gráficos (agregaciones, color, filtros, Mostrarme)
+  gridtools.test.js     condiciones del filtro y de «resaltar celdas» (números, texto, vacías, los N mayores)
   progression.test.js   economía de XP: cada ascenso pide la etapa completa + 3 o 4 prácticas; repetir no permite saltear rangos
 ```
 

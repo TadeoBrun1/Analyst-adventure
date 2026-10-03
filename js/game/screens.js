@@ -365,6 +365,7 @@
       }
       this.sqlRuns = W().runSql(mission, this.parts.sql);
       this.status = [];
+      document.querySelectorAll('.ss-pop').forEach((p) => p.remove());
       this.grids = [];
       this.views = {};
       this.tabs = W().views(mission);
@@ -714,6 +715,7 @@
 
     leave(then) {
       this.saveNow();
+      (this.grids || []).forEach((g) => g && g.closePop && g.closePop());
       Object.values(this.views).forEach((v) => v && v.destroy && v.destroy());
       this.views = {};
       this.mission = null;
@@ -1223,6 +1225,10 @@
       let page;
       if (current === 'keys') {
         page = `<h2>⌨️ ${T('Atajos de teclado', 'Keyboard shortcuts')}</h2><p class="nb-say">${AA.L(AA.Story.SHORTCUTS)}</p>`;
+      } else if (current === 'explore') {
+        page =
+          `<h2>🔍 ${T('Explorar tablas grandes', 'Exploring big tables')}</h2>` +
+          AA.Story.EXPLORE.map((x) => `<section class="nb-skill"><h3>${AA.L(x.title)}</h3><p class="nb-say">${AA.L(x.text)}</p></section>`).join('');
       } else {
         const mod = Cu().moduleById(current);
         page =
@@ -1244,9 +1250,9 @@
       card.querySelector('.nb').innerHTML = `
         <div class="nb-side">
           ${profileHtml()}
-          <nav class="nb-tabs">${tabs}<button class="nb-tab ${current === 'keys' ? 'on' : ''}" data-tab="keys">⌨️ ${T('Atajos', 'Shortcuts')}</button></nav>
+          <nav class="nb-tabs">${tabs}<button class="nb-tab ${current === 'keys' ? 'on' : ''}" data-tab="keys">⌨️ ${T('Atajos', 'Shortcuts')}</button><button class="nb-tab ${current === 'explore' ? 'on' : ''}" data-tab="explore">🔍 ${T('Explorar tablas', 'Exploring tables')}</button></nav>
         </div>
-        <div class="nb-page">${learned.length || current === 'keys' ? page : `<p class="nb-say">${T('Todavía no aprendiste nada. Hablá con Leo junto a la máquina de café.', "You haven't learned anything yet. Talk to Leo by the coffee machine.")}</p>`}</div>`;
+        <div class="nb-page">${learned.length || current === 'keys' || current === 'explore' ? page : `<p class="nb-say">${T('Todavía no aprendiste nada. Hablá con Leo junto a la máquina de café.', "You haven't learned anything yet. Talk to Leo by the coffee machine.")}</p>`}</div>`;
       card.querySelectorAll('[data-tab]').forEach((b) =>
         b.addEventListener('click', () => {
           current = b.dataset.tab;

@@ -154,6 +154,13 @@ el salto a Excel, Google Sheets, Tableau, Power BI o una base de datos sea direc
 - El **ARCADE** entrena hacer el trabajo **bajo presión de tiempo**. Cada rango usa solo las herramientas de su
   etapa (y de la anterior) que ya aprendiste, y la dificultad sube cada 3 misiones. No da XP: es para medirse.
 
+### Explorar antes de responder (v0.7.1)
+
+Un analista real no cuenta filas con el dedo: filtra, busca y marca. La planilla tiene **filtro** (con «Se
+encontraron X de N registros»), **buscar**, **pintar** filas o celdas con conteo por color y **resaltar celdas**
+(formato condicional). Sirven para chequear y responder preguntas sobre tablas grandes; no completan las celdas
+que piden fórmulas.
+
 ### Próximo: Lead
 
 Priorizar una bandeja de pedidos, encuadrar el problema con el área, definir métricas únicas (gobierno de

@@ -145,7 +145,11 @@
       this.scroll.appendChild(this.wrap);
       // Barra de estado (como en Excel): recuento, suma y promedio de lo seleccionado.
       this.status = el('div', 'ss-status');
-      root.append(bar, this.hint, this.scroll, this.status);
+      // Herramientas para explorar (buscar, filtro, pintar, resaltar): js/ui/grid-tools.js
+      this.tools = el('div', 'ss-tools');
+      root.append(bar, this.tools, this.hint, this.scroll, this.status);
+      if (this.buildTools && this.opts.tools !== false) this.buildTools(this.tools);
+      else this.tools.remove();
 
       this.bindEvents();
       this.setHint(null);
@@ -163,7 +167,7 @@
       });
       this.table.querySelector('thead').addEventListener('mousedown', (e) => {
         const th = e.target.closest('th.ss-colhead');
-        if (!th || this.editing) return;
+        if (!th || this.editing || e.target.closest('.ss-fbtn')) return;
         e.preventDefault();
         const c = +th.dataset.c;
         this.sel = { ac: c, ar: 0, fc: c, fr: this.sheet.rows - 1 };
@@ -175,6 +179,11 @@
         if (!th || this.editing) return;
         e.preventDefault();
         const r = +th.dataset.r;
+        // Ctrl+clic en el número de fila: la pinta (amarillo → verde → rosa → celeste → sin color).
+        if ((e.ctrlKey || e.metaKey) && this.cycleRowPaint) {
+          this.cycleRowPaint(r);
+          return;
+        }
         this.sel = { ac: 0, ar: r, fc: this.sheet.cols - 1, fr: r };
         this.renderSelection(true);
         this.scroll.focus({ preventScroll: true });
@@ -229,7 +238,16 @@
       if (!td || !this.wrap.contains(td)) return null;
       return { c: +td.dataset.c, r: +td.dataset.r };
     }
+    // Fila visible más cercana (las filas ocultas por un filtro no tienen tamaño).
+    visibleRow(r, dir) {
+      if (!this.rowHidden || !this.rowHidden(r)) return r;
+      for (let k = r; k >= 0 && k < this.sheet.rows; k += dir) if (!this.rowHidden(k)) return k;
+      for (let k = r; k >= 0 && k < this.sheet.rows; k -= dir) if (!this.rowHidden(k)) return k;
+      return r;
+    }
     boxFor(c1, r1, c2, r2) {
+      r1 = this.visibleRow(r1, 1);
+      r2 = Math.max(r1, this.visibleRow(r2, -1));
       const wr = this.wrap.getBoundingClientRect();
       const a = this.tds[r1][c1].getBoundingClientRect();
       const b = this.tds[r2][c2].getBoundingClientRect();
@@ -309,6 +327,7 @@
           td.title = F.isErr(v) ? `${v.code} — ${v.detail}` : '';
         }
       }
+      if (this.decorate) this.decorate();
       if (!this.editing) this.bar.value = this.sheet.getInput(this.sel.ac, this.sel.ar);
       this.renderSelection();
     }
@@ -316,8 +335,9 @@
     // Recuento / Suma / Promedio / Mín / Máx de la selección (sirve para responder sin contar a mano).
     renderStatus(c1, r1, c2, r2) {
       if (!this.status) return;
+      const extras = this.statusExtras ? this.statusExtras() : '';
       if (c1 === c2 && r1 === r2) {
-        this.status.innerHTML = `<span class="ss-st-muted">${AA.T('Seleccioná varias celdas para ver su recuento, suma y promedio.', 'Select several cells to see their count, sum and average.')}</span>`;
+        this.status.innerHTML = `<span class="ss-st-muted">${AA.T('Seleccioná varias celdas para ver su recuento, suma y promedio.', 'Select several cells to see their count, sum and average.')}</span>` + extras;
         return;
       }
       let count = 0;
@@ -327,6 +347,7 @@
       let max = -Infinity;
       let seen = 0;
       for (let r = r1; r <= r2 && seen < 20000; r++) {
+        if (this.rowHidden && this.rowHidden(r)) continue; // con filtro, solo cuentan las filas visibles
         for (let c = c1; c <= c2; c++, seen++) {
           const v = this.sheet.getValue(c, r);
           if (v === null || v === undefined || v === '' || F.isErr(v)) continue;
@@ -345,7 +366,8 @@
         item(AA.T('Recuento', 'Count'), count) +
         (nums
           ? item(AA.T('Suma', 'Sum'), f(sum)) + item(AA.T('Promedio', 'Average'), f(sum / nums)) + item(AA.T('Mín', 'Min'), f(min)) + item(AA.T('Máx', 'Max'), f(max))
-          : '');
+          : '') +
+        extras;
     }
 
     renderSelection(scrollIntoView) {
@@ -418,7 +440,11 @@
       this.renderSelection(true);
     }
     moveActive(dc, dr) {
-      this.select(this.sel.ac + dc, this.sel.ar + dr);
+      let r = this.sel.ar + dr;
+      // Con un filtro activo, las flechas saltan las filas ocultas.
+      if (dr && this.rowHidden) while (r > 0 && r < this.sheet.rows - 1 && this.rowHidden(r)) r += dr;
+      if (this.rowHidden && this.rowHidden(r)) r = this.sel.ar;
+      this.select(this.sel.ac + dc, r);
     }
     // Ctrl+flecha: salta al borde del bloque de datos.
     jump(dc, dr, extend) {
@@ -810,6 +836,16 @@
           this.clearSelection();
           return;
         case 'Escape':
+          if (this.pop) {
+            e.preventDefault();
+            this.closePop();
+            return;
+          }
+          if (this.find && this.find.open) {
+            e.preventDefault(); // primero se cierra la búsqueda
+            this.closeFind();
+            return;
+          }
           if (this.clipboard) {
             e.preventDefault(); // solo cancela el copiado: no salir de la tarea
             this.clipboard = null;

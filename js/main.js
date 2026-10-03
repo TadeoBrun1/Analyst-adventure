@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.7.0';
+  AA.VERSION = '0.7.1';
 
   const Game = {
     screen: 'title',
@@ -274,6 +274,23 @@
         if (!e.repeat) AA.Dialog.handleKey(e);
         else e.preventDefault();
         return;
+      }
+      // Ctrl+F / Ctrl+B (buscar) y Ctrl+Mayús+L (filtro) en la planilla, aunque el foco esté en el panel:
+      // así no se abre el buscador del navegador.
+      if ((e.ctrlKey || e.metaKey) && (this.screen === 'mission' || this.screen === 'arcade')) {
+        const k = e.key.toLowerCase();
+        const ms = AA.Screens.MissionScreen;
+        const g = ms.activeView === 'sheets' && ms.grids && ms.grids[ms.activeSheet];
+        if (g && g.openFind && !e.shiftKey && (k === 'f' || k === 'b')) {
+          e.preventDefault();
+          g.openFind();
+          return;
+        }
+        if (g && g.toggleFilter && e.shiftKey && k === 'l') {
+          e.preventDefault();
+          g.toggleFilter();
+          return;
+        }
       }
       if (e.key !== 'Escape') return;
       if (this.screen === 'arcade') {
