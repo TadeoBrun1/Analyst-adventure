@@ -245,6 +245,23 @@
           this.seq([60, 64, 67, 72, 76, 79, 84, 88, 91, 96], 0.055, { type: 'square', vol: 0.06 });
           this.seq([48, null, null, 55, null, null, 60, null, null, 72], 0.055, { type: 'triangle', vol: 0.12 });
           break;
+        case 'achievement':
+          this.seq([79, 84, 88, 91, null, 96], 0.07, { type: 'square', vol: 0.06 });
+          this.seq([67, null, 72, null, 76, 79], 0.07, { type: 'triangle', vol: 0.09 });
+          break;
+        case 'meow':
+          this.tone({ freq: 700, slide: 1100, dur: 0.12, type: 'triangle', vol: 0.09 });
+          this.tone({ freq: 1100, slide: 520, dur: 0.22, type: 'triangle', vol: 0.08, when: this.ctx.currentTime + 0.11 });
+          break;
+        case 'woof':
+          this.tone({ freq: 260, slide: 170, dur: 0.1, type: 'square', vol: 0.08 });
+          this.noise({ dur: 0.06, vol: 0.04, freq: 900, filter: 'bandpass' });
+          this.tone({ freq: 280, slide: 180, dur: 0.1, type: 'square', vol: 0.08, when: this.ctx.currentTime + 0.18 });
+          break;
+        case 'chest':
+          this.noise({ dur: 0.12, vol: 0.05, freq: 700, filter: 'bandpass' });
+          this.seq([72, 79, 84], 0.06, { type: 'triangle', vol: 0.1 });
+          break;
         case 'fanfare': {
           // Fiesta: fanfarria de trompetas chiptune + redoblante + "pops" de confeti.
           const t0 = this.ctx.currentTime;

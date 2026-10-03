@@ -71,6 +71,13 @@ se guarda en el navegador (`localStorage`).
   (Junior, Semi-Senior, Senior) hasta el alcanzado en el modo historia, y se guardan las 5 mejores partidas de
   cada rango: gana quien resuelve **más misiones** y, a igual cantidad, quien lo hizo en **menos tiempo total**.
   El balance está simulado con jugadores de distinto nivel: ver [docs/ARCADE.md](docs/ARCADE.md).
+- **🏆 Logros del ARCADE (15)**: completar 3, 6 o 12 misiones, llegar a la oleada 3, 5 o 7, hacer 3 misiones en
+  menos de 8 minutos, 5 seguidas sin errores, entregar con menos de 15 s en el reloj, sumar 25 misiones, jugar en
+  los tres rangos… Están en la libreta (pestaña **🏆 Logros**), con el objetivo, el progreso y la **vista previa
+  de la recompensa**. Cada logro desbloquea un **objeto decorativo** para la oficina, que se pone o se saca desde
+  el **🎁 cofre** al lado de la máquina: ficus, alfombra persa, cafetera espresso, donas, PC gamer, silla gamer,
+  pecera, guirnalda de luces, tocadiscos, neón «DATA», cuadro «Analista del mes», bonsái, trofeo, y un **gato** y
+  un **perro** que pasean por la oficina, duermen la siesta y se dejan acariciar (E).
 - **Partida nueva**: elegís tu nombre y armás tu personaje: hombre o mujer, tono de piel, peinado y color de
   pelo, barba y su color, anteojos y ropa (remera, camisa, buzo o saco; pantalón o pollera). Se puede cambiar
   después desde la pausa (*👕 Cambiar aspecto*).
@@ -136,6 +143,7 @@ ver [`docs/CARRERA.md`](docs/CARRERA.md).
 | **0.7** | Práctica, favores y ARCADE sin paso a paso (solo el pedido), barra de estado de la planilla y 📍 para responder con una celda, y **modo ARCADE** por oleadas con música propia y récords por rango. | ✅ |
 | **0.7.1** | Herramientas para explorar tablas grandes: **filtro**, **buscar**, **pintar** filas/celdas con conteo por color y **resaltar celdas** (formato condicional). | ✅ |
 | **0.7.2** | ARCADE rebalanceado (plazo por pedido según su tamaño, reserva con tope, mismos resultados en los tres rangos), ranking por misiones y tiempo total, favores de Nico con guía cuando piden algo nuevo y simulador `npm run balance`. | ✅ |
+| **0.8** | **Logros del ARCADE** (15) con recompensas: decoración para la oficina que se activa desde un cofre, y mascotas que pasean y se pueden acariciar. | ✅ |
 | **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
@@ -164,6 +172,8 @@ js/
   game/present.js         eventos especiales: presentación y preguntas sobre tus datos
   game/brief.js           pedidos sin guía (qué entregar, sin el cómo)
   game/arcade.js          modo ARCADE (reloj, oleadas, puntajes)
+  game/achievements.js    logros del ARCADE, cofre de recompensas y página de la libreta
+  game/decor.js           decoración de la oficina y mascotas (dibujo, vistas previas)
   game/storage.js         3 ranuras + configuración (archivos en escritorio, localStorage en web)
   game/settings.js        idioma, volúmenes y pantalla
   game/audio.js           música, efectos y voces sintetizados con Web Audio
@@ -192,6 +202,7 @@ tests/
   tools.test.js         tabla dinámica, SQL (resultados y mensajes de error), dashboards e informes
   chart.test.js         modelo de gráficos (agregaciones, color, filtros, Mostrarme)
   arcade-balance.js     simulador de balance del ARCADE (npm run balance), no es parte de npm test
+  achievements.test.js  logros, estadísticas, decoración bloqueada y que con todo puesto se llegue a todos lados
   gridtools.test.js     condiciones del filtro y de «resaltar celdas» (números, texto, vacías, los N mayores)
   progression.test.js   economía de XP: cada ascenso pide la etapa completa + 3 o 4 prácticas; repetir no permite saltear rangos
 ```

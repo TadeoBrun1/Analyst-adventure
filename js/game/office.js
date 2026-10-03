@@ -11,7 +11,7 @@
   //          D escritorio · B escritorio de la jefa · K biblioteca · W pizarra · G/g vidrio (vertical/horizontal)
   //          F heladera · Q mesada · C cafetera · k pileta · M microondas · A dispenser de agua
   //          V máquina expendedora · T mesa · h silla · X mesa ratona · S sofá · Y impresora
-  //          P planta grande · p planta chica · R máquina arcade · = salida
+  //          P planta grande · p planta chica · R máquina arcade · Z cofre de recompensas · = salida
   const MAP = [
     '############################',
     '#FQCQkMA#KP.WWW..PKGK.BB.PK#',
@@ -20,7 +20,7 @@
     '#,hh,hh,#..........G.......#',
     '#,TT,TT,#.DD...DD..Gp.....p#',
     '#,hh,hh,P..........gggggggg#',
-    '#,,,,,,,,..............R...#',
+    '#,,,,,,,,..............RZ..#',
     '#,,,,,,,,...........______.#',
     '#,hh,hh,,.hhh.......__XXX_.#',
     '#,TT,TT,P.TTT.....Y.__SSS_.#',
@@ -95,7 +95,21 @@
       },
     },
   ];
+  SPOTS.push({
+    id: 'chest',
+    x: 24,
+    y: 7,
+    w: 1,
+    h: 1,
+    label: { es: '🎁 Cofre de recompensas', en: '🎁 Rewards chest' },
+  });
   const START = { x: 14 * T + 16, y: 8 * T + 26 };
+  const decorOn = (id) => !!(AA.Decor && AA.Decor.on(id));
+  // Mascotas (recompensas del ARCADE): pasean por la oficina y se las puede acariciar.
+  const PETS = {
+    cat: { speed: 42, name: { es: 'Michi', en: 'Michi' }, start: [21, 11] },
+    dog: { speed: 58, name: { es: 'Firulais', en: 'Firulais' }, start: [14, 9] },
+  };
   const arcadeOn = () => !!(AA.State && AA.State.data && AA.State.rankIndex() >= 1);
   const nicoBack = () => !!(AA.State && AA.State.data && AA.State.rankIndex() >= 2);
   // Sillas de oficina libres: la tuya (frente a tu computadora) y la de Nico, que está de vacaciones.
@@ -106,6 +120,9 @@
   ];
 
   const Office = {
+    MAP,
+    SPOTS,
+    WALKABLE,
     canvas: null,
     ctx: null,
     running: false,
@@ -223,6 +240,8 @@
       return { x: (e.clientX - r.left - v.ox) / v.scale, y: (e.clientY - r.top - v.oy) / v.scale };
     },
     spotAt(x, y) {
+      const pet = (this.pets || []).find((p) => Math.abs(p.x - x) < 14 && y > p.y - 22 && y < p.y + 4);
+      if (pet) return this.petSpots().find((s) => s.id === 'pet:' + pet.kind);
       const tx = Math.floor(x / T);
       const ty = Math.floor(y / T);
       // Los personajes se dibujan más altos que su tile: también cuenta el tile de arriba.
@@ -245,6 +264,7 @@
       if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return true;
       if (!WALKABLE.has(MAP[ty][tx])) return true;
       if (CHAIRS.some((c) => !c.mine && c.tx === tx && c.ty === ty)) return true; // (la de Nico, vacía u ocupada)
+      if (AA.Decor && AA.Decor.solidTiles().some(([x, y]) => x === tx && y === ty)) return true;
       return this.activeNpcs().some((n) => n.tx === tx && n.ty === ty);
     },
 
@@ -299,10 +319,11 @@
       } else {
         p.frame = 0;
       }
+      this.updatePets(dt);
       // Lo más cercano con lo que se puede interactuar.
       let best = null;
       let bestD = 30;
-      for (const s of this.activeSpots()) {
+      for (const s of this.activeSpots().concat(this.petSpots())) {
         const rx1 = s.x * T;
         const ry1 = s.y * T;
         const rx2 = rx1 + s.w * T;
@@ -316,6 +337,126 @@
         }
       }
       this.near = best;
+    },
+
+    // --- Mascotas (gato y perro): pasean, se duermen la siesta y se dejan acariciar.
+    petWalkable(tx, ty) {
+      if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return false;
+      if (!WALKABLE.has(MAP[ty][tx])) return false;
+      if (CHAIRS.some((c) => c.tx === tx && c.ty === ty)) return false;
+      if (this.activeNpcs().some((n) => n.tx === tx && n.ty === ty)) return false;
+      if (AA.Decor && AA.Decor.solidTiles().some(([x, y]) => x === tx && y === ty)) return false;
+      return true;
+    },
+    // Camino más corto entre dos tiles (búsqueda en anchura).
+    findPath(from, to) {
+      const key = (x, y) => y * COLS + x;
+      const prev = new Map([[key(from[0], from[1]), null]]);
+      const queue = [from];
+      while (queue.length) {
+        const [x, y] = queue.shift();
+        if (x === to[0] && y === to[1]) break;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const k = key(nx, ny);
+          if (prev.has(k) || !this.petWalkable(nx, ny)) continue;
+          prev.set(k, [x, y]);
+          queue.push([nx, ny]);
+        }
+      }
+      if (!prev.has(key(to[0], to[1]))) return [];
+      const path = [];
+      for (let c = to; c && !(c[0] === from[0] && c[1] === from[1]); c = prev.get(key(c[0], c[1]))) path.unshift(c);
+      return path;
+    },
+    updatePets(dt) {
+      if (!this.pets) this.pets = [];
+      for (const kind of Object.keys(PETS)) {
+        const has = this.pets.find((p) => p.kind === kind);
+        if (decorOn(kind) && !has) {
+          const [tx, ty] = PETS[kind].start;
+          this.pets.push({ kind, x: tx * T + 16, y: ty * T + 24, path: [], state: 'idle', timer: 1 + Math.random() * 2, face: 'right', anim: 0, hearts: 0, happy: 0 });
+        } else if (!decorOn(kind) && has) this.pets = this.pets.filter((p) => p !== has);
+      }
+      for (const p of this.pets) {
+        p.hearts = Math.max(0, p.hearts - dt);
+        p.happy = Math.max(0, p.happy - dt);
+        if (p.happy > 0) continue; // se queda quieto mientras lo acariciás
+        if (p.state === 'walk') {
+          const next = p.path[0];
+          if (!next) {
+            p.state = 'idle';
+            p.timer = 2 + Math.random() * 5;
+            continue;
+          }
+          const gx = next[0] * T + 16;
+          const gy = next[1] * T + 24;
+          const dx = gx - p.x;
+          const dy = gy - p.y;
+          const d = Math.hypot(dx, dy);
+          const step = PETS[p.kind].speed * dt;
+          if (d <= step) {
+            p.x = gx;
+            p.y = gy;
+            p.path.shift();
+          } else {
+            p.x += (dx / d) * step;
+            p.y += (dy / d) * step;
+          }
+          if (Math.abs(dx) > 0.5) p.face = dx < 0 ? 'left' : 'right';
+          p.anim += dt * 8;
+        } else {
+          p.timer -= dt;
+          if (p.timer > 0) continue;
+          if (p.state === 'idle' && Math.random() < 0.3) {
+            p.state = 'sleep';
+            p.timer = 8 + Math.random() * 12;
+            continue;
+          }
+          const from = [Math.floor(p.x / T), Math.floor(p.y / T)];
+          let path = [];
+          for (let tries = 0; tries < 12 && !path.length; tries++) {
+            const to = [from[0] + Math.round((Math.random() - 0.5) * 16), from[1] + Math.round((Math.random() - 0.5) * 8)];
+            if (this.petWalkable(to[0], to[1])) path = this.findPath(from, to);
+          }
+          p.path = path;
+          p.state = path.length ? 'walk' : 'idle';
+          p.timer = 1.5;
+        }
+      }
+    },
+    petSpots() {
+      return (this.pets || []).map((p) => {
+        const name = PETS[p.kind].name;
+        return { id: 'pet:' + p.kind, x: p.x / T - 0.5, y: p.y / T - 0.8, w: 1, h: 0.8, pet: true, label: { es: `Acariciar a ${name.es}`, en: `Pet ${name.en}` } };
+      });
+    },
+    petAnimal(id) {
+      const p = (this.pets || []).find((x) => 'pet:' + x.kind === id);
+      if (!p) return;
+      p.happy = 2.4;
+      p.hearts = 2.4;
+      p.state = 'idle';
+      p.path = [];
+      p.timer = 2 + Math.random() * 3;
+      p.face = this.player.x < p.x ? 'left' : 'right';
+      AA.Audio.play(p.kind === 'cat' ? 'meow' : 'woof');
+    },
+    drawPet(p) {
+      const ctx = this.ctx;
+      const state = p.happy > 0 ? 'idle' : p.state;
+      AA.Decor.paintAt(ctx, p.kind, p.x, p.y, this.t, { state, dir: p.face, frame: Math.floor(p.anim) % 2, happy: p.happy > 0 });
+      if (p.hearts > 0) {
+        for (let k = 0; k < 3; k++) {
+          const ph = ((2.4 - p.hearts) * 0.9 + k * 0.33) % 1;
+          ctx.globalAlpha = 1 - ph;
+          ctx.fillStyle = '#ff4f7b';
+          ctx.font = 'bold 8px "Inter", sans-serif';
+          ctx.fillText('♥', p.x - 6 + k * 5 + Math.sin(ph * 6 + k) * 2, p.y - 22 - ph * 16);
+          ctx.globalAlpha = 1;
+        }
+      }
     },
 
     // Rectángulo en pantalla de un personaje o un objeto (para las guías).
@@ -510,22 +651,36 @@
       const markers = this.getMarkers ? this.getMarkers() : {};
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) this.drawTile(x, y, markers);
       this.drawLight();
+      // Decoración de las paredes y sobre los muebles (recompensas del ARCADE).
+      const D = AA.Decor;
+      if (D) {
+        if (decorOn('lights')) D.paintAt(ctx, 'lights', 0, 0, this.t, { from: T + 4, to: 27 * T - 4 });
+        for (const id of ['neon', 'portrait', 'trophy', 'bonsai']) if (decorOn(id)) D.paintAt(ctx, id, D.byId(id).tile[0] * T, D.byId(id).tile[1] * T, this.t);
+      }
 
       // Personajes ordenados por profundidad.
       const actors = this.activeNpcs().map((n) => ({ y: n.y, draw: () => this.drawNpc(n) }));
+      if (D) {
+        for (const id of ['ficus', 'aquarium', 'turntable']) {
+          if (!decorOn(id)) continue;
+          const [tx, ty] = D.byId(id).tile;
+          actors.push({ y: ty * T + 27, draw: () => D.paintAt(ctx, id, tx * T, ty * T, this.t) });
+        }
+        for (const pet of this.pets || []) actors.push({ y: pet.y, draw: () => this.drawPet(pet) });
+      }
       const p = this.player;
       for (const c of CHAIRS) {
         const cx = c.tx * T + 16;
         const cy = c.ty * T + (c.mine ? 20 : 26);
         if (c.mine && p.sitting) continue;
         if (c.owner === 'nico' && nicoBack()) continue; // Nico está sentado en su silla
-        actors.push({ y: cy - 0.5, draw: () => this.drawChair(cx, cy, null) });
+        actors.push({ y: cy - 0.5, draw: () => this.drawChair(cx, cy, null, c.mine) });
       }
       actors.push({
         y: p.y,
         draw: () => {
           const ch = AA.State.CHARACTERS.player;
-          if (p.sitting) this.drawChair(p.x, p.y, () => AA.Sprites.drawChar(ctx, p.x, p.y, ch, 'up', 0, { sitting: true }));
+          if (p.sitting) this.drawChair(p.x, p.y, () => AA.Sprites.drawChar(ctx, p.x, p.y, ch, 'up', 0, { sitting: true }), true);
           else AA.Sprites.drawChar(ctx, p.x, p.y, ch, p.dir, p.frame);
         },
       });
@@ -539,6 +694,7 @@
       if (markers.arcade) this.drawMarker(23 * T + 16, 7 * T - 34 + bounce, '#c084fc');
       for (const n of this.activeNpcs()) if (markers[n.id]) this.drawMarker(n.x, n.y - 46 + bounce, '#ffd23f');
       if (markers.whiteboard) this.drawMarker((wb.x + wb.w / 2) * T, wb.y * T - 8 + bounce, '#7cf29a');
+      if (markers.chest) this.drawMarker(24 * T + 16, 7 * T - 6 + bounce, '#ffd23f');
 
       const target = this.near || this.hover;
       if (target) this.drawPrompt(target, !!this.near && target === this.near);
@@ -626,8 +782,21 @@
     },
 
     // Silla de oficina vista desde atrás (la persona mira al escritorio). sit: dibuja a quien está sentado.
-    drawChair(x, y, sit) {
+    drawChair(x, y, sit, mine) {
       const ctx = this.ctx;
+      if (mine && decorOn('gamerchair')) {
+        // silla gamer (recompensa): quien se sienta se dibuja en coordenadas del mundo
+        const seat = sit
+          ? () => {
+              ctx.save();
+              ctx.translate(-x, -y);
+              sit();
+              ctx.restore();
+            }
+          : null;
+        AA.Decor.paintAt(ctx, 'gamerchair', x, y, this.t, { sit: seat });
+        return;
+      }
       const R = (dx, dy, w, h, col) => {
         ctx.fillStyle = col;
         ctx.fillRect(x + dx, y + dy, w, h);
@@ -704,6 +873,19 @@
         if (!left) R(3, up ? 0 : 3, 3, T - (up ? 0 : 3) - (down ? 0 : 3), '#e8c872');
         if (!right) R(T - 6, up ? 0 : 3, 3, T - (up ? 0 : 3) - (down ? 0 : 3), '#e8c872');
         if ((x + y) % 2 === 0) R(14, 14, 4, 4, '#5bb5a8');
+      }
+      // Alfombra persa (recompensa): se dibuja entera, recortada a este tile.
+      if (decorOn('rug')) {
+        const [rx, ry, rw, rh] = AA.Decor.byId('rug').rug;
+        if (x >= rx && x < rx + rw && y >= ry && y < ry + rh) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(px, py, T, T);
+          ctx.clip();
+          ctx.translate(rx * T, ry * T);
+          AA.Decor.paintRug(ctx, rw * T, rh * T);
+          ctx.restore();
+        }
       }
     },
 
@@ -878,17 +1060,21 @@
             const isMine = ch === 'D' && x === mine.x && y === mine.y;
             const off = ch === 'D' && x === nico.x && y === nico.y && !nicoBack();
             const glow = isMine && markers.computer ? (Math.sin(this.t * 4) > 0 ? '#9be7ff' : '#5fc8ff') : ch === 'B' ? '#c9d6ff' : '#6fd3ff';
-            R(10, 0, 20, 14, '#2b2e3a');
-            R(12, 2, 16, 10, off ? '#3a3e50' : glow);
-            if (!off) {
-              R(14, 4, 8, 1, 'rgba(0,0,0,0.25)');
-              R(14, 7, 11, 1, 'rgba(0,0,0,0.25)');
-            }
-            R(18, 14, 4, 3, '#2b2e3a');
-            // plantita de escritorio o portalápices
-            if (ch === 'D' && !off) {
-              R(3, 12, 5, 5, '#e07a5f');
-              R(3, 9, 5, 3, '#48bb78');
+            if (isMine && decorOn('pcgamer')) {
+              AA.Decor.paintAt(ctx, 'pcgamer', px, py, this.t, { highlight: !!markers.computer });
+            } else {
+              R(10, 0, 20, 14, '#2b2e3a');
+              R(12, 2, 16, 10, off ? '#3a3e50' : glow);
+              if (!off) {
+                R(14, 4, 8, 1, 'rgba(0,0,0,0.25)');
+                R(14, 7, 11, 1, 'rgba(0,0,0,0.25)');
+              }
+              R(18, 14, 4, 3, '#2b2e3a');
+              // plantita de escritorio o portalápices
+              if (ch === 'D' && !off) {
+                R(3, 12, 5, 5, '#e07a5f');
+                R(3, 9, 5, 3, '#48bb78');
+              }
             }
           } else {
             // teclado, taza y post-its
@@ -1035,6 +1221,8 @@
             ctx.beginPath();
             ctx.arc(px + 18, py - 3, 3, 0, Math.PI * 2);
             ctx.fill();
+          } else if (x === 4 && decorOn('donuts')) {
+            AA.Decor.paintAt(ctx, 'donuts', px, py, this.t);
           } else {
             // frasco de galletitas
             R(11, -7, 10, 9, 'rgba(230,240,250,0.9)');
@@ -1045,6 +1233,10 @@
           break;
         case 'C':
           counter();
+          if (decorOn('espresso')) {
+            AA.Decor.paintAt(ctx, 'espresso', px, py, this.t);
+            break;
+          }
           R(7, -16, 18, 20, '#3a3d4a');
           R(7, -16, 18, 3, '#50546a');
           R(10, -11, 12, 6, '#1f2129');
@@ -1206,6 +1398,36 @@
             ctx.fillStyle = '#1b1d2b';
             for (let i = -22; i < 22; i += 6) ctx.fillRect(i, -3, 3, 7);
             ctx.restore();
+          }
+          break;
+        }
+        case 'Z': {
+          // Cofre de recompensas del ARCADE (brilla cuando hay algo nuevo adentro).
+          const fresh = markers.chest;
+          if (fresh) {
+            const g = ctx.createRadialGradient(px + 16, py + 16, 2, px + 16, py + 16, 26);
+            g.addColorStop(0, `rgba(255,210,63,${0.35 + 0.2 * Math.sin(this.t * 4)})`);
+            g.addColorStop(1, 'rgba(255,210,63,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(px - 12, py - 12, 56, 56);
+          }
+          ctx.fillStyle = 'rgba(0,0,0,0.2)';
+          ctx.beginPath();
+          ctx.ellipse(px + 16, py + 28, 13, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          R(4, 12, 24, 16, '#8b5a2b');
+          R(4, 12, 24, 2, '#a8703c');
+          R(3, 4, 26, 10, '#9c6532');
+          R(3, 4, 26, 2, '#b97d45');
+          R(3, 12, 26, 2, '#6b4220');
+          R(7, 4, 3, 24, '#d4a017');
+          R(22, 4, 3, 24, '#d4a017');
+          R(13, 10, 6, 7, '#f4c430');
+          R(15, 13, 2, 3, '#6b4220');
+          if (fresh && Math.sin(this.t * 6) > 0.3) {
+            R(26, 1, 1, 5, '#ffffff');
+            R(24, 3, 5, 1, '#ffffff');
+            R(5, 0, 1, 3, '#fff3c4');
           }
           break;
         }

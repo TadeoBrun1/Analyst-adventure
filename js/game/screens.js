@@ -1219,7 +1219,8 @@
 
   function openNotebook(focusModule) {
     const learned = Cu().MODULES.filter((m) => Cu().lessonDone(m));
-    let current = focusModule && learned.find((m) => m.id === focusModule) ? focusModule : learned.length ? learned[learned.length - 1].id : 'keys';
+    const SPECIAL = ['keys', 'explore', 'achievements'];
+    let current = SPECIAL.includes(focusModule) ? focusModule : focusModule && learned.find((m) => m.id === focusModule) ? focusModule : learned.length ? learned[learned.length - 1].id : 'keys';
     const render = (card) => {
       const tabs = Cu()
         .MODULES.map((m, i) => {
@@ -1230,6 +1231,8 @@
       let page;
       if (current === 'keys') {
         page = `<h2>⌨️ ${T('Atajos de teclado', 'Keyboard shortcuts')}</h2><p class="nb-say">${AA.L(AA.Story.SHORTCUTS)}</p>`;
+      } else if (current === 'achievements') {
+        page = AA.Achievements.notebookPage();
       } else if (current === 'explore') {
         page =
           `<h2>🔍 ${T('Explorar tablas grandes', 'Exploring big tables')}</h2>` +
@@ -1255,9 +1258,9 @@
       card.querySelector('.nb').innerHTML = `
         <div class="nb-side">
           ${profileHtml()}
-          <nav class="nb-tabs">${tabs}<button class="nb-tab ${current === 'keys' ? 'on' : ''}" data-tab="keys">⌨️ ${T('Atajos', 'Shortcuts')}</button><button class="nb-tab ${current === 'explore' ? 'on' : ''}" data-tab="explore">🔍 ${T('Explorar tablas', 'Exploring tables')}</button></nav>
+          <nav class="nb-tabs">${tabs}<button class="nb-tab ${current === 'keys' ? 'on' : ''}" data-tab="keys">⌨️ ${T('Atajos', 'Shortcuts')}</button><button class="nb-tab ${current === 'explore' ? 'on' : ''}" data-tab="explore">🔍 ${T('Explorar tablas', 'Exploring tables')}</button><button class="nb-tab ${current === 'achievements' ? 'on' : ''}" data-tab="achievements">🏆 ${T('Logros', 'Achievements')} <span class="nb-count">${AA.Achievements.count()}/${AA.Achievements.LIST.length}</span></button></nav>
         </div>
-        <div class="nb-page">${learned.length || current === 'keys' || current === 'explore' ? page : `<p class="nb-say">${T('Todavía no aprendiste nada. Hablá con Leo junto a la máquina de café.', "You haven't learned anything yet. Talk to Leo by the coffee machine.")}</p>`}</div>`;
+        <div class="nb-page">${learned.length || SPECIAL.includes(current) ? page : `<p class="nb-say">${T('Todavía no aprendiste nada. Hablá con Leo junto a la máquina de café.', "You haven't learned anything yet. Talk to Leo by the coffee machine.")}</p>`}</div>`;
       card.querySelectorAll('[data-tab]').forEach((b) =>
         b.addEventListener('click', () => {
           current = b.dataset.tab;
@@ -1267,6 +1270,7 @@
           if (on) on.focus({ preventScroll: true });
         })
       );
+      if (current === 'achievements') AA.Decor.animatePreviews(card.querySelector('.nb-page'));
       const slot = card.querySelector('[data-portrait]');
       if (slot) slot.replaceWith(AA.UI.portraitCanvas('player', 48));
       const career = card.querySelector('[data-act="career"]');

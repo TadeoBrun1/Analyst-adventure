@@ -131,11 +131,18 @@
             <div>⏱ ${T(`Cada pedido llega con su <b>plazo</b>: más tiempo para los pedidos más largos. Lo que te sobra queda de reserva (hasta <b>${fmtTime(RESERVE_CAP)}</b>).`, `Every request comes with its own <b>deadline</b>: longer requests bring more time. What you save stays in reserve (up to <b>${fmtTime(RESERVE_CAP)}</b>).`)}</div>
             <div>🌊 ${T(`Cada <b>${PER_WAVE} misiones</b> llega una oleada nueva: los plazos se achican, el reloj corre más rápido, las penalizaciones crecen y las misiones se ponen más difíciles.`, `Every <b>${PER_WAVE} missions</b> a new wave starts: deadlines shrink, the clock runs faster, penalties grow and missions get harder.`)}</div>
             <div>🏆 ${T('Gana quien resuelve <b>más misiones</b>; a igual cantidad, quien lo hizo en <b>menos tiempo total</b>.', 'Most <b>missions solved</b> wins; on a tie, the shorter <b>total time</b> wins.')}</div>
+            <div>🎁 ${T(`<b>${AA.Achievements ? AA.Achievements.LIST.length : 15} logros</b>: cada uno desbloquea un objeto para decorar la oficina (plantas, alfombra, PC gamer, mascotas…). Se ponen desde el <b>cofre</b> al lado de la máquina.`, `<b>${AA.Achievements ? AA.Achievements.LIST.length : 15} achievements</b>: each one unlocks an item to decorate the office (plants, rug, gaming PC, pets…). Place them from the <b>chest</b> next to the machine.`)}</div>
             <div>⚠️ ${T('Responder mal, entregar incompleto o saltear una misión <b>resta tiempo</b>.', 'Wrong answers, incomplete submissions or skipping a mission <b>cost time</b>.')}</div>
             <div>📧 ${T('Sin guía: solo el pedido, como en un trabajo real. Elegí vos qué funciones usar. Tip: seleccioná un rango y mirá la suma y el recuento abajo de la planilla; 📍 pasa el valor de una celda a la respuesta.', 'No guidance: just the request, like a real job. You choose which functions to use. Tip: select a range and check the sum and count below the sheet; 📍 copies a cell\'s value into the answer.')}</div>
           </div>
           <div class="arc-ranks">${[1, 2, 3].map(card).join('')}</div>`,
-        buttons: [{ label: T('Volver', 'Back'), primary: true }],
+        buttons: [
+          {
+            label: `🏆 ${T('Logros', 'Achievements')} ${AA.Achievements ? `${AA.Achievements.count()}/${AA.Achievements.LIST.length}` : ''}`,
+            action: () => setTimeout(() => AA.Screens.openNotebook('achievements'), 30),
+          },
+          { label: T('Volver', 'Back'), primary: true },
+        ],
         onOpen: (el) =>
           el.querySelectorAll('[data-rank]').forEach((b) =>
             b.addEventListener('click', () => {
@@ -161,6 +168,12 @@
         recent: [],
         missionStart: 0,
         paused: false,
+        // para los logros
+        times: [], // segundos jugados al resolver cada misión
+        streak: 0,
+        maxStreak: 0,
+        minClock: null,
+        achieved: [],
       };
       AA.Audio.setTempoFactor(1);
       if (AA.Screens.MissionScreen.mission) AA.Screens.MissionScreen.leave(() => {});
@@ -261,6 +274,7 @@
       const p = penaltyOf(kind, r.wave);
       r.clock -= p;
       r.errors++;
+      r.streak = 0;
       AA.Audio.play('error');
       this.float(`−${p}s`, 'bad');
       if (r.clock <= 0) {
@@ -282,6 +296,10 @@
       const pts = 100 * r.wave + Math.round(left * 2);
       r.score += pts;
       r.missions++;
+      r.times.push(r.played);
+      r.streak++;
+      r.maxStreak = Math.max(r.maxStreak, r.streak);
+      r.minClock = r.minClock === null ? r.clock : Math.min(r.minClock, r.clock);
       AA.Audio.play('complete');
       AA.UI.confetti(50);
       this.float(`+${pts} pts`, 'good');
@@ -291,7 +309,23 @@
         AA.Audio.play('levelup');
         this.banner(`🌊 ${T('OLEADA', 'WAVE')} ${r.wave}`, T(`El reloj corre ×${speed(r.wave).toFixed(2)} · misiones más difíciles`, `Clock runs ×${speed(r.wave).toFixed(2)} · harder missions`), () => this.loadMission());
       } else setTimeout(() => this.run && this.loadMission(), 600);
+      // Logros de la partida (misiones, oleada, racha, tiempos, sangre fría).
+      this.announce(AA.Achievements ? AA.Achievements.check(r) : []);
       this.renderHud();
+    },
+
+    // Aviso de logro durante la partida (no frena el reloj).
+    announce(list) {
+      const r = this.run;
+      if (!list || !list.length) return;
+      if (r) r.achieved.push(...list);
+      list.forEach((a, i) =>
+        setTimeout(() => {
+          AA.Audio.play('achievement');
+          const it = AA.Decor && AA.Decor.byId(a.reward);
+          AA.UI.toast(`🏆 <b>${T('¡Logro!', 'Achievement!')} ${esc(AA.L(a.name))}</b><br>🎁 ${esc(it ? AA.L(it.name) : '')}`, 'ok');
+        }, 700 + i * 900)
+      );
     },
 
     skip() {
@@ -359,6 +393,22 @@
       const list = (st.data.arcade[r.rank] || []).concat([entry]).sort(byRank).slice(0, 5);
       st.data.arcade[r.rank] = list;
       st.save();
+      // Logros: se suman las estadísticas de la partida (misiones totales, partidas, mejores marcas).
+      const lateAch = AA.Achievements ? AA.Achievements.finishRun(r) : [];
+      const allAch = r.achieved.concat(lateAch);
+      if (lateAch.length) AA.Audio.play('achievement');
+      const achHtml = allAch.length
+        ? `<div class="arc-ach">
+             <div class="arc-ach-title">🏆 ${T(allAch.length > 1 ? 'Logros nuevos' : 'Logro nuevo', allAch.length > 1 ? 'New achievements' : 'New achievement')}</div>
+             ${allAch
+               .map((a) => {
+                 const it = AA.Decor && AA.Decor.byId(a.reward);
+                 return `<div class="arc-ach-row"><canvas data-prev="${a.reward}" width="44" height="44"></canvas><div><b>${a.icon} ${esc(AA.L(a.name))}</b><span>🎁 ${esc(it ? AA.L(it.name) : '')}</span></div></div>`;
+               })
+               .join('')}
+             <div class="muted">${T('Abrí el <b>cofre</b> al lado de la máquina ARCADE para poner tus recompensas en la oficina.', 'Open the <b>chest</b> next to the ARCADE machine to place your rewards in the office.')}</div>
+           </div>`
+        : '';
       const record = list[0] === entry && r.missions > 0;
       const pace = paceOf(entry);
       AA.Audio.setTempoFactor(1);
@@ -373,6 +423,7 @@
         className: 'arcade-over' + (record ? ' party' : ''),
         html: `
           ${record ? `<div class="arc-record">🏆 ${T('¡NUEVO RÉCORD!', 'NEW RECORD!')}</div>` : ''}
+          ${achHtml}
           <div class="arc-final">
             <div><span>${T('Misiones', 'Missions')}</span><b>${r.missions}</b></div>
             <div><span>${T('Tiempo total', 'Total time')}</span><b>${fmtTime(entry.secs)}</b></div>
@@ -387,6 +438,7 @@
           { label: T('Volver a la oficina', 'Back to the office'), action: () => this.exit() },
           { label: `🔁 ${T('Jugar de nuevo', 'Play again')}`, primary: true, action: () => this.start(r.rank) },
         ],
+        onOpen: (el) => AA.Decor && AA.Decor.animatePreviews(el),
       });
     },
 

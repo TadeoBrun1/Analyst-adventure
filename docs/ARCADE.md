@@ -30,6 +30,37 @@ lectura (30 s; 40 s si usa otra herramienta)
 + cada opción múltiple × 20 s
 ```
 
+## Logros y recompensas (v0.8)
+
+Cada logro desbloquea un objeto decorativo para la oficina. Se pone o se saca desde el **cofre** que está al lado
+de la máquina ARCADE. La libreta (pestaña 🏆 Logros) muestra cada logro con su objetivo, el progreso y una vista
+previa animada de la recompensa.
+
+| Logro | Objetivo | Recompensa |
+|-------|----------|------------|
+| 🎮 Primer pedido | 1 misión en una partida | 🌳 Ficus gigante (al lado del pizarrón) |
+| 🔥 Calentando motores | 3 misiones en una partida | 🧶 Alfombra persa (mesa de reuniones) |
+| ✋ Media docena | 6 misiones en una partida | ☕ Cafetera espresso (reemplaza la de la cocina) |
+| 📦 Docena | 12 misiones en una partida | 🖥️ PC gamer (tu escritorio) |
+| 🌊 Surfeando datos | llegar a la oleada 3 | 💡 Guirnalda de luces (pared de la oficina y la cocina) |
+| 🌪️ Ojo de la tormenta | llegar a la oleada 5 | 🐱 Michi, el gato (pasea, duerme y se deja acariciar) |
+| 👑 Leyenda del ARCADE | llegar a la oleada 7 | 🖼️ Cuadro «Analista del mes» (oficina de Marta) |
+| ⏱️ Contrarreloj | 3 misiones en menos de 8:00 de partida | 🪑 Silla gamer (reemplaza tu silla) |
+| ⚡ Velocista | 6 misiones en menos de 18:00 de partida | 🎵 Tocadiscos (living) |
+| 🎯 Mano firme | 5 misiones seguidas sin penalizaciones | 🐠 Pecera (living) |
+| 🧊 Sangre fría | entregar con menos de 15 s en el reloj | 🪴 Bonsái (mesa ratona) |
+| 🏃 Maratón | 25 misiones sumando partidas | 🐶 Firulais, el perro (pasea y se deja acariciar) |
+| 🪙 Cliente fiel | jugar 10 partidas | 🍩 Caja de donas (mesada de la cocina) |
+| 🧭 Todoterreno | 3 misiones en una partida de cada rango | 🟣 Neón «DATA» (pared de la oficina) |
+| 🏆 Senior bajo presión | 9 misiones en una partida de rango Senior | 🏆 Trofeo dorado (tu escritorio) |
+
+Según la simulación de abajo:
+
+- un jugador promedio consigue los de 3 y 6 misiones y la oleada 3–4;
+- el experto llega a la docena y a la oleada 5–6;
+- la oleada 7 queda como desafío para pocos;
+- los logros que se suman entre partidas (Maratón, Cliente fiel) premian volver a jugar.
+
 ## Simulación
 
 Para medir el balance, `npm run balance` corre `tests/arcade-balance.js`, que juega cientos de partidas por rango

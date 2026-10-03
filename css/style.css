@@ -967,3 +967,43 @@ th.filtered .ss-fbtn { background: var(--ss-sel); border-color: var(--ss-sel); c
 .ss-st-filter { color: #174ea6; }
 .ss-st-color { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; }
 .ss-st-color i { width: 11px; height: 11px; border-radius: 3px; background: var(--c); border: 1px solid rgba(0, 0, 0, 0.18); }
+
+/* --- Logros del ARCADE y cofre de recompensas */
+.arc-ach { margin: 10px 0 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid #6b4fb8; background: linear-gradient(160deg, rgba(124, 58, 237, 0.22), rgba(28, 30, 43, 0.6)); }
+.arc-ach-title { font-family: var(--pixel); font-size: 12px; color: #ffd23f; margin-bottom: 6px; }
+.arc-ach-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.arc-ach-row canvas { width: 44px; height: 44px; border-radius: 8px; background: #2a2e45; flex: none; }
+.arc-ach-row b { display: block; }
+.arc-ach-row span { font-size: 12.5px; color: #c9d1e8; }
+.arc-ach .muted { margin-top: 6px; font-size: 12px; }
+
+.chest-modal .modal-card { width: min(980px, 100%); }
+.chest-intro b[data-el] { color: var(--accent); }
+.chest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.chest-item { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 12px; border: 2px solid var(--line); background: #232738; }
+.chest-item canvas { width: 100%; height: 96px; border-radius: 8px; background: radial-gradient(circle at 50% 70%, #3a3f5c, #23263a); }
+.chest-item.on { border-color: #2fbf71; box-shadow: 0 0 0 1px rgba(47, 191, 113, 0.35) inset; }
+.chest-item.locked canvas { filter: grayscale(1) brightness(0.45); }
+.chest-item.locked { opacity: 0.8; }
+.chest-name { font-weight: 700; font-size: 13.5px; }
+.chest-desc { font-size: 12px; color: #aab2c8; line-height: 1.4; flex: 1; }
+.chest-item .btn { margin-top: 2px; }
+
+.nb-count { font-size: 11px; opacity: 0.75; margin-left: 2px; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-top: 8px; }
+.ach-card { background: rgba(255, 255, 255, 0.72); border: 1px solid #d9c9a3; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; line-height: 1.35; }
+.ach-card.done { border-color: #d4a017; background: linear-gradient(160deg, #fff6d6, #fffdf5); box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.35) inset; }
+.ach-head { display: flex; gap: 8px; align-items: flex-start; }
+.ach-icon { font-size: 22px; line-height: 1; }
+.ach-head b { font-size: 14px; color: #2a4a8b; }
+.ach-goal { font-size: 12.5px; color: #4a3f2c; }
+.ach-bar { height: 6px; border-radius: 99px; background: #e6dcc4; overflow: hidden; }
+.ach-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f5a524, #ffd23f); }
+.ach-card.done .ach-bar i { background: linear-gradient(90deg, #2fbf71, #7cf29a); }
+.ach-prog { font-size: 11.5px; color: #6d5f45; font-weight: 600; }
+.ach-reward { display: flex; gap: 10px; align-items: center; border-top: 1px dashed #d9c9a3; padding-top: 8px; }
+.ach-reward canvas { width: 64px; height: 64px; flex: none; border-radius: 8px; background: radial-gradient(circle at 50% 70%, #3a3f5c, #23263a); }
+.ach-reward div { display: flex; flex-direction: column; font-size: 12.5px; }
+.ach-reward .muted { font-size: 11px; color: #8a7a5a; }
+.ach-rdesc { font-size: 11.5px; color: #6d5f45; }
+.ach-card:not(.done) .ach-reward canvas { filter: saturate(0.6); }

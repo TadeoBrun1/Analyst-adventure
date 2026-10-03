@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.7.2';
+  AA.VERSION = '0.8.0';
 
   const Game = {
     screen: 'title',
@@ -97,6 +97,7 @@
       if (st.rankIndex() >= 2 && (!st.data.flags.metNico || st.favorReady())) m.nico = true;
       if (st.rankIndex() >= 1 && !st.data.flags.arcadeSeen) m.arcade = true;
       else if (st.data.flags.intro && Cu().nextMission()) m.computer = true;
+      if (st.data.flags.chestNew) m.chest = true;
       return m;
     },
 
@@ -206,7 +207,11 @@
 
     interact(id) {
       const st = AA.State;
+      if (id.startsWith('pet:')) return AA.Office.petAnimal(id);
       switch (id) {
+        case 'chest':
+          AA.Achievements.openChest();
+          return;
         case 'computer':
           if (!st.data.flags.intro) {
             AA.Dialog.open([{ who: 'narrator', text: { es: 'La computadora pide usuario y contraseña. Mejor hablá primero con Marta, en la oficina de vidrio.', en: 'The computer asks for a username and password. Better talk to Marta first, in the glass office.' } }]);
