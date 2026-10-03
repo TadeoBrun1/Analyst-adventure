@@ -20,9 +20,9 @@
     '#,hh,hh,#..........G.......#',
     '#,TT,TT,#.DD...DD..Gp.....p#',
     '#,hh,hh,P..........gggggggg#',
-    '#,,,,,,,,..................#',
+    '#,,,,,,,,..............R...#',
     '#,,,,,,,,...........______.#',
-    '#,hh,hh,,.hhh.......__XXX_R#',
+    '#,hh,hh,,.hhh.......__XXX_.#',
     '#,TT,TT,P.TTT.....Y.__SSS_.#',
     '#,hh,hh,#.hhh.......______.#',
     '#p,,,,VP#P........P.P.....P#',
@@ -86,8 +86,8 @@
     { id: 'exit', x: 13, y: 13, w: 2, h: 1, label: { es: 'Salida', en: 'Exit' } },
     {
       id: 'arcade',
-      x: 26,
-      y: 9,
+      x: 23,
+      y: 7,
       w: 1,
       h: 1,
       get label() {
@@ -536,7 +536,7 @@
       const pc = SPOTS.find((s) => s.id === 'computer');
       const wb = SPOTS.find((s) => s.id === 'whiteboard');
       if (markers.computer) this.drawMarker((pc.x + pc.w / 2) * T, pc.y * T - 14 + bounce, '#ffd23f');
-      if (markers.arcade) this.drawMarker(26 * T + 16, 9 * T - 22 + bounce, '#c084fc');
+      if (markers.arcade) this.drawMarker(23 * T + 16, 7 * T - 34 + bounce, '#c084fc');
       for (const n of this.activeNpcs()) if (markers[n.id]) this.drawMarker(n.x, n.y - 46 + bounce, '#ffd23f');
       if (markers.whiteboard) this.drawMarker((wb.x + wb.w / 2) * T, wb.y * T - 8 + bounce, '#7cf29a');
 
@@ -1103,54 +1103,109 @@
           R(5, 22, 17, 4, '#1f2129');
           break;
         case 'R': {
-          // Máquina arcade: apagada y con cartel si sos pasante; encendida desde Junior.
+          // Máquina arcade contra el vidrio de la oficina de Marta, mirando a la mesa ratona.
+          // Apagada (y con cinta de "fuera de servicio") si sos pasante; con luces de neón desde Junior.
           const on = arcadeOn();
-          R(4, -20, 24, 48, '#3b2a6b');
-          R(4, -20, 3, 48, '#2a1d4f');
-          R(25, -20, 3, 48, '#2a1d4f');
-          R(6, -18, 20, 7, on ? ['#ff4fd8', '#ffd23f', '#4fd1ff'][Math.floor(this.t * 3) % 3] : '#2b2e3a');
-          R(8, -16, 16, 3, on ? 'rgba(255,255,255,0.55)' : '#3a3d4a');
-          R(7, -9, 18, 14, '#111218');
+          const t = this.t;
+          const neon = ['#ff4fd8', '#4fd1ff', '#ffd23f', '#7cf29a'];
+          const cyc = (k) => neon[(Math.floor(t * 4) + k) % neon.length];
           if (on) {
-            const ph = Math.floor(this.t * 6);
-            R(9, -7, 14, 10, '#0f2a3a');
-            R(9 + (ph % 6) * 2, -6 + ((ph >> 1) % 3) * 3, 3, 3, '#7cf29a');
-            R(19 - (ph % 5) * 2, -2, 3, 2, '#ff6b6b');
-            R(9, 1, 14, 1, 'rgba(255,255,255,0.25)');
+            // halo de luz en el piso y detrás
+            const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+            const g = ctx.createRadialGradient(px + 16, py + 22, 4, px + 16, py + 22, 52);
+            g.addColorStop(0, `rgba(192,132,252,${0.5 + 0.25 * pulse})`);
+            g.addColorStop(0.5, `rgba(255,79,216,${0.18 + 0.1 * pulse})`);
+            g.addColorStop(1, 'rgba(192,132,252,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(px - 38, py - 34, 108, 90);
+            // rayos de luz hacia la mesa ratona
+            ctx.fillStyle = `rgba(79,209,255,${0.1 + 0.08 * pulse})`;
+            ctx.beginPath();
+            ctx.moveTo(px + 6, py + 28);
+            ctx.lineTo(px + 26, py + 28);
+            ctx.lineTo(px + 44, py + 60);
+            ctx.lineTo(px - 12, py + 60);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // gabinete (más alto: se asoma sobre el vidrio)
+          R(2, -30, 28, 58, on ? '#3b1f7a' : '#2e2440');
+          R(2, -30, 4, 58, on ? '#2a1557' : '#221a30');
+          R(26, -30, 4, 58, on ? '#2a1557' : '#221a30');
+          // bordes de neón
+          if (on) {
+            R(1, -31, 2, 60, cyc(0));
+            R(29, -31, 2, 60, cyc(2));
+          }
+          // marquesina con el cartel
+          R(4, -29, 24, 9, on ? '#120a26' : '#1a1622');
+          ctx.font = '800 5.5px "Inter", system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          if (on) {
+            ctx.shadowColor = cyc(1);
+            ctx.shadowBlur = 6;
+            ctx.fillStyle = cyc(1);
+            ctx.fillText('ARCADE', px + 16, py - 24.5);
+            ctx.shadowBlur = 0;
           } else {
-            R(9, -7, 14, 10, '#1a1c24');
+            ctx.fillStyle = '#3a3448';
+            ctx.fillText('ARCADE', px + 16, py - 24.5);
+          }
+          ctx.textAlign = 'left';
+          // luces de la marquesina
+          for (let i = 0; i < 6; i++) R(5 + i * 4, -20, 2, 2, on ? neon[(i + Math.floor(t * 6)) % 4] : '#3a3448');
+          // pantalla
+          R(5, -17, 22, 16, '#0b0c12');
+          if (on) {
+            const ph = Math.floor(t * 8);
+            R(6, -16, 20, 14, '#0f2a3a');
+            // mini juego: "naves" y una barra que rebota
+            R(7 + (ph % 9) * 2, -14, 3, 2, '#ff4fd8');
+            R(22 - (ph % 7) * 2, -11, 3, 2, '#ffd23f');
+            R(8 + Math.abs(((ph * 2) % 32) - 16), -5, 4, 1, '#7cf29a');
+            R(6, -16, 20, 1, 'rgba(255,255,255,0.18)');
+            for (let y = -15; y < -2; y += 2) R(6, y, 20, 1, 'rgba(0,0,0,0.12)');
+          } else {
+            R(6, -16, 20, 14, '#14151c');
             ctx.strokeStyle = '#4a4f63';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(px + 10, py - 6);
-            ctx.lineTo(px + 16, py - 1);
-            ctx.lineTo(px + 13, py + 2);
+            ctx.moveTo(px + 8, py - 15);
+            ctx.lineTo(px + 15, py - 8);
+            ctx.lineTo(px + 12, py - 4);
             ctx.stroke();
-            // cartel de "fuera de servicio"
-            R(10, -4, 13, 9, '#f7f1e3');
-            R(11, -2, 11, 1, '#e5484d');
-            R(11, 0, 9, 1, '#9aa1b5');
-            R(11, 2, 10, 1, '#9aa1b5');
-            if (Math.sin(this.t * 7) > 0.97) {
-              R(22, -10, 2, 2, '#ffd23f');
-              R(24, -12, 1, 1, '#fff3c4');
+            if (Math.sin(t * 9) > 0.96) {
+              R(20, -12, 2, 2, '#ffd23f');
+              R(23, -14, 1, 1, '#fff3c4');
             }
           }
-          R(6, 7, 20, 7, '#2b2e3a');
-          R(10, 3, 2, 5, '#1b1d2b');
-          ctx.fillStyle = on ? '#e5484d' : '#7a3a3a';
+          // panel de control
+          R(3, 0, 26, 9, on ? '#2a1557' : '#221a30');
+          R(3, 0, 26, 2, on ? '#4a2a8f' : '#2e2440');
+          R(9, 2, 2, 4, '#111');
+          ctx.fillStyle = on ? '#e5484d' : '#5a2a2a';
           ctx.beginPath();
-          ctx.arc(px + 11, py + 3, 2.5, 0, Math.PI * 2);
+          ctx.arc(px + 10, py + 2, 2.5, 0, Math.PI * 2);
           ctx.fill();
-          R(16, 9, 3, 3, on ? '#ffd23f' : '#6b5f2a');
-          R(21, 9, 3, 3, on ? '#4fd1ff' : '#2a5560');
-          R(13, 17, 6, 4, '#1b1d2b');
-          R(15, 18, 2, 2, on ? '#ffd23f' : '#555');
-          if (on) {
-            ctx.fillStyle = 'rgba(192,132,252,0.18)';
-            ctx.beginPath();
-            ctx.ellipse(px + 16, py + 28, 18, 5, 0, 0, Math.PI * 2);
-            ctx.fill();
+          R(16, 3, 3, 3, on ? '#ffd23f' : '#5a5020');
+          R(21, 3, 3, 3, on ? '#4fd1ff' : '#204a55');
+          R(18, 6, 3, 2, on ? '#ff4fd8' : '#4a2040');
+          // base y ranura de fichas
+          R(5, 10, 22, 18, on ? '#3b1f7a' : '#2e2440');
+          R(13, 14, 6, 6, '#111218');
+          R(15, 15, 2, 4, on ? (Math.sin(t * 5) > 0 ? '#ffd23f' : '#ff8a3d') : '#444');
+          R(5, 26, 22, 2, '#1b1d2b');
+          if (!on) {
+            // cinta de "fuera de servicio"
+            ctx.save();
+            ctx.translate(px + 16, py - 6);
+            ctx.rotate(-0.35);
+            ctx.fillStyle = '#ffd23f';
+            ctx.fillRect(-22, -3, 44, 7);
+            ctx.fillStyle = '#1b1d2b';
+            for (let i = -22; i < 22; i += 6) ctx.fillRect(i, -3, 3, 7);
+            ctx.restore();
           }
           break;
         }

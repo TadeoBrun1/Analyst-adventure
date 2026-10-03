@@ -188,6 +188,19 @@
         ),
         choices: [
           { label: AA.T('📒 Abrir mi libreta', '📒 Open my notebook'), action: () => AA.Screens.openNotebook() },
+          // Solo mientras sos pasante: la máquina arcade todavía está rota.
+          ...(st.rankIndex() < 1
+            ? [
+                {
+                  label: AA.T('🕹️ ¿Y la máquina arcade?', '🕹️ What about the arcade machine?'),
+                  action: () =>
+                    AA.Dialog.open([
+                      { who: 'leo', text: T('Seguramente dentro de unos meses, cuando asciendas a <b>Junior</b>, la máquina arcade ya va a estar arreglada.', "Give it a few months: by the time you get promoted to <b>Junior</b>, the arcade machine will surely be fixed.") },
+                      { who: 'leo', text: T('Dicen que es para "entrenar bajo presión". Yo la uso para entrenar la paciencia mientras se carga Excel. 😄', 'They say it is for "training under pressure". I use it to train my patience while Excel loads. 😄') },
+                    ]),
+                },
+              ]
+            : []),
           ...(learned.length ? [{ label: AA.T('🔁 Repasar una lección', '🔁 Review a lesson'), action: () => this.reviewMenu(learned) }] : []),
           { label: AA.T('💡 Darme un consejo', '💡 Give me a tip'), action: () => AA.Dialog.open([{ who: 'leo', text: pick(LEO_TIPS) }]) },
           { label: AA.T('⌨️ Atajos de teclado', '⌨️ Keyboard shortcuts'), action: () => AA.Dialog.open([{ who: 'leo', text: SHORTCUTS }]) },
