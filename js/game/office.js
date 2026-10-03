@@ -11,7 +11,7 @@
   //          D escritorio · B escritorio de la jefa · K biblioteca · W pizarra · G/g vidrio (vertical/horizontal)
   //          F heladera · Q mesada · C cafetera · k pileta · M microondas · A dispenser de agua
   //          V máquina expendedora · T mesa · h silla · X mesa ratona · S sofá · Y impresora
-  //          P planta grande · p planta chica · = salida
+  //          P planta grande · p planta chica · R máquina arcade · Z cofre de recompensas · = salida
   const MAP = [
     '############################',
     '#FQCQkMA#KP.WWW..PKGK.BB.PK#',
@@ -20,7 +20,7 @@
     '#,hh,hh,#..........G.......#',
     '#,TT,TT,#.DD...DD..Gp.....p#',
     '#,hh,hh,P..........gggggggg#',
-    '#,,,,,,,,..................#',
+    '#,,,,,,,,..............RZ..#',
     '#,,,,,,,,...........______.#',
     '#,hh,hh,,.hhh.......__XXX_.#',
     '#,TT,TT,P.TTT.....Y.__SSS_.#',
@@ -84,8 +84,47 @@
     { id: 'plant', x: 8, y: 6, w: 1, h: 1, label: { es: 'Planta', en: 'Plant' } },
     { id: 'plant', x: 8, y: 10, w: 1, h: 1, label: { es: 'Planta', en: 'Plant' } },
     { id: 'exit', x: 13, y: 13, w: 2, h: 1, label: { es: 'Salida', en: 'Exit' } },
+    {
+      id: 'arcade',
+      x: 23,
+      y: 7,
+      w: 1,
+      h: 1,
+      get label() {
+        return arcadeOn() ? { es: '🕹️ ARCADE', en: '🕹️ ARCADE' } : { es: 'Máquina arcade (averiada)', en: 'Arcade machine (broken)' };
+      },
+    },
   ];
+  SPOTS.push({
+    id: 'chest',
+    x: 24,
+    y: 7,
+    w: 1,
+    h: 1,
+    label: { es: '🎁 Cofre de recompensas', en: '🎁 Rewards chest' },
+  });
+  SPOTS.push(
+    { id: 'turntable', x: 26, y: 7, w: 1, h: 1, label: { es: '🎵 Tocadiscos', en: '🎵 Record player' }, when: () => decorOn('turntable') },
+    { id: 'dancebtn', x: 19, y: 8, w: 1, h: 1, label: { es: '🕺 ¡A bailar! (B)', en: '🕺 Dance! (B)' }, when: () => decorOn('dancebtn') }
+  );
   const START = { x: 14 * T + 16, y: 8 * T + 26 };
+  const DANCE_SECS = 6.4;
+  // Comentarios de quienes te ven bailar (se elige uno al azar).
+  const DANCE_LINES = [
+    { es: '<b>Leo</b>: ¡Esos pasos no los enseñan en la facultad!', en: "<b>Leo</b>: They don't teach those moves in college!" },
+    { es: '<b>Camila</b>: ¡Trabajando y bailando se saca este país adelante!', en: '<b>Camila</b>: Working and dancing, that\'s how we move forward!' },
+    { es: '<b>Tadeo</b>: No tengo idea de qué estás haciendo, ¡pero algo estás haciendo!', en: "<b>Tadeo</b>: I have no idea what you're doing, but you're doing something!" },
+    { es: '<b>Jean</b>: Ese giro tiene la solidez del concreto. Respeto.', en: '<b>Jean</b>: That spin has the solidity of concrete. Respect.' },
+    { es: '<b>Juan Roberto</b>: «Bailad, bailad, que la vida es breve»… o algo así.', en: '<b>Juan Roberto</b>: "Dance, dance, for life is brief"… or something like that.' },
+    { es: '<b>Marta</b> (desde su oficina): Muy lindo, ¿y los informes? 😄', en: '<b>Marta</b> (from her office): Very nice, and the reports? 😄' },
+  ];
+  const decorOn = (id) => !!(AA.Decor && AA.Decor.on(id));
+  // Mascotas (recompensas del ARCADE): pasean por la oficina y se las puede acariciar.
+  const PETS = {
+    cat: { speed: 42, name: { es: 'Michi', en: 'Michi' }, start: [21, 11] },
+    dog: { speed: 58, name: { es: 'Firulais', en: 'Firulais' }, start: [14, 9] },
+  };
+  const arcadeOn = () => !!(AA.State && AA.State.data && AA.State.rankIndex() >= 1);
   const nicoBack = () => !!(AA.State && AA.State.data && AA.State.rankIndex() >= 2);
   // Sillas de oficina libres: la tuya (frente a tu computadora) y la de Nico, que está de vacaciones.
   // Las de Camila y Tadeo se dibujan junto con ellos.
@@ -95,6 +134,9 @@
   ];
 
   const Office = {
+    MAP,
+    SPOTS,
+    WALKABLE,
     canvas: null,
     ctx: null,
     running: false,
@@ -212,6 +254,8 @@
       return { x: (e.clientX - r.left - v.ox) / v.scale, y: (e.clientY - r.top - v.oy) / v.scale };
     },
     spotAt(x, y) {
+      const pet = (this.pets || []).find((p) => Math.abs(p.x - x) < 14 && y > p.y - 22 && y < p.y + 4);
+      if (pet) return this.petSpots().find((s) => s.id === 'pet:' + pet.kind);
       const tx = Math.floor(x / T);
       const ty = Math.floor(y / T);
       // Los personajes se dibujan más altos que su tile: también cuenta el tile de arriba.
@@ -234,6 +278,7 @@
       if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return true;
       if (!WALKABLE.has(MAP[ty][tx])) return true;
       if (CHAIRS.some((c) => !c.mine && c.tx === tx && c.ty === ty)) return true; // (la de Nico, vacía u ocupada)
+      if (AA.Decor && AA.Decor.solidTiles().some(([x, y]) => x === tx && y === ty)) return true;
       return this.activeNpcs().some((n) => n.tx === tx && n.ty === ty);
     },
 
@@ -274,6 +319,7 @@
         if (this.keys.has('arrowdown') || this.keys.has('s')) dy += 1;
       }
       p.moving = dx !== 0 || dy !== 0;
+      if (p.dance && (p.moving || this.t - p.dance.t0 > DANCE_SECS)) this.stopDance();
       if (p.moving && p.sitting) p.sitting = false; // te levantás al caminar
       if (p.moving) {
         const len = Math.hypot(dx, dy);
@@ -288,10 +334,11 @@
       } else {
         p.frame = 0;
       }
+      this.updatePets(dt);
       // Lo más cercano con lo que se puede interactuar.
       let best = null;
       let bestD = 30;
-      for (const s of this.activeSpots()) {
+      for (const s of this.activeSpots().concat(this.petSpots())) {
         const rx1 = s.x * T;
         const ry1 = s.y * T;
         const rx2 = rx1 + s.w * T;
@@ -305,6 +352,218 @@
         }
       }
       this.near = best;
+    },
+
+    // --- Baile (recompensa «Botón de baile»): breakdance con luces de colores.
+    dance() {
+      const p = this.player;
+      if (!decorOn('dancebtn') || this.paused()) return;
+      if (p.dance) return;
+      p.sitting = false;
+      p.dance = { t0: this.t };
+      this.keys.clear();
+      AA.Audio.play('select');
+      AA.Audio.breakbeat(4);
+      this.prevDuck = AA.Audio.duck;
+      AA.Audio.setDuck(0.25);
+      // Si hay alguien cerca, comenta.
+      const near = this.activeNpcs().some((n) => Math.hypot(n.x - p.x, n.y - p.y) < 260);
+      if (near || Math.random() < 0.5) setTimeout(() => this.player.dance && AA.UI.toast('🕺 ' + AA.L(DANCE_LINES[Math.floor(Math.random() * DANCE_LINES.length)]), 'info'), 1800);
+      // los gatos y perros cercanos se acercan a mirar (y se ponen contentos)
+      for (const pet of this.pets || []) if (Math.hypot(pet.x - p.x, pet.y - p.y) < 160) {
+        pet.happy = 3;
+        pet.state = 'idle';
+        pet.path = [];
+        pet.face = p.x < pet.x ? 'left' : 'right';
+      }
+    },
+    stopDance() {
+      if (!this.player.dance) return;
+      this.player.dance = null;
+      AA.Audio.setDuck(this.prevDuck === undefined ? 1 : this.prevDuck);
+    },
+    drawDancer(p, ch) {
+      const ctx = this.ctx;
+      const dt = this.t - p.dance.t0;
+      // luces de discoteca en el piso
+      const cols = ['rgba(255,79,216,0.28)', 'rgba(79,209,255,0.28)', 'rgba(255,210,63,0.28)', 'rgba(124,242,154,0.28)'];
+      for (let k = 0; k < 6; k++) {
+        const a = dt * 2.2 + (k * Math.PI) / 3;
+        ctx.fillStyle = cols[k % cols.length];
+        ctx.beginPath();
+        ctx.ellipse(p.x + Math.cos(a) * 34, p.y + Math.sin(a) * 14 - 2, 9, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // bola disco que baja sobre la cabeza
+      const by = p.y - 70 + Math.min(1, dt * 2) * 8;
+      ctx.strokeStyle = '#9aa1b5';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(p.x, by - 30);
+      ctx.lineTo(p.x, by - 6);
+      ctx.stroke();
+      ctx.fillStyle = '#c9ced6';
+      ctx.beginPath();
+      ctx.arc(p.x, by, 6, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = (i + Math.floor(dt * 8)) % 2 ? '#ffffff' : '#8f96a3';
+        ctx.fillRect(p.x - 5 + (i % 3) * 3.5, by - 4 + Math.floor(i / 3) * 4, 2.5, 2.5);
+      }
+      // pasos: toprock → giros → headspin → molino con pose final
+      const phase = Math.floor(dt / 1.6) % 4;
+      const lt = dt % 1.6;
+      const turn = ['down', 'right', 'up', 'left'];
+      const cx = p.x;
+      const cy = p.y - 18;
+      ctx.save();
+      if (phase === 0) {
+        const step = Math.floor(lt / 0.2);
+        const bounce = Math.abs(Math.sin(lt * 15)) * 3;
+        ctx.translate(0, -bounce);
+        AA.Sprites.drawChar(ctx, p.x + (step % 2 ? 2 : -2), p.y, ch, step % 2 ? 'left' : 'right', 1 + (step % 2));
+      } else if (phase === 1) {
+        AA.Sprites.drawChar(ctx, p.x, p.y, ch, turn[Math.floor(lt / 0.08) % 4], 0);
+      } else if (phase === 2) {
+        ctx.translate(cx, cy);
+        ctx.rotate(Math.PI + Math.sin(lt * 6) * 0.08);
+        ctx.translate(-cx, -cy);
+        AA.Sprites.drawChar(ctx, p.x, p.y - 6, ch, turn[Math.floor(lt / 0.1) % 4], 0);
+      } else {
+        const ang = lt < 1.2 ? lt * 9 : -Math.PI / 2;
+        ctx.translate(cx, cy + 8);
+        ctx.rotate(ang);
+        ctx.translate(-cx, -(cy + 8));
+        AA.Sprites.drawChar(ctx, p.x, p.y, ch, lt < 1.2 ? turn[Math.floor(lt / 0.1) % 4] : 'right', lt < 1.2 ? 0 : 2);
+      }
+      ctx.restore();
+      // notas musicales
+      ctx.font = 'bold 9px "Inter", sans-serif';
+      for (let k = 0; k < 3; k++) {
+        const ph = (dt * 0.7 + k / 3) % 1;
+        ctx.fillStyle = `rgba(${['255,79,216', '79,209,255', '255,210,63'][k]},${1 - ph})`;
+        ctx.fillText(k % 2 ? '♫' : '♪', p.x - 16 + k * 14 + Math.sin(ph * 7) * 3, p.y - 40 - ph * 22);
+      }
+    },
+
+    // --- Mascotas (gato y perro): pasean, se duermen la siesta y se dejan acariciar.
+    petWalkable(tx, ty) {
+      if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return false;
+      if (!WALKABLE.has(MAP[ty][tx])) return false;
+      if (CHAIRS.some((c) => c.tx === tx && c.ty === ty)) return false;
+      if (this.activeNpcs().some((n) => n.tx === tx && n.ty === ty)) return false;
+      if (AA.Decor && AA.Decor.solidTiles().some(([x, y]) => x === tx && y === ty)) return false;
+      return true;
+    },
+    // Camino más corto entre dos tiles (búsqueda en anchura).
+    findPath(from, to) {
+      const key = (x, y) => y * COLS + x;
+      const prev = new Map([[key(from[0], from[1]), null]]);
+      const queue = [from];
+      while (queue.length) {
+        const [x, y] = queue.shift();
+        if (x === to[0] && y === to[1]) break;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const k = key(nx, ny);
+          if (prev.has(k) || !this.petWalkable(nx, ny)) continue;
+          prev.set(k, [x, y]);
+          queue.push([nx, ny]);
+        }
+      }
+      if (!prev.has(key(to[0], to[1]))) return [];
+      const path = [];
+      for (let c = to; c && !(c[0] === from[0] && c[1] === from[1]); c = prev.get(key(c[0], c[1]))) path.unshift(c);
+      return path;
+    },
+    updatePets(dt) {
+      if (!this.pets) this.pets = [];
+      for (const kind of Object.keys(PETS)) {
+        const has = this.pets.find((p) => p.kind === kind);
+        if (decorOn(kind) && !has) {
+          const [tx, ty] = PETS[kind].start;
+          this.pets.push({ kind, x: tx * T + 16, y: ty * T + 24, path: [], state: 'idle', timer: 1 + Math.random() * 2, face: 'right', anim: 0, hearts: 0, happy: 0 });
+        } else if (!decorOn(kind) && has) this.pets = this.pets.filter((p) => p !== has);
+      }
+      for (const p of this.pets) {
+        p.hearts = Math.max(0, p.hearts - dt);
+        p.happy = Math.max(0, p.happy - dt);
+        if (p.happy > 0) continue; // se queda quieto mientras lo acariciás
+        if (p.state === 'walk') {
+          const next = p.path[0];
+          if (!next) {
+            p.state = 'idle';
+            p.timer = 2 + Math.random() * 5;
+            continue;
+          }
+          const gx = next[0] * T + 16;
+          const gy = next[1] * T + 24;
+          const dx = gx - p.x;
+          const dy = gy - p.y;
+          const d = Math.hypot(dx, dy);
+          const step = PETS[p.kind].speed * dt;
+          if (d <= step) {
+            p.x = gx;
+            p.y = gy;
+            p.path.shift();
+          } else {
+            p.x += (dx / d) * step;
+            p.y += (dy / d) * step;
+          }
+          if (Math.abs(dx) > 0.5) p.face = dx < 0 ? 'left' : 'right';
+          p.anim += dt * 8;
+        } else {
+          p.timer -= dt;
+          if (p.timer > 0) continue;
+          if (p.state === 'idle' && Math.random() < 0.3) {
+            p.state = 'sleep';
+            p.timer = 8 + Math.random() * 12;
+            continue;
+          }
+          const from = [Math.floor(p.x / T), Math.floor(p.y / T)];
+          let path = [];
+          for (let tries = 0; tries < 12 && !path.length; tries++) {
+            const to = [from[0] + Math.round((Math.random() - 0.5) * 16), from[1] + Math.round((Math.random() - 0.5) * 8)];
+            if (this.petWalkable(to[0], to[1])) path = this.findPath(from, to);
+          }
+          p.path = path;
+          p.state = path.length ? 'walk' : 'idle';
+          p.timer = 1.5;
+        }
+      }
+    },
+    petSpots() {
+      return (this.pets || []).map((p) => {
+        const name = PETS[p.kind].name;
+        return { id: 'pet:' + p.kind, x: p.x / T - 0.5, y: p.y / T - 0.8, w: 1, h: 0.8, pet: true, label: { es: `Acariciar a ${name.es}`, en: `Pet ${name.en}` } };
+      });
+    },
+    petAnimal(id) {
+      const p = (this.pets || []).find((x) => 'pet:' + x.kind === id);
+      if (!p) return;
+      p.happy = 2.4;
+      p.hearts = 2.4;
+      p.state = 'idle';
+      p.path = [];
+      p.timer = 2 + Math.random() * 3;
+      p.face = this.player.x < p.x ? 'left' : 'right';
+      AA.Audio.play(p.kind === 'cat' ? 'meow' : 'woof');
+    },
+    drawPet(p) {
+      const ctx = this.ctx;
+      const state = p.happy > 0 ? 'idle' : p.state;
+      AA.Decor.paintAt(ctx, p.kind, p.x, p.y, this.t, { state, dir: p.face, frame: Math.floor(p.anim) % 2, happy: p.happy > 0 });
+      if (p.hearts > 0) {
+        for (let k = 0; k < 3; k++) {
+          const ph = ((2.4 - p.hearts) * 0.9 + k * 0.33) % 1;
+          ctx.globalAlpha = 1 - ph;
+          ctx.fillStyle = '#ff4f7b';
+          ctx.font = 'bold 8px "Inter", sans-serif';
+          ctx.fillText('♥', p.x - 6 + k * 5 + Math.sin(ph * 6 + k) * 2, p.y - 22 - ph * 16);
+          ctx.globalAlpha = 1;
+        }
+      }
     },
 
     // Rectángulo en pantalla de un personaje o un objeto (para las guías).
@@ -499,22 +758,42 @@
       const markers = this.getMarkers ? this.getMarkers() : {};
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) this.drawTile(x, y, markers);
       this.drawLight();
+      // Decoración de las paredes y sobre los muebles (recompensas del ARCADE).
+      const D = AA.Decor;
+      if (D) {
+        if (decorOn('lights')) D.paintAt(ctx, 'lights', 0, 0, this.t, { from: T + 4, to: 27 * T - 4 });
+        for (const id of ['neon', 'portrait', 'trophy', 'bonsai']) if (decorOn(id)) D.paintAt(ctx, id, D.byId(id).tile[0] * T, D.byId(id).tile[1] * T, this.t);
+      }
 
       // Personajes ordenados por profundidad.
       const actors = this.activeNpcs().map((n) => ({ y: n.y, draw: () => this.drawNpc(n) }));
+      if (D) {
+        const vinyl = D.playingVinyl();
+        const opts = {
+          turntable: { playing: !!vinyl, color: vinyl ? AA.Audio.VINYLS[vinyl].color : null },
+          dancebtn: { pressed: !!(this.player.dance && this.t - this.player.dance.t0 < 0.3) },
+        };
+        for (const id of ['ficus', 'aquarium', 'turntable', 'dancebtn']) {
+          if (!decorOn(id)) continue;
+          const [tx, ty] = D.byId(id).tile;
+          actors.push({ y: ty * T + 27, draw: () => D.paintAt(ctx, id, tx * T, ty * T, this.t, opts[id]) });
+        }
+        for (const pet of this.pets || []) actors.push({ y: pet.y, draw: () => this.drawPet(pet) });
+      }
       const p = this.player;
       for (const c of CHAIRS) {
         const cx = c.tx * T + 16;
         const cy = c.ty * T + (c.mine ? 20 : 26);
         if (c.mine && p.sitting) continue;
         if (c.owner === 'nico' && nicoBack()) continue; // Nico está sentado en su silla
-        actors.push({ y: cy - 0.5, draw: () => this.drawChair(cx, cy, null) });
+        actors.push({ y: cy - 0.5, draw: () => this.drawChair(cx, cy, null, c.mine) });
       }
       actors.push({
         y: p.y,
         draw: () => {
           const ch = AA.State.CHARACTERS.player;
-          if (p.sitting) this.drawChair(p.x, p.y, () => AA.Sprites.drawChar(ctx, p.x, p.y, ch, 'up', 0, { sitting: true }));
+          if (p.sitting) this.drawChair(p.x, p.y, () => AA.Sprites.drawChar(ctx, p.x, p.y, ch, 'up', 0, { sitting: true }), true);
+          else if (p.dance) this.drawDancer(p, ch);
           else AA.Sprites.drawChar(ctx, p.x, p.y, ch, p.dir, p.frame);
         },
       });
@@ -525,8 +804,10 @@
       const pc = SPOTS.find((s) => s.id === 'computer');
       const wb = SPOTS.find((s) => s.id === 'whiteboard');
       if (markers.computer) this.drawMarker((pc.x + pc.w / 2) * T, pc.y * T - 14 + bounce, '#ffd23f');
+      if (markers.arcade) this.drawMarker(23 * T + 16, 7 * T - 34 + bounce, '#c084fc');
       for (const n of this.activeNpcs()) if (markers[n.id]) this.drawMarker(n.x, n.y - 46 + bounce, '#ffd23f');
       if (markers.whiteboard) this.drawMarker((wb.x + wb.w / 2) * T, wb.y * T - 8 + bounce, '#7cf29a');
+      if (markers.chest) this.drawMarker(24 * T + 16, 7 * T - 6 + bounce, '#ffd23f');
 
       const target = this.near || this.hover;
       if (target) this.drawPrompt(target, !!this.near && target === this.near);
@@ -614,8 +895,21 @@
     },
 
     // Silla de oficina vista desde atrás (la persona mira al escritorio). sit: dibuja a quien está sentado.
-    drawChair(x, y, sit) {
+    drawChair(x, y, sit, mine) {
       const ctx = this.ctx;
+      if (mine && decorOn('gamerchair')) {
+        // silla gamer (recompensa): quien se sienta se dibuja en coordenadas del mundo
+        const seat = sit
+          ? () => {
+              ctx.save();
+              ctx.translate(-x, -y);
+              sit();
+              ctx.restore();
+            }
+          : null;
+        AA.Decor.paintAt(ctx, 'gamerchair', x, y, this.t, { sit: seat });
+        return;
+      }
       const R = (dx, dy, w, h, col) => {
         ctx.fillStyle = col;
         ctx.fillRect(x + dx, y + dy, w, h);
@@ -692,6 +986,19 @@
         if (!left) R(3, up ? 0 : 3, 3, T - (up ? 0 : 3) - (down ? 0 : 3), '#e8c872');
         if (!right) R(T - 6, up ? 0 : 3, 3, T - (up ? 0 : 3) - (down ? 0 : 3), '#e8c872');
         if ((x + y) % 2 === 0) R(14, 14, 4, 4, '#5bb5a8');
+      }
+      // Alfombra persa (recompensa): se dibuja entera, recortada a este tile.
+      if (decorOn('rug')) {
+        const [rx, ry, rw, rh] = AA.Decor.byId('rug').rug;
+        if (x >= rx && x < rx + rw && y >= ry && y < ry + rh) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(px, py, T, T);
+          ctx.clip();
+          ctx.translate(rx * T, ry * T);
+          AA.Decor.paintRug(ctx, rw * T, rh * T);
+          ctx.restore();
+        }
       }
     },
 
@@ -866,17 +1173,21 @@
             const isMine = ch === 'D' && x === mine.x && y === mine.y;
             const off = ch === 'D' && x === nico.x && y === nico.y && !nicoBack();
             const glow = isMine && markers.computer ? (Math.sin(this.t * 4) > 0 ? '#9be7ff' : '#5fc8ff') : ch === 'B' ? '#c9d6ff' : '#6fd3ff';
-            R(10, 0, 20, 14, '#2b2e3a');
-            R(12, 2, 16, 10, off ? '#3a3e50' : glow);
-            if (!off) {
-              R(14, 4, 8, 1, 'rgba(0,0,0,0.25)');
-              R(14, 7, 11, 1, 'rgba(0,0,0,0.25)');
-            }
-            R(18, 14, 4, 3, '#2b2e3a');
-            // plantita de escritorio o portalápices
-            if (ch === 'D' && !off) {
-              R(3, 12, 5, 5, '#e07a5f');
-              R(3, 9, 5, 3, '#48bb78');
+            if (isMine && decorOn('pcgamer')) {
+              AA.Decor.paintAt(ctx, 'pcgamer', px, py, this.t, { highlight: !!markers.computer });
+            } else {
+              R(10, 0, 20, 14, '#2b2e3a');
+              R(12, 2, 16, 10, off ? '#3a3e50' : glow);
+              if (!off) {
+                R(14, 4, 8, 1, 'rgba(0,0,0,0.25)');
+                R(14, 7, 11, 1, 'rgba(0,0,0,0.25)');
+              }
+              R(18, 14, 4, 3, '#2b2e3a');
+              // plantita de escritorio o portalápices
+              if (ch === 'D' && !off) {
+                R(3, 12, 5, 5, '#e07a5f');
+                R(3, 9, 5, 3, '#48bb78');
+              }
             }
           } else {
             // teclado, taza y post-its
@@ -1023,6 +1334,8 @@
             ctx.beginPath();
             ctx.arc(px + 18, py - 3, 3, 0, Math.PI * 2);
             ctx.fill();
+          } else if (x === 4 && decorOn('donuts')) {
+            AA.Decor.paintAt(ctx, 'donuts', px, py, this.t);
           } else {
             // frasco de galletitas
             R(11, -7, 10, 9, 'rgba(230,240,250,0.9)');
@@ -1033,6 +1346,10 @@
           break;
         case 'C':
           counter();
+          if (decorOn('espresso')) {
+            AA.Decor.paintAt(ctx, 'espresso', px, py, this.t);
+            break;
+          }
           R(7, -16, 18, 20, '#3a3d4a');
           R(7, -16, 18, 3, '#50546a');
           R(10, -11, 12, 6, '#1f2129');
@@ -1090,6 +1407,143 @@
           R(24, 2, 4, 2, '#e8c872');
           R(5, 22, 17, 4, '#1f2129');
           break;
+        case 'R': {
+          // Máquina arcade contra el vidrio de la oficina de Marta, mirando a la mesa ratona.
+          // Apagada (y con cinta de "fuera de servicio") si sos pasante; con luces de neón desde Junior.
+          const on = arcadeOn();
+          const t = this.t;
+          const neon = ['#ff4fd8', '#4fd1ff', '#ffd23f', '#7cf29a'];
+          const cyc = (k) => neon[(Math.floor(t * 4) + k) % neon.length];
+          if (on) {
+            // halo de luz en el piso y detrás
+            const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+            const g = ctx.createRadialGradient(px + 16, py + 22, 4, px + 16, py + 22, 52);
+            g.addColorStop(0, `rgba(192,132,252,${0.5 + 0.25 * pulse})`);
+            g.addColorStop(0.5, `rgba(255,79,216,${0.18 + 0.1 * pulse})`);
+            g.addColorStop(1, 'rgba(192,132,252,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(px - 38, py - 34, 108, 90);
+            // rayos de luz hacia la mesa ratona
+            ctx.fillStyle = `rgba(79,209,255,${0.1 + 0.08 * pulse})`;
+            ctx.beginPath();
+            ctx.moveTo(px + 6, py + 28);
+            ctx.lineTo(px + 26, py + 28);
+            ctx.lineTo(px + 44, py + 60);
+            ctx.lineTo(px - 12, py + 60);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // gabinete (más alto: se asoma sobre el vidrio)
+          R(2, -30, 28, 58, on ? '#3b1f7a' : '#2e2440');
+          R(2, -30, 4, 58, on ? '#2a1557' : '#221a30');
+          R(26, -30, 4, 58, on ? '#2a1557' : '#221a30');
+          // bordes de neón
+          if (on) {
+            R(1, -31, 2, 60, cyc(0));
+            R(29, -31, 2, 60, cyc(2));
+          }
+          // marquesina con el cartel
+          R(4, -29, 24, 9, on ? '#120a26' : '#1a1622');
+          ctx.font = '800 5.5px "Inter", system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          if (on) {
+            ctx.shadowColor = cyc(1);
+            ctx.shadowBlur = 6;
+            ctx.fillStyle = cyc(1);
+            ctx.fillText('ARCADE', px + 16, py - 24.5);
+            ctx.shadowBlur = 0;
+          } else {
+            ctx.fillStyle = '#3a3448';
+            ctx.fillText('ARCADE', px + 16, py - 24.5);
+          }
+          ctx.textAlign = 'left';
+          // luces de la marquesina
+          for (let i = 0; i < 6; i++) R(5 + i * 4, -20, 2, 2, on ? neon[(i + Math.floor(t * 6)) % 4] : '#3a3448');
+          // pantalla
+          R(5, -17, 22, 16, '#0b0c12');
+          if (on) {
+            const ph = Math.floor(t * 8);
+            R(6, -16, 20, 14, '#0f2a3a');
+            // mini juego: "naves" y una barra que rebota
+            R(7 + (ph % 9) * 2, -14, 3, 2, '#ff4fd8');
+            R(22 - (ph % 7) * 2, -11, 3, 2, '#ffd23f');
+            R(8 + Math.abs(((ph * 2) % 32) - 16), -5, 4, 1, '#7cf29a');
+            R(6, -16, 20, 1, 'rgba(255,255,255,0.18)');
+            for (let y = -15; y < -2; y += 2) R(6, y, 20, 1, 'rgba(0,0,0,0.12)');
+          } else {
+            R(6, -16, 20, 14, '#14151c');
+            ctx.strokeStyle = '#4a4f63';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(px + 8, py - 15);
+            ctx.lineTo(px + 15, py - 8);
+            ctx.lineTo(px + 12, py - 4);
+            ctx.stroke();
+            if (Math.sin(t * 9) > 0.96) {
+              R(20, -12, 2, 2, '#ffd23f');
+              R(23, -14, 1, 1, '#fff3c4');
+            }
+          }
+          // panel de control
+          R(3, 0, 26, 9, on ? '#2a1557' : '#221a30');
+          R(3, 0, 26, 2, on ? '#4a2a8f' : '#2e2440');
+          R(9, 2, 2, 4, '#111');
+          ctx.fillStyle = on ? '#e5484d' : '#5a2a2a';
+          ctx.beginPath();
+          ctx.arc(px + 10, py + 2, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          R(16, 3, 3, 3, on ? '#ffd23f' : '#5a5020');
+          R(21, 3, 3, 3, on ? '#4fd1ff' : '#204a55');
+          R(18, 6, 3, 2, on ? '#ff4fd8' : '#4a2040');
+          // base y ranura de fichas
+          R(5, 10, 22, 18, on ? '#3b1f7a' : '#2e2440');
+          R(13, 14, 6, 6, '#111218');
+          R(15, 15, 2, 4, on ? (Math.sin(t * 5) > 0 ? '#ffd23f' : '#ff8a3d') : '#444');
+          R(5, 26, 22, 2, '#1b1d2b');
+          if (!on) {
+            // cinta de "fuera de servicio"
+            ctx.save();
+            ctx.translate(px + 16, py - 6);
+            ctx.rotate(-0.35);
+            ctx.fillStyle = '#ffd23f';
+            ctx.fillRect(-22, -3, 44, 7);
+            ctx.fillStyle = '#1b1d2b';
+            for (let i = -22; i < 22; i += 6) ctx.fillRect(i, -3, 3, 7);
+            ctx.restore();
+          }
+          break;
+        }
+        case 'Z': {
+          // Cofre de recompensas del ARCADE (brilla cuando hay algo nuevo adentro).
+          const fresh = markers.chest;
+          if (fresh) {
+            const g = ctx.createRadialGradient(px + 16, py + 16, 2, px + 16, py + 16, 26);
+            g.addColorStop(0, `rgba(255,210,63,${0.35 + 0.2 * Math.sin(this.t * 4)})`);
+            g.addColorStop(1, 'rgba(255,210,63,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(px - 12, py - 12, 56, 56);
+          }
+          ctx.fillStyle = 'rgba(0,0,0,0.2)';
+          ctx.beginPath();
+          ctx.ellipse(px + 16, py + 28, 13, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          R(4, 12, 24, 16, '#8b5a2b');
+          R(4, 12, 24, 2, '#a8703c');
+          R(3, 4, 26, 10, '#9c6532');
+          R(3, 4, 26, 2, '#b97d45');
+          R(3, 12, 26, 2, '#6b4220');
+          R(7, 4, 3, 24, '#d4a017');
+          R(22, 4, 3, 24, '#d4a017');
+          R(13, 10, 6, 7, '#f4c430');
+          R(15, 13, 2, 3, '#6b4220');
+          if (fresh && Math.sin(this.t * 6) > 0.3) {
+            R(26, 1, 1, 5, '#ffffff');
+            R(24, 3, 5, 1, '#ffffff');
+            R(5, 0, 1, 3, '#fff3c4');
+          }
+          break;
+        }
         case 'Y':
           R(3, 8, 26, 18, '#dde1e8');
           R(3, 8, 26, 2, '#f4f6f8');

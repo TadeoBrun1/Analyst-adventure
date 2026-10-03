@@ -144,7 +144,23 @@ el salto a Excel, Google Sheets, Tableau, Power BI o una base de datos sea direc
   entregás**. Cada respuesta correcta suma un 5 % de la XP de la tarea (como máximo 15 %): no cambia cuánto hay
   que practicar para ascender.
 - **Favores de Nico (desde Semi-Senior):** limpieza de datos, informes y revisión del trabajo de un junior, con
-  plantillas de niveles cuya lección ya diste. Un favor cada 2 tareas entregadas, 90 XP cada uno.
+  plantillas de niveles cuya lección ya diste. Un favor cada 2 tareas entregadas, 90 XP cada uno. Si el favor pide algo que
+  todavía no hiciste en el modo historia viene **con guía**; si ya lo hiciste, solo el pedido (como en un trabajo real).
+
+### Guiado al aprender, sin guía al practicar (v0.7)
+
+- Las **5 tareas obligatorias** de cada nivel siguen guiadas paso a paso: sirven para aprender la herramienta.
+- La **práctica libre**, los **favores** y el **ARCADE** muestran solo el pedido: qué hay que entregar y dónde, sin
+  nombres de funciones ni fórmulas de ejemplo. Es lo que pasa en un trabajo real: hay que decidir cómo resolverlo.
+- El **ARCADE** entrena hacer el trabajo **bajo presión de tiempo**. Cada rango usa solo las herramientas de su
+  etapa (y de la anterior) que ya aprendiste, y la dificultad sube cada 3 misiones. No da XP: es para medirse.
+
+### Explorar antes de responder (v0.7.1)
+
+Un analista real no cuenta filas con el dedo: filtra, busca y marca. La planilla tiene **filtro** (con «Se
+encontraron X de N registros»), **buscar**, **pintar** filas o celdas con conteo por color y **resaltar celdas**
+(formato condicional). Sirven para chequear y responder preguntas sobre tablas grandes; no completan las celdas
+que piden fórmulas.
 
 ### Próximo: Lead
 

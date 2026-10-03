@@ -59,8 +59,12 @@
       practice: {}, // mod -> cantidad de prácticas completadas
       activePractice: {}, // mod -> id de la práctica en curso
       progress: {}, // id -> { cells, answers, hints, lang }
-      flags: { intro: false, rankSeen: 0, metLeo: false, metCamila: false, metNico: false, tipFill: false, tipHeaders: false, favorsDone: 0, favorAt: 0, lastFavorKind: null, events: 0, eventMiss: 0, tours: {} },
+      flags: { intro: false, rankSeen: 0, metLeo: false, metCamila: false, metNico: false, tipFill: false, tipHeaders: false, favorsDone: 0, favorAt: 0, lastFavorKind: null, events: 0, eventMiss: 0, tours: {}, arcadeSeen: false, chestNew: false, vinyl: null },
       favor: null, // pedido de Nico en curso: id de la misión
+      arcade: {}, // mejores partidas del ARCADE por rango: { 1: [{ score, missions, wave, secs, at }] }
+      arcadeStats: null, // estadísticas del ARCADE para los logros (ver achievements.js)
+      achievements: {}, // logro -> fecha en que se consiguió
+      decor: {}, // objeto decorativo -> puesto en la oficina (true/false)
       look: null, // aspecto elegido en el creador de personaje
       rankReached: 0,
       createdAt: Date.now(),

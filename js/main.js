@@ -8,7 +8,7 @@
   const T = (es, en) => AA.T(es, en);
   const Cu = () => AA.Curriculum;
 
-  AA.VERSION = '0.6.0';
+  AA.VERSION = '0.8.1';
 
   const Game = {
     screen: 'title',
@@ -35,16 +35,25 @@
       if (name !== this.screen) document.getElementById('toast').innerHTML = '';
       this.screen = name;
       // La presentación usa la misma pantalla (y lienzo) que la oficina.
-      const section = name === 'present' ? 'office' : name;
+      const section = name === 'present' ? 'office' : name === 'arcade' ? 'mission' : name;
       document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + section));
       document.getElementById('screen-office').classList.toggle('presenting', name === 'present');
       if (name !== 'present') AA.Office.stopPresentation();
       if (name === 'office' || name === 'present') AA.Office.start();
       else AA.Office.stop();
       if (name !== 'title') AA.Menu.close();
-      AA.Audio.setDuck(name === 'mission' ? 0.45 : 1);
-      // Menú: lo-fi tranquilo · oficina y tareas: el tema alegre de la oficina.
-      AA.Audio.startMusic(name === 'title' ? 'lofi' : 'office');
+      AA.Audio.setDuck(name === 'mission' ? 0.45 : name === 'arcade' ? 0.75 : 1);
+      // Menú: lo-fi tranquilo · oficina y tareas: el tema alegre de la oficina · ARCADE: chiptune que acelera.
+      AA.Audio.startMusic(name === 'title' ? 'lofi' : name === 'arcade' ? 'arcade' : this.officeTrack());
+    },
+    // Tema de la oficina: el normal o el vinilo que pusiste en el tocadiscos.
+    officeTrack() {
+      const st = AA.State;
+      const v = st.data && st.data.flags.vinyl;
+      return v && AA.Decor && AA.Decor.on('turntable') && AA.Audio.TRACKS['vinyl_' + v] ? 'vinyl_' + v : 'office';
+    },
+    refreshMusic() {
+      if (this.screen && this.screen !== 'title' && this.screen !== 'arcade') AA.Audio.startMusic(this.officeTrack());
     },
 
     goToTitle() {
@@ -67,6 +76,10 @@
     bindHud() {
       document.getElementById('hud-notebook').addEventListener('click', () => AA.Screens.openNotebook());
       document.getElementById('hud-career').addEventListener('click', () => AA.Screens.openCareer());
+      document.getElementById('hud-dance').addEventListener('click', (e) => {
+        e.currentTarget.blur();
+        AA.Office.dance();
+      });
       document.getElementById('hud-menu').addEventListener('click', () => this.openGameMenu());
     },
     updateHud() {
@@ -82,9 +95,13 @@
       this.hudXp = st.data.xp;
       document.getElementById('hud-notebook').innerHTML = `📒 ${T('Libreta', 'Notebook')} <kbd>F</kbd>`;
       document.getElementById('hud-career').innerHTML = `📈 ${T('Carrera', 'Career')}`;
+      const dance = document.getElementById('hud-dance');
+      dance.innerHTML = `🕺 ${T('Bailar', 'Dance')} <kbd>B</kbd>`;
+      dance.classList.toggle('hidden', !(AA.Decor && AA.Decor.on('dancebtn')));
+      const canDance = AA.Decor && AA.Decor.on('dancebtn');
       document.getElementById('hud-help').innerHTML = T(
-        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · <kbd>F</kbd>: libreta · <kbd>Esc</kbd>: menú',
-        '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows: walk · <kbd>E</kbd> or <kbd>Space</kbd>: interact · <kbd>F</kbd>: notebook · <kbd>Esc</kbd>: menu'
+        `<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flechas: caminar · <kbd>E</kbd> o <kbd>Espacio</kbd>: interactuar · <kbd>F</kbd>: libreta${canDance ? ' · <kbd>B</kbd>: bailar' : ''} · <kbd>Esc</kbd>: menú`,
+        `<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows: walk · <kbd>E</kbd> or <kbd>Space</kbd>: interact · <kbd>F</kbd>: notebook${canDance ? ' · <kbd>B</kbd>: dance' : ''} · <kbd>Esc</kbd>: menu`
       );
     },
 
@@ -95,7 +112,9 @@
       if (!st.data.flags.intro || st.data.flags.rankSeen < st.rankIndex()) m.marta = true;
       if (st.data.flags.intro && Cu().pendingLesson()) m.leo = true;
       if (st.rankIndex() >= 2 && (!st.data.flags.metNico || st.favorReady())) m.nico = true;
+      if (st.rankIndex() >= 1 && !st.data.flags.arcadeSeen) m.arcade = true;
       else if (st.data.flags.intro && Cu().nextMission()) m.computer = true;
+      if (st.data.flags.chestNew) m.chest = true;
       return m;
     },
 
@@ -205,7 +224,17 @@
 
     interact(id) {
       const st = AA.State;
+      if (id.startsWith('pet:')) return AA.Office.petAnimal(id);
       switch (id) {
+        case 'turntable':
+          AA.Decor.openTurntable();
+          return;
+        case 'dancebtn':
+          AA.Office.dance();
+          return;
+        case 'chest':
+          AA.Achievements.openChest();
+          return;
         case 'computer':
           if (!st.data.flags.intro) {
             AA.Dialog.open([{ who: 'narrator', text: { es: 'La computadora pide usuario y contraseña. Mejor hablá primero con Marta, en la oficina de vidrio.', en: 'The computer asks for a username and password. Better talk to Marta first, in the glass office.' } }]);
@@ -230,6 +259,9 @@
           return;
         case 'nico':
           AA.Story.nico();
+          return;
+        case 'arcade':
+          AA.Story.arcade();
           return;
         case 'camila':
         case 'tadeo':
@@ -259,6 +291,13 @@
           return;
         }
       }
+      // B: ¡a bailar! (recompensa del ARCADE)
+      const isB = (e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat;
+      if (isB && this.screen === 'office' && !AA.Dialog.isOpen() && !AA.UI.isModalOpen() && AA.Decor && AA.Decor.on('dancebtn')) {
+        e.preventDefault();
+        AA.Office.dance();
+        return;
+      }
       if (AA.UI.isModalOpen()) {
         if (e.key === 'Escape' && AA.UI.modalClosable) {
           e.preventDefault();
@@ -271,7 +310,35 @@
         else e.preventDefault();
         return;
       }
+      // Ctrl+F / Ctrl+B (buscar) y Ctrl+Mayús+L (filtro) en la planilla, aunque el foco esté en el panel:
+      // así no se abre el buscador del navegador.
+      if ((e.ctrlKey || e.metaKey) && (this.screen === 'mission' || this.screen === 'arcade')) {
+        const k = e.key.toLowerCase();
+        const ms = AA.Screens.MissionScreen;
+        const g = ms.activeView === 'sheets' && ms.grids && ms.grids[ms.activeSheet];
+        if (g && g.openFind && !e.shiftKey && (k === 'f' || k === 'b')) {
+          e.preventDefault();
+          g.openFind();
+          return;
+        }
+        if (g && g.toggleFilter && e.shiftKey && k === 'l') {
+          e.preventDefault();
+          g.toggleFilter();
+          return;
+        }
+      }
       if (e.key !== 'Escape') return;
+      if (this.screen === 'arcade') {
+        // En el ARCADE: primero salir del campo de texto; después, pausa.
+        e.preventDefault();
+        const a = document.activeElement;
+        if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && a.type !== 'range' && a.type !== 'checkbox'))) {
+          a.blur();
+          return;
+        }
+        AA.Arcade.pause();
+        return;
+      }
       if (this.screen === 'mission') {
         // Primer Esc: salir del campo de texto en el que estés. Siguiente: volver a la bandeja de entrada.
         e.preventDefault();

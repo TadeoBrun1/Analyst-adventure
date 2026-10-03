@@ -48,6 +48,39 @@ se guarda en el navegador (`localStorage`).
 - **Nico** vuelve de vacaciones cuando llegás a Semi-Senior y te pide **favores**: limpiar datos, escribir un
   informe o revisar su planilla. Aparecen arriba de todo en la bandeja, en verde agua.
 - Los diálogos cambian con tu rango: te tratan como pasante, junior, semi-senior o senior.
+- **Tareas guiadas y sin guía**: las 5 tareas obligatorias de cada nivel explican paso a paso qué hacer. La
+  **práctica libre** y el ARCADE muestran **solo el pedido** (qué entregar y dónde, sin decir qué
+  función usar), como en un trabajo real. Los **favores de Nico** vienen **con guía** si piden algo que todavía no
+  hiciste en el modo historia (📘 Con guía) y sin guía si ya lo sabés (📧 Sin guía); la 💡 Pista está siempre. Para responder rápido: seleccioná un rango y mirá **recuento, suma,
+  promedio, mín y máx** abajo de la planilla (como en Excel), y con **📍** pasás el valor de una celda a la respuesta.
+- **Explorar tablas grandes** (como en Excel), en todas las planillas:
+  - **🔽 Filtro** (<kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd>): ▾ en cada columna con condiciones (igual, mayor,
+    menor, entre, contiene, empieza con, vacías, los N mayores/menores); oculta las filas que no cumplen y la barra
+    de estado dice **«Se encontraron X de N registros»**.
+  - **🔍 Buscar** (<kbd>Ctrl</kbd>+<kbd>B</kbd> o <kbd>Ctrl</kbd>+<kbd>F</kbd>): resalta todas las coincidencias con
+    contador, <kbd>Enter</kbd> salta a la siguiente; en toda la hoja, en la columna o en la fila, y «celda completa».
+  - **🖌 Pintar** celdas, o filas enteras con <kbd>Ctrl</kbd>+clic en su número; abajo, cuántas hay de cada color.
+  - **✨ Resaltar celdas**: formato condicional simple con el total de celdas resaltadas.
+  - Nada de esto cambia los datos ni la corrección: las celdas amarillas siguen necesitando fórmulas. Leo lo
+    explica («¿Cómo encuentro datos en una tabla grande?») y está en la libreta, pestaña **🔍 Explorar tablas**.
+- **🕹️ ARCADE**: la máquina del living (averiada mientras sos pasante, se arregla al llegar a Junior). Misiones
+  aleatorias una tras otra contra un reloj único: cada pedido llega con su **plazo**, proporcional a lo que
+  lleva resolverlo, y lo que sobra queda de reserva (hasta 2:00); responder mal, entregar incompleto o saltear
+  resta tiempo. Cada 3 misiones llega una **oleada**: los plazos se achican, el reloj corre más rápido, las
+  penalizaciones crecen, las misiones se ponen más difíciles y la música se acelera. Se elige el rango
+  (Junior, Semi-Senior, Senior) hasta el alcanzado en el modo historia, y se guardan las 5 mejores partidas de
+  cada rango: gana quien resuelve **más misiones** y, a igual cantidad, quien lo hizo en **menos tiempo total**.
+  El balance está simulado con jugadores de distinto nivel: ver [docs/ARCADE.md](docs/ARCADE.md).
+- **🏆 Logros del ARCADE (16)**: completar 3, 6 o 12 misiones, llegar a la oleada 3, 5 o 7, hacer 3 misiones en
+  menos de 8 minutos, 5 seguidas sin errores, entregar con menos de 15 s en el reloj, sumar 25 misiones, jugar en
+  los tres rangos… Están en la libreta (pestaña **🏆 Logros**), con el objetivo, el progreso y la **vista previa
+  de la recompensa**. Cada logro desbloquea un **objeto decorativo** para la oficina, que se pone o se saca desde
+  el **🎁 cofre** al lado de la máquina: ficus, alfombra persa, cafetera espresso, donas, PC gamer, silla gamer,
+  pecera, guirnalda de luces, neón «DATA», cuadro «Analista del mes», bonsái, trofeo, y un **gato** y un **perro**
+  que pasean por la oficina, duermen la siesta y se dejan acariciar (E). El **🎵 tocadiscos** tiene 3 vinilos
+  (bossa nova, synthwave y cumbia) que reemplazan la música de la oficina y de la computadora. Con 8 logros llega
+  el **🕺 botón de baile «B»**: apretándolo (o la tecla <kbd>B</kbd>) tu personaje baila breakdance con luces de
+  discoteca, y los demás comentan.
 - **Partida nueva**: elegís tu nombre y armás tu personaje: hombre o mujer, tono de piel, peinado y color de
   pelo, barba y su color, anteojos y ropa (remera, camisa, buzo o saco; pantalón o pollera). Se puede cambiar
   después desde la pausa (*👕 Cambiar aspecto*).
@@ -110,6 +143,11 @@ ver [`docs/CARRERA.md`](docs/CARRERA.md).
 | **0.5.1** | Sillas en los escritorios (te sentás antes de usar la computadora), guía ilustrada de la planilla con botón ❓ Ayuda, ayudas en el momento justo (copiar una fórmula arrastrando, marcar filas y columnas) y panel de objetivos con color propio. | ✅ |
 | **0.5.2** | Confeti en cada entrega y animación de "nivel completado" (medalla, rayos, contador de XP y barra que se llena); bandeja con colores por estado (nuevo, en progreso, entregado, práctica extra) y etapas plegables que recuerdan si las abriste o cerraste. | ✅ |
 | **0.6** | Bienvenida y guías paso a paso animadas, eventos especiales de presentación con preguntas sobre tus datos, favores de Nico desde Semi-Senior y diálogos según el rango. | ✅ |
+| **0.7** | Práctica, favores y ARCADE sin paso a paso (solo el pedido), barra de estado de la planilla y 📍 para responder con una celda, y **modo ARCADE** por oleadas con música propia y récords por rango. | ✅ |
+| **0.7.1** | Herramientas para explorar tablas grandes: **filtro**, **buscar**, **pintar** filas/celdas con conteo por color y **resaltar celdas** (formato condicional). | ✅ |
+| **0.7.2** | ARCADE rebalanceado (plazo por pedido según su tamaño, reserva con tope, mismos resultados en los tres rangos), ranking por misiones y tiempo total, favores de Nico con guía cuando piden algo nuevo y simulador `npm run balance`. | ✅ |
+| **0.8** | **Logros del ARCADE** (15) con recompensas: decoración para la oficina que se activa desde un cofre, y mascotas que pasean y se pueden acariciar. | ✅ |
+| **0.8.1** | Tocadiscos con 3 vinilos (bossa nova, synthwave, cumbia) y logro «Coleccionista» con el botón de baile «B» (breakdance). | ✅ |
 | **Lead** | Priorizar pedidos, encuadrar problemas con otras áreas, mentorear, gobierno de datos, final de carrera. | ⏳ |
 
 ## Estructura
@@ -122,18 +160,24 @@ electron/main.js      proceso principal de escritorio: ventana, guardado en arch
 electron/preload.js   puente seguro entre el juego y el sistema
 docs/STEAM.md         guía para publicar en Steam
 docs/CARRERA.md       análisis: qué hace cada rango en la vida real vs. los niveles del juego
+docs/ARCADE.md        reglas y balance del modo ARCADE (con la simulación por rango y tipo de jugador)
 .github/workflows/    compilación automática de ejecutables (Windows, Linux, macOS)
 js/
   engine/formula.js       tokenizer, parser, evaluador y ~60 funciones (ES/EN)
   engine/sheet.js         modelo de hoja: celdas, recálculo, referencias circulares
   i18n/i18n.js            idiomas: AA.T('es', 'en'), documentación de funciones en inglés
   ui/grid.js              componente visual de planilla (selección, edición, relleno, F4, deshacer…)
+  ui/grid-tools.js        buscar, filtro, pintar filas/celdas y resaltar celdas en la planilla
   ui/menu.js, menu-bg.js  menú principal (ranuras, opciones) y su fondo animado
   ui/common.js            modales (con navegación por flechas) y avisos
   ui/creator.js           creador de personaje (aspecto, pelo, barba, ropa)
   ui/tour.js              motor de guías paso a paso (resaltado + tarjetas)
   game/guides.js          bienvenida y guías de cada sección
   game/present.js         eventos especiales: presentación y preguntas sobre tus datos
+  game/brief.js           pedidos sin guía (qué entregar, sin el cómo)
+  game/arcade.js          modo ARCADE (reloj, oleadas, puntajes)
+  game/achievements.js    logros del ARCADE, cofre de recompensas y página de la libreta
+  game/decor.js           decoración de la oficina y mascotas (dibujo, vistas previas)
   game/storage.js         3 ranuras + configuración (archivos en escritorio, localStorage en web)
   game/settings.js        idioma, volúmenes y pantalla
   game/audio.js           música, efectos y voces sintetizados con Web Audio
@@ -161,6 +205,9 @@ tests/
   missions.test.js      resuelve las 95 plantillas (tamaños, semillas, idiomas) y prueba errores típicos
   tools.test.js         tabla dinámica, SQL (resultados y mensajes de error), dashboards e informes
   chart.test.js         modelo de gráficos (agregaciones, color, filtros, Mostrarme)
+  arcade-balance.js     simulador de balance del ARCADE (npm run balance), no es parte de npm test
+  achievements.test.js  logros, estadísticas, decoración bloqueada y que con todo puesto se llegue a todos lados
+  gridtools.test.js     condiciones del filtro y de «resaltar celdas» (números, texto, vacías, los N mayores)
   progression.test.js   economía de XP: cada ascenso pide la etapa completa + 3 o 4 prácticas; repetir no permite saltear rangos
 ```
 
@@ -168,6 +215,7 @@ tests/
 
 ```bash
 npm test
+npm run balance   # simula partidas de ARCADE por rango y tipo de jugador
 ```
 
 ## Agregar una misión

@@ -121,13 +121,17 @@
       if (!id) return '';
       const m = getMission(id, (st.data.progress[id] && st.data.progress[id].lang) || AA.lang);
       const status = st.data.progress[id] ? `<span class="chip prog">✎ ${T('En progreso', 'In progress')}</span>` : `<span class="chip favor">🤝 ${T('Favor', 'Favor')}</span>`;
+      // Con guía si pide algo que todavía no hiciste; si ya lo sabés, solo el pedido (como en un trabajo real).
+      const guide = Cu().favorKnown(id)
+        ? `<span class="chip" title="${T('Ya hiciste este tipo de tarea: solo el pedido, sin paso a paso.', 'You already did this kind of task: just the request, no step-by-step.')}">📧 ${T('Sin guía', 'No guide')}</span>`
+        : `<span class="chip" title="${T('Es algo que todavía no hiciste: viene con los pasos explicados.', 'Something you have not done yet: it comes with the steps explained.')}">📘 ${T('Con guía', 'Guided')}</span>`;
       return `
         <div class="mail-group favor-group">
           <div class="mail-group-head">🤝 ${T('Favores de Nico', 'Favors for Nico')}<span>+${m.xp} XP</span></div>
           <button class="mail-item favor ${this.selected === id ? 'active' : ''}" data-sel="${id}">
             <div class="mail-from">Nico Ferreyra ${AA.UI.deptBadge('data')}</div>
             <div class="mail-subject">${esc(m.subject)}</div>
-            <div class="mail-meta">${status}<span class="xp">+${m.xp} XP</span></div>
+            <div class="mail-meta">${status}${guide}<span class="xp">+${m.xp} XP</span></div>
           </button>
         </div>`;
     },
@@ -327,13 +331,19 @@
     activeView: null,
     activeSheet: 0,
 
-    open(id) {
+    // opts: { mission, arcade } — el ARCADE pasa la misión ya armada y no guarda progreso.
+    open(id, opts) {
+      opts = opts || {};
       const st = AA.State;
-      const prog = st.data.progress[id];
+      const prog = opts.arcade ? null : st.data.progress[id];
       const lang = (prog && prog.lang) || AA.lang;
-      const mission = getMission(id, lang);
+      const mission = opts.mission || getMission(id, lang);
       this.mission = mission;
       this.lang = lang;
+      this.arcade = !!opts.arcade;
+      // Las tareas obligatorias explican paso a paso; el resto muestra solo el pedido (como en un trabajo real).
+      // Los favores de Nico son guiados solo si piden algo que todavía no hiciste en el modo historia.
+      this.guided = !this.arcade && (mission.kind === 'story' || (mission.kind === 'favor' && !Cu().favorKnown(mission.id)));
       this.defs = W().sheetDefs(mission);
       this.book = W().buildBook(mission);
       this.base = this.book.sheets.map((sh) => new Map(sh.serialize().map(([c, r, i]) => [c + ',' + r, i])));
@@ -360,6 +370,7 @@
       }
       this.sqlRuns = W().runSql(mission, this.parts.sql);
       this.status = [];
+      document.querySelectorAll('.ss-pop').forEach((p) => p.remove());
       this.grids = [];
       this.views = {};
       this.tabs = W().views(mission);
@@ -370,32 +381,56 @@
       const mod = Cu().moduleById(mission.module);
       const icon = mission.sql ? 'SQL' : mission.dashboard ? 'BI' : mission.report && !mission.sheets && !mission.sheet ? 'PPT' : 'XLS';
       const sheetTabs = this.defs.length > 1 || !this.defs.every((d) => d.def.readonly);
+      const topButtons = this.arcade
+        ? `<div class="arc-hud" data-el="arc-hud"></div>
+           <div class="spacer"></div>
+           <button class="btn" data-act="skip" title="${T('Perdés lo que queda del plazo de este pedido y una penalización', 'You lose what is left of this request\'s deadline plus a penalty')}">⏭ ${T('Saltear', 'Skip')} <span class="muted" data-el="skipcost"></span></button>
+           <button class="btn btn-ghost" data-act="quit">✖ ${T('Abandonar', 'Quit')}</button>
+           <button class="btn btn-primary" data-act="submit">📤 ${T('Entregar', 'Submit')}</button>`
+        : `<button class="btn btn-ghost" data-act="office">← ${T('Oficina', 'Office')}</button>
+           <button class="btn btn-ghost" data-act="inbox">📨 ${T('Bandeja', 'Inbox')} <kbd>Esc</kbd></button>
+           <div class="ms-title">
+             <span class="file-icon sm">${icon}</span>
+             <div><b>${esc(mission.file)}</b><span class="muted">${mod ? `${T('Nivel', 'Level')} ${levelNum(mod)} · ` : ''}${esc(mission.subject)} · ${esc(AA.L(ch.name))}</span></div>
+           </div>
+           <div class="spacer"></div>
+           <button class="btn" data-act="help" title="${T('Cómo usar la planilla', 'How to use the spreadsheet')}">❓ ${T('Ayuda', 'Help')}</button>
+           <button class="btn" data-act="notebook">📒 ${T('Libreta', 'Notebook')}</button>
+           <button class="btn" data-act="email">📧 ${T('Ver pedido', 'View request')}</button>
+           <button class="btn" data-act="hint">💡 ${T('Pista', 'Hint')}</button>
+           <button class="btn btn-primary" data-act="submit" disabled>📤 ${T('Entregar informe', 'Submit report')}</button>`;
+      // Panel izquierdo: guiado (objetivos paso a paso) o solo el pedido.
+      const side = this.guided
+        ? `<section class="card">
+             <h3>${T('Objetivos', 'Objectives')} <span class="muted" data-el="count"></span></h3>
+             <ol class="objectives" data-el="objectives"></ol>
+           </section>
+           <section class="card tips">
+             <h3>📒 ${T('Notas de Leo', "Leo's notes")}</h3>
+             <ul>${mission.tips.map((t) => `<li>${t}</li>`).join('')}</ul>
+           </section>`
+        : `<section class="card brief">
+             <h3>📧 ${T('Pedido', 'Request')} <span class="muted" data-el="count"></span></h3>
+             <div class="brief-from"><div class="avatar" style="--c:${ch.shirt}">${esc(AA.L(ch.name)[0])}</div><div><b>${esc(AA.L(ch.name))}</b><span class="muted">${esc(AA.L(ch.role) || '')}</span></div></div>
+             <div class="brief-subject">${esc(mission.subject)}</div>
+             <div class="brief-body">${AA.fillName(AA.Brief.howFree(mission.email))}</div>
+             ${(() => {
+               const list = AA.Brief.deliverables(mission, this.book);
+               return list.length ? `<div class="brief-needs"><b>${T('Lo que necesito', 'What I need')}:</b><ul>${list.map((x) => `<li>${x}</li>`).join('')}</ul></div>` : '';
+             })()}
+           </section>
+           <section class="card questions" data-el="qcard">
+             <h3>❓ ${T('Preguntas', 'Questions')}</h3>
+             <ol class="objectives" data-el="objectives"></ol>
+           </section>
+           <section class="card hints-card hidden" data-el="hintcard">
+             <h3>💡 ${T('Pistas', 'Hints')}</h3>
+             <ul data-el="hintlist"></ul>
+           </section>`;
       root.innerHTML = `
-        <header class="ms-top">
-          <button class="btn btn-ghost" data-act="office">← ${T('Oficina', 'Office')}</button>
-          <button class="btn btn-ghost" data-act="inbox">📨 ${T('Bandeja', 'Inbox')} <kbd>Esc</kbd></button>
-          <div class="ms-title">
-            <span class="file-icon sm">${icon}</span>
-            <div><b>${esc(mission.file)}</b><span class="muted">${T('Nivel', 'Level')} ${levelNum(mod)} · ${esc(mission.subject)} · ${esc(AA.L(ch.name))}</span></div>
-          </div>
-          <div class="spacer"></div>
-          <button class="btn" data-act="help" title="${T('Cómo usar la planilla', 'How to use the spreadsheet')}">❓ ${T('Ayuda', 'Help')}</button>
-          <button class="btn" data-act="notebook">📒 ${T('Libreta', 'Notebook')}</button>
-          <button class="btn" data-act="email">📧 ${T('Ver pedido', 'View request')}</button>
-          <button class="btn" data-act="hint">💡 ${T('Pista', 'Hint')}</button>
-          <button class="btn btn-primary" data-act="submit" disabled>📤 ${T('Entregar informe', 'Submit report')}</button>
-        </header>
-        <div class="ms-body">
-          <aside class="ms-side">
-            <section class="card">
-              <h3>${T('Objetivos', 'Objectives')} <span class="muted" data-el="count"></span></h3>
-              <ol class="objectives" data-el="objectives"></ol>
-            </section>
-            <section class="card tips">
-              <h3>📒 ${T('Notas de Leo', "Leo's notes")}</h3>
-              <ul>${mission.tips.map((t) => `<li>${t}</li>`).join('')}</ul>
-            </section>
-          </aside>
+        <header class="ms-top ${this.arcade ? 'arcade-top' : ''}">${topButtons}</header>
+        <div class="ms-body ${this.guided ? '' : 'unguided'}">
+          <aside class="ms-side">${side}</aside>
           <main class="ms-sheet ms-multi">
             ${this.tabs.length > 1 ? `<div class="ms-viewtabs">${this.tabs.map((v) => `<button data-view="${v.id}">${v.label}</button>`).join('')}</div>` : ''}
             ${this.tabs
@@ -424,12 +459,18 @@
       this.objList = root.querySelector('[data-el="objectives"]');
       this.countEl = root.querySelector('[data-el="count"]');
       this.submitBtn = root.querySelector('[data-act="submit"]');
-      root.querySelector('[data-act="office"]').addEventListener('click', () => this.leave(() => AA.Game.enterOffice()));
-      root.querySelector('[data-act="inbox"]').addEventListener('click', () => this.leave(() => AA.Game.openComputer()));
-      root.querySelector('[data-act="notebook"]').addEventListener('click', () => openNotebook(mission.module));
-      root.querySelector('[data-act="email"]').addEventListener('click', () => this.showEmail());
-      root.querySelector('[data-act="help"]').addEventListener('click', () => AA.Guides.mission(this, true));
-      root.querySelector('[data-act="hint"]').addEventListener('click', () => this.useHint());
+      const on = (act, fn) => {
+        const b = root.querySelector(`[data-act="${act}"]`);
+        if (b) b.addEventListener('click', fn);
+      };
+      on('office', () => this.leave(() => AA.Game.enterOffice()));
+      on('inbox', () => this.leave(() => AA.Game.openComputer()));
+      on('notebook', () => openNotebook(mission.module));
+      on('email', () => this.showEmail());
+      on('help', () => AA.Guides.mission(this, true));
+      on('hint', () => this.useHint());
+      on('skip', () => AA.Arcade.skip());
+      on('quit', () => AA.Arcade.confirmQuit());
       this.submitBtn.addEventListener('click', () => this.submit());
       root.querySelectorAll('[data-view]').forEach((b) =>
         b.addEventListener('click', () => {
@@ -451,6 +492,7 @@
       if (this.defs.length) this.showSheet(0, true);
       this.showView(startView, true);
       this.evaluate(true);
+      if (this.arcade) return;
       // Guía de la planilla (o de la herramienta) la primera vez.
       setTimeout(() => this.mission && AA.Guides.mission(this), 300);
       this.scheduleHeadersTip();
@@ -678,6 +720,7 @@
 
     leave(then) {
       this.saveNow();
+      (this.grids || []).forEach((g) => g && g.closePop && g.closePop());
       Object.values(this.views).forEach((v) => v && v.destroy && v.destroy());
       this.views = {};
       this.mission = null;
@@ -717,10 +760,12 @@
         this.status.forEach((s, i) => {
           if (s === true && prev[i] !== true) {
             newlyDone = true;
-            AA.UI.toast(T(`✅ Objetivo ${i + 1} cumplido`, `✅ Objective ${i + 1} done`), 'ok');
+            // En el ARCADE no se avisa: hay que revisar el propio trabajo antes de entregar.
+            if (this.guided) AA.UI.toast(T(`✅ Objetivo ${i + 1} cumplido`, `✅ Objective ${i + 1} done`), 'ok');
+            else if (!this.arcade) AA.UI.toast(T('✅ Un requisito más cumplido', '✅ One more requirement met'), 'ok');
           }
         });
-        if (newlyDone) AA.Audio.play('success');
+        if (newlyDone && !this.arcade) AA.Audio.play('success');
       }
       const fl = this.root.querySelector('[data-el="flags"]');
       if (fl) fl.textContent = this.parts.flags.length ? T(`${this.parts.flags.length} marcada(s): ${this.parts.flags.join(', ')}`, `${this.parts.flags.length} flagged: ${this.parts.flags.join(', ')}`) : '';
@@ -730,13 +775,25 @@
     renderObjectives() {
       const objs = this.mission.objectives;
       const done = this.status.filter((s) => s === true).length;
-      this.countEl.textContent = `${done}/${objs.length}`;
+      // Sin guía: solo un contador general (en el ARCADE, ni eso).
+      this.countEl.textContent = this.arcade ? '' : this.guided ? `${done}/${objs.length}` : T(`${done}/${objs.length} requisitos cumplidos`, `${done}/${objs.length} requirements met`);
+      const pickBtn = this.defs.length ? `<button type="button" class="btn btn-sm obj-pick" data-pick title="${T('Usar el valor de la celda seleccionada', 'Use the value of the selected cell')}">📍</button>` : '';
+      if (!this.guided) {
+        const qcard = this.root.querySelector('[data-el="qcard"]');
+        if (qcard) qcard.classList.toggle('hidden', !objs.some((o) => o.answer || o.choices));
+        const hc = this.root.querySelector('[data-el="hintcard"]');
+        if (hc) {
+          hc.classList.toggle('hidden', !this.hints.length);
+          hc.querySelector('[data-el="hintlist"]').innerHTML = this.hints.map((k) => `<li>${esc(objs[k].hint || '')}</li>`).join('');
+        }
+      }
       this.objList.innerHTML = objs
         .map((o, i) => {
+          if (!this.guided && !o.answer && !o.choices) return '';
           const s = this.status[i];
           const ok = s === true;
           const note = typeof s === 'string' && s !== 'wrong' ? `<div class="obj-note">${esc(s)}</div>` : '';
-          const hint = this.hints.includes(i) ? `<div class="obj-hint">💡 ${esc(o.hint)}</div>` : '';
+          const hint = this.guided && this.hints.includes(i) ? `<div class="obj-hint">💡 ${esc(o.hint)}</div>` : '';
           const a = this.answers[i] || {};
           let answer = '';
           if (o.choices) {
@@ -748,11 +805,12 @@
             answer = ok
               ? `<div class="obj-answer done">${T('Tu respuesta', 'Your answer')}: <b>${esc(a.value)}</b></div>`
               : `<form class="obj-answer" data-answer="${i}">
-                   <input type="text" placeholder="${esc(o.placeholder || T('Tu respuesta', 'Your answer'))}" value="${esc(a.value || '')}" autocomplete="off">
+                   <input type="text" placeholder="${esc(o.placeholder || T('Tu respuesta', 'Your answer'))}" value="${esc(a.value || '')}" autocomplete="off">${pickBtn}
                    <button class="btn btn-sm" type="submit">${T('Responder', 'Answer')}</button>
                  </form>${s === 'wrong' ? `<div class="obj-note">${T('Mmm, no es correcto. Revisá los datos y probá de nuevo.', "Hmm, that's not right. Check the data and try again.")}</div>` : ''}`;
           }
-          return `<li class="${ok ? 'ok' : ''}"><span class="obj-check">${ok ? '✔' : ''}</span><div class="obj-text">${o.text}${note}${answer}${hint}</div></li>`;
+          const check = this.arcade ? '' : `<span class="obj-check">${ok ? '✔' : ''}</span>`;
+          return `<li class="${ok ? 'ok' : ''}">${check}<div class="obj-text">${this.guided ? o.text : AA.Brief.howFree(o.text)}${note}${answer}${hint}</div></li>`;
         })
         .join('');
       this.objList.querySelectorAll('form[data-answer]').forEach((form) => {
@@ -771,6 +829,7 @@
           if (!ok) {
             AA.Audio.play('error');
             form.classList.add('shake');
+            if (this.arcade) AA.Arcade.penalty('wrong');
           }
           this.evaluate();
           this.scheduleSave();
@@ -783,14 +842,36 @@
             const k = +b.dataset.k;
             const ok = k === this.mission.objectives[i].correct;
             this.answers[i] = { value: k, ok };
-            if (!ok) AA.Audio.play('error');
+            if (!ok) {
+              AA.Audio.play('error');
+              if (this.arcade) AA.Arcade.penalty('wrong');
+            }
             this.evaluate();
             this.scheduleSave();
           })
         );
       });
+      // 📍: copia a la respuesta el valor de la celda seleccionada (por ejemplo, un CONTAR.SI que armaste).
+      this.objList.querySelectorAll('[data-pick]').forEach((b) =>
+        b.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          const g = this.grids[this.activeSheet];
+          const input = b.closest('form').querySelector('input');
+          if (!g || !input) return;
+          const v = g.activeValue();
+          const text = typeof v === 'number' ? String(Math.round(v * 10000) / 10000) : v === null || v === undefined || (typeof v === 'object' && v.code) ? '' : String(v);
+          if (!text) {
+            AA.UI.toast(T('Seleccioná primero la celda que tiene la respuesta.', 'First select the cell that holds the answer.'), 'info');
+            return;
+          }
+          input.value = text;
+          input.focus();
+          AA.Audio.play('select');
+        })
+      );
       const all = this.status.every((s) => s === true);
-      this.submitBtn.disabled = !all;
+      // En el ARCADE se puede entregar siempre (si falta algo, penaliza).
+      this.submitBtn.disabled = this.arcade ? false : !all;
       this.submitBtn.classList.toggle('pulse', all);
     },
 
@@ -804,7 +885,7 @@
       const free = this.mission.kind === 'story' && AA.State.isCompleted(this.mission.id);
       AA.UI.modal({
         title: T('💡 ¿Pedir una pista?', '💡 Ask for a hint?'),
-        html: `<p>${T(`Leo te puede dar una pista para el objetivo <b>${i + 1}</b>.`, `Leo can give you a hint for objective <b>${i + 1}</b>.`)}</p>
+        html: `<p>${this.guided ? T(`Leo te puede dar una pista para el objetivo <b>${i + 1}</b>.`, `Leo can give you a hint for objective <b>${i + 1}</b>.`) : T('Leo te puede dar una pista para lo que todavía falta.', 'Leo can give you a hint for what is still missing.')}</p>
                <p class="muted">${free ? T('Esta tarea ya está completada: las pistas son gratis.', 'This task is already completed: hints are free.') : T('Cada pista reduce un 15% la XP de esta tarea (mínimo 40%).', "Each hint reduces this task's XP by 15% (minimum 40%).")}</p>`,
         buttons: [
           { label: T('Mejor sigo intentando', "I'll keep trying") },
@@ -815,6 +896,7 @@
               this.hints.push(i);
               this.renderObjectives();
               this.scheduleSave();
+              if (!this.guided) AA.UI.toast(`💡 ${esc(this.mission.objectives[i].hint || '')}`, 'info');
             },
           },
         ],
@@ -927,7 +1009,7 @@
     },
     saveNow() {
       clearTimeout(this.saveTimer);
-      if (!this.mission) return;
+      if (!this.mission || this.arcade) return;
       const st = AA.State;
       const m = this.mission;
       const diffOf = (i) => {
@@ -962,6 +1044,7 @@
     },
 
     submit() {
+      if (this.arcade) return AA.Arcade.submit(this.status.every((s) => s === true), this.status.filter((s) => s !== true).length);
       if (!this.status.every((s) => s === true)) return;
       const m = this.mission;
       const st = AA.State;
@@ -1136,7 +1219,8 @@
 
   function openNotebook(focusModule) {
     const learned = Cu().MODULES.filter((m) => Cu().lessonDone(m));
-    let current = focusModule && learned.find((m) => m.id === focusModule) ? focusModule : learned.length ? learned[learned.length - 1].id : 'keys';
+    const SPECIAL = ['keys', 'explore', 'achievements'];
+    let current = SPECIAL.includes(focusModule) ? focusModule : focusModule && learned.find((m) => m.id === focusModule) ? focusModule : learned.length ? learned[learned.length - 1].id : 'keys';
     const render = (card) => {
       const tabs = Cu()
         .MODULES.map((m, i) => {
@@ -1147,6 +1231,12 @@
       let page;
       if (current === 'keys') {
         page = `<h2>⌨️ ${T('Atajos de teclado', 'Keyboard shortcuts')}</h2><p class="nb-say">${AA.L(AA.Story.SHORTCUTS)}</p>`;
+      } else if (current === 'achievements') {
+        page = AA.Achievements.notebookPage();
+      } else if (current === 'explore') {
+        page =
+          `<h2>🔍 ${T('Explorar tablas grandes', 'Exploring big tables')}</h2>` +
+          AA.Story.EXPLORE.map((x) => `<section class="nb-skill"><h3>${AA.L(x.title)}</h3><p class="nb-say">${AA.L(x.text)}</p></section>`).join('');
       } else {
         const mod = Cu().moduleById(current);
         page =
@@ -1168,9 +1258,9 @@
       card.querySelector('.nb').innerHTML = `
         <div class="nb-side">
           ${profileHtml()}
-          <nav class="nb-tabs">${tabs}<button class="nb-tab ${current === 'keys' ? 'on' : ''}" data-tab="keys">⌨️ ${T('Atajos', 'Shortcuts')}</button></nav>
+          <nav class="nb-tabs">${tabs}<button class="nb-tab ${current === 'keys' ? 'on' : ''}" data-tab="keys">⌨️ ${T('Atajos', 'Shortcuts')}</button><button class="nb-tab ${current === 'explore' ? 'on' : ''}" data-tab="explore">🔍 ${T('Explorar tablas', 'Exploring tables')}</button><button class="nb-tab ${current === 'achievements' ? 'on' : ''}" data-tab="achievements">🏆 ${T('Logros', 'Achievements')} <span class="nb-count">${AA.Achievements.count()}/${AA.Achievements.LIST.length}</span></button></nav>
         </div>
-        <div class="nb-page">${learned.length || current === 'keys' ? page : `<p class="nb-say">${T('Todavía no aprendiste nada. Hablá con Leo junto a la máquina de café.', "You haven't learned anything yet. Talk to Leo by the coffee machine.")}</p>`}</div>`;
+        <div class="nb-page">${learned.length || SPECIAL.includes(current) ? page : `<p class="nb-say">${T('Todavía no aprendiste nada. Hablá con Leo junto a la máquina de café.', "You haven't learned anything yet. Talk to Leo by the coffee machine.")}</p>`}</div>`;
       card.querySelectorAll('[data-tab]').forEach((b) =>
         b.addEventListener('click', () => {
           current = b.dataset.tab;
@@ -1180,6 +1270,7 @@
           if (on) on.focus({ preventScroll: true });
         })
       );
+      if (current === 'achievements') AA.Decor.animatePreviews(card.querySelector('.nb-page'));
       const slot = card.querySelector('[data-portrait]');
       if (slot) slot.replaceWith(AA.UI.portraitCanvas('player', 48));
       const career = card.querySelector('[data-act="career"]');

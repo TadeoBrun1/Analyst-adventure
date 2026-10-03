@@ -48,12 +48,53 @@
     `<b>Enter</b> confirma y baja · <b>Tab</b> confirma y va a la derecha · <b>Esc</b> cancela<br>
      <b>F2</b> o doble clic: editar · <b>Supr</b>: borrar · <b>F4</b>: fijar referencia con $<br>
      <b>Ctrl+C / Ctrl+V</b>: copiar y pegar · <b>Ctrl+D</b>: rellenar abajo · <b>Ctrl+R</b>: a la derecha<br>
-     <b>Ctrl+Z / Ctrl+Y</b>: deshacer y rehacer · <b>Shift+flechas</b>: seleccionar rango`,
+     <b>Ctrl+Z / Ctrl+Y</b>: deshacer y rehacer · <b>Shift+flechas</b>: seleccionar rango<br>
+     <b>Ctrl+B</b> (o Ctrl+F): buscar · <b>Ctrl+Mayús+L</b>: filtro · <b>Ctrl+clic</b> en el número de fila: pintarla`,
     `<b>Enter</b> confirms and moves down · <b>Tab</b> confirms and moves right · <b>Esc</b> cancels<br>
      <b>F2</b> or double-click: edit · <b>Del</b>: clear · <b>F4</b>: lock reference with $<br>
      <b>Ctrl+C / Ctrl+V</b>: copy and paste · <b>Ctrl+D</b>: fill down · <b>Ctrl+R</b>: fill right<br>
-     <b>Ctrl+Z / Ctrl+Y</b>: undo and redo · <b>Shift+arrows</b>: select a range`
+     <b>Ctrl+Z / Ctrl+Y</b>: undo and redo · <b>Shift+arrows</b>: select a range<br>
+     <b>Ctrl+F</b> (or Ctrl+B): find · <b>Ctrl+Shift+L</b>: filter · <b>Ctrl+click</b> a row number: paint it`
   );
+
+  // Cómo explorar una tabla grande sin contar fila por fila (lección de Leo y página de la libreta).
+  const EXPLORE = [
+    {
+      title: T('🔽 Filtro', '🔽 Filter'),
+      text: T(
+        'Tocá <b>🔽 Filtro</b> (o <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd>) y aparece un ▾ en la letra de cada columna. Elegís una condición —«menor que 10», «contiene Norte», «entre 100 y 200», «los 5 mayores»— y se ocultan las filas que no cumplen. Abajo dice <b>«Se encontraron X de N registros»</b>: esa es tu respuesta a «¿cuántos…?». Se pueden combinar filtros en varias columnas.',
+        'Tap <b>🔽 Filter</b> (or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>) and a ▾ shows up on each column letter. Pick a condition —"less than 10", "contains North", "between 100 and 200", "top 5"— and the rows that don\'t match are hidden. Below it says <b>"Found X of N records"</b>: that\'s your answer to "how many…?". You can combine filters on several columns.'
+      ),
+    },
+    {
+      title: T('🔍 Buscar', '🔍 Find'),
+      text: T(
+        '<kbd>Ctrl</kbd>+<kbd>B</kbd> (en inglés, <kbd>Ctrl</kbd>+<kbd>F</kbd>) abre el buscador: escribís un número o una palabra y se resaltan <b>todas</b> las celdas que lo tienen, con el total. <kbd>Enter</kbd> salta a la siguiente. Podés buscar en toda la hoja, solo en la columna o en la fila seleccionada, y marcar «Celda completa» para que «10» no encuentre «110».',
+        '<kbd>Ctrl</kbd>+<kbd>F</kbd> (in Spanish Excel, <kbd>Ctrl</kbd>+<kbd>B</kbd>) opens find: type a number or a word and <b>every</b> cell that has it lights up, with the total. <kbd>Enter</kbd> jumps to the next. Search the whole sheet, just the selected column or row, and tick "Whole cell" so "10" doesn\'t find "110".'
+      ),
+    },
+    {
+      title: T('🖌 Pintar', '🖌 Paint'),
+      text: T(
+        'Elegí un color y se pinta lo que tengas seleccionado. Más rápido: <kbd>Ctrl</kbd>+clic en el <b>número de una fila</b> la pinta entera (cada clic cambia de color). Abajo ves <b>cuántas filas o celdas hay de cada color</b>, así contás sin perderte.',
+        'Pick a color and your selection gets painted. Faster: <kbd>Ctrl</kbd>+click a <b>row number</b> to paint the whole row (each click changes color). Below you see <b>how many rows or cells of each color</b>, so you can count without getting lost.'
+      ),
+    },
+    {
+      title: T('✨ Resaltar celdas', '✨ Highlight cells'),
+      text: T(
+        'Es el «formato condicional» de Excel: seleccioná una columna (o una celda de ella), poné una regla como «mayor que 500» y se pintan solas las que cumplen. Abajo dice cuántas quedaron resaltadas.',
+        'It\'s Excel\'s "conditional formatting": select a column (or one cell in it), set a rule like "greater than 500" and the matching cells paint themselves. Below it says how many were highlighted.'
+      ),
+    },
+    {
+      title: T('⚠️ Ojo', '⚠️ Heads up'),
+      text: T(
+        'Nada de esto cambia los datos ni completa las celdas amarillas: esas siguen necesitando fórmulas. Son herramientas para <b>mirar y chequear</b>, como hace cualquier analista antes de responder.',
+        'None of this changes the data or fills in the yellow cells: those still need formulas. They\'re tools to <b>look and double-check</b>, like any analyst does before answering.'
+      ),
+    },
+  ];
 
   // Qué cambia en cada ascenso (lo que hace ese rango en la vida real).
   const PROMO_LINES = {
@@ -64,6 +105,7 @@
 
   const Story = {
     SHORTCUTS,
+    EXPLORE,
 
     intro(onDone) {
       AA.Dialog.open(
@@ -99,6 +141,9 @@
             { who: 'marta', text: T(`Así que es oficial: a partir de hoy sos <b>${rank.name.es}</b>. ¡Felicitaciones! 🎉`, `So it's official: starting today you're a <b>${rank.name.en}</b>. Congratulations! 🎉`) },
             PROMO_LINES[rankIdx] || { who: 'marta', text: T('Más responsabilidad, pedidos más difíciles… y Leo seguro tiene algo nuevo para enseñarte.', "More responsibility, harder requests… and I'm sure Leo has something new to teach you.") },
             { who: 'marta', text: T('Pasá por donde está Leo: tiene la primera lección de tu nueva etapa.', 'Stop by Leo: he has the first lesson of your new stage.') },
+            rankIdx === 1
+              ? { who: 'marta', text: T('Ah, y arreglaron la <b>máquina arcade</b> del living. Dicen que es para "entrenar bajo presión"… con reloj y todo. 🕹️', 'Oh, and they fixed the <b>arcade machine</b> in the lounge. They say it is for "training under pressure"… clock included. 🕹️') }
+              : null,
           ],
           () => AA.Game.updateHud()
         );
@@ -185,13 +230,36 @@
         ),
         choices: [
           { label: AA.T('📒 Abrir mi libreta', '📒 Open my notebook'), action: () => AA.Screens.openNotebook() },
+          // Solo mientras sos pasante: la máquina arcade todavía está rota.
+          ...(st.rankIndex() < 1
+            ? [
+                {
+                  label: AA.T('🕹️ ¿Y la máquina arcade?', '🕹️ What about the arcade machine?'),
+                  action: () =>
+                    AA.Dialog.open([
+                      { who: 'leo', text: T('Seguramente dentro de unos meses, cuando asciendas a <b>Junior</b>, la máquina arcade ya va a estar arreglada.', "Give it a few months: by the time you get promoted to <b>Junior</b>, the arcade machine will surely be fixed.") },
+                      { who: 'leo', text: T('Dicen que es para "entrenar bajo presión". Yo la uso para entrenar la paciencia mientras se carga Excel. 😄', 'They say it is for "training under pressure". I use it to train my patience while Excel loads. 😄') },
+                    ]),
+                },
+              ]
+            : []),
           ...(learned.length ? [{ label: AA.T('🔁 Repasar una lección', '🔁 Review a lesson'), action: () => this.reviewMenu(learned) }] : []),
           { label: AA.T('💡 Darme un consejo', '💡 Give me a tip'), action: () => AA.Dialog.open([{ who: 'leo', text: pick(LEO_TIPS) }]) },
           { label: AA.T('⌨️ Atajos de teclado', '⌨️ Keyboard shortcuts'), action: () => AA.Dialog.open([{ who: 'leo', text: SHORTCUTS }]) },
+          { label: AA.T('🔍 ¿Cómo encuentro datos en una tabla grande?', '🔍 How do I find data in a big table?'), action: () => this.explore() },
           { label: AA.T('Nada, gracias', 'Nothing, thanks'), action: () => {} },
         ],
       });
       AA.Dialog.open(lines);
+    },
+
+    // Lección corta: filtro, buscar, pintar y resaltar.
+    explore() {
+      AA.Dialog.open([
+        { who: 'leo', text: T('¿Te piden «cuántos productos vendieron menos de 10» y la tabla tiene 40 filas? No cuentes con el dedo: la planilla tiene herramientas para eso.', 'Asked "how many products sold fewer than 10" and the table has 40 rows? Don\'t count with your finger: the sheet has tools for that.') },
+        ...EXPLORE.map((x) => ({ who: 'leo', text: `<b>${AA.L(x.title)}</b> — ${AA.L(x.text)}` })),
+        { who: 'leo', text: T('Lo anoté en tu libreta, en la pestaña <b>🔍 Explorar tablas</b>.', 'I wrote it in your notebook, in the <b>🔍 Exploring tables</b> tab.') },
+      ]);
     },
 
     reviewMenu(learned) {
@@ -317,6 +385,18 @@
         ),
       });
       AA.Dialog.open(lines);
+    },
+
+    // Máquina arcade del living: averiada mientras sos pasante.
+    arcade() {
+      if (S().rankIndex() < 1) {
+        AA.Dialog.open([
+          { who: 'narrator', text: T('La máquina arcade del living está apagada. Tiene un cartel: «FUERA DE SERVICIO — se arregla cuando haya un <b>Junior</b> que la use para entrenar».', 'The arcade machine in the lounge is off. A sign says: "OUT OF ORDER — it gets fixed once there\'s a <b>Junior</b> who will use it to train".') },
+          { who: 'narrator', text: T('Abajo, con otra letra: «¡Ánimo, pasante! 💪 — Camila».', 'Below, in different handwriting: "You got this, intern! 💪 — Camila".') },
+        ]);
+        return;
+      }
+      AA.Arcade.openMenu();
     },
 
     jean() {
